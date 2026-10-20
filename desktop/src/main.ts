@@ -89,11 +89,11 @@ function guardWebview(contents: WebContents): void {
     if (details.disposition === "new-window") {
       return {
         action: "allow",
+        // No parent: a child of a fullscreen window joins its space, so closing it runs the exit-fullscreen transition that crashes AppKit.
         overrideBrowserWindowOptions: {
           backgroundColor: "#ffffff",
           frame: false,
           fullscreenable: false,
-          parent: mainWindow,
           resizable: false,
           roundedCorners: true,
           show: false,
@@ -127,7 +127,7 @@ function placePopup(id: number, rect: Rect): void {
 
 function openPopup(child: BrowserWindow, url: string, opener: string): void {
   const id = child.webContents.id;
-  // A fullscreen-auxiliary child coexists with a fullscreen parent, so closing it no longer runs the exit-fullscreen transition that crashes AppKit.
+  // Float the parentless window over the sidecar even when it is fullscreen, without switching away from that space.
   child.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   popups.set(id, { win: child });
   child.once("closed", () => {
