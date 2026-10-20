@@ -7,6 +7,26 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.18.0
+
+### Changed
+
+- **The sidecar has its own repository, `cela-sage/sidecar`, and is one plugin named `sidecar`.** It
+  left the mode plugin, whose history up to 0.17.0 is below, and took in its Claude Code mod, so the app,
+  its CLI, the Electron shell and the mod install together and the modes system is no longer part of it.
+- **The mod finds the CLI in its own checkout**, `bin/sidecar` beside its manifest, instead of reading
+  `~/.claude/mode/plugin-root`.
+- **The node a Claude Code started outside an nvm shell falls back to** is recorded by `sidecar setup` in
+  `~/.claude/sidecar/node`, where it was `~/.claude/mode/node`, carried over once.
+- **The desktop app's bundle id is `local.sidecar.desktop`**, so macOS asks once more for the Keychain
+  key the cookie import reads.
+
+### Added
+
+- **Installing the sidecar tells Claude it is there.** The mod adds `rules/sidecar.md` to every system
+  prompt: where to save pages for you, that a `[[sidecar]]` message is yours, and to read a page's
+  threads with `sidecar comments` before changing it.
+
 ## 0.17.0
 
 ### Added

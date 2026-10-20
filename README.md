@@ -1,264 +1,38 @@
-# mode
+# sidecar
 
-**Two slots for a Claude Code session. One holds a way of working, the other holds a way of talking.**
+**A local app beside a Claude Code conversation, where you read what Claude makes, comment on any block of it and send the notes back.**
 
-Sessions drift. You say "be brief" on Monday and by Thursday you are reading three paragraphs again. You agree a careful procedure at the top of a conversation and forty turns later nobody is following it. The usual fix is to repeat yourself, which works until you forget.
-
-This plugin makes the contract hold with a hook instead of with Claude's goodwill. Both slots show in your status line, so you can always see what is running:
-
-<p align="center">
-  <img src="assets/statusline.svg" alt="A status line with one chip per axis: the mode chip holding ~debug, the style chip holding ship. A second row shows both slots reading off." width="560">
-</p>
-
-New here? The [visual guide](GUIDE.md) explains how it works and how to write your own contracts.
+It is two things in one plugin. The Nuxt app at the root of this repo is the sidecar itself: the conversations, the Artifacts face with its comment layer, Web artifacts, Review, Files and History. The Claude Code mod in `hooks/` keeps the sidecar on the conversation you are in, gives the session `/sidecar`, keeps the review that Review shows, and tells Claude the sidecar is there.
 
 ---
 
 ## Install
 
-You need Node 24 or newer on your path, the current LTS, and nothing else. The installer checks the version and tells you what it found rather than failing halfway.
-
-There are two routes, and the one you pick decides how you update later.
-
-### Route one: a marketplace plugin
-
-The normal route. Take this if you just want it installed.
+You need Node 24 or newer. Claude Code loads any directory under `~/.claude/skills/` as a plugin, so point that name at a clone and set it up:
 
 ```bash
-git clone <this-repo> ~/src/mode
-cd ~/src/mode
-./install.sh
+git clone git@github.com:cela-sage/sidecar.git ~/src/sidecar
+ln -s ~/src/sidecar ~/.claude/skills/sidecar
+cd ~/src/sidecar
+pnpm install
+bin/sidecar setup
 ```
 
-Then register it with Claude Code, pointing the marketplace at that same clone so only one copy exists on disk:
+`sidecar setup` asks how the sidecar runs, as a desktop app or a webapp in Chrome, records the node it ran on in `~/.claude/sidecar/node` for a Claude Code started outside an nvm shell, and starts it. Open a new conversation and `/sidecar` is there.
 
-```text
-/plugin marketplace add ~/src/mode
-/plugin install mode@mode
-```
+## What Claude is told
 
-Restart Claude Code, or open a new conversation.
+While the plugin is installed, the mod adds one section to every system prompt, from `rules/sidecar.md`: the sidecar is installed, pages and documents written for you to read go into `~/.claude/sidecar/artifacts/` as `<slug>.html` or `<slug>.md`, a message opening on a `[[sidecar]]` line is you writing from the sidecar, and a page's open threads are read with `sidecar comments <slug>` before it changes. Uninstalling the plugin takes the section away, and nothing is written into anyone's `CLAUDE.md` or rules.
 
-> [!NOTE]
-> Claude Code copies the plugin into its own cache, into a directory named after the version. Your clone is the marketplace _source_; the copy that actually runs lives elsewhere. That distinction is invisible until you try to update.
+## The CLI
 
-### Route two: a skills directory
-
-Claude Code loads any directory under `~/.claude/skills/` as a plugin, hooks and commands included. Point that name at your clone and there is no cache copy at all:
-
-```bash
-git clone <this-repo> ~/src/mode
-ln -s ~/src/mode ~/.claude/skills/mode
-cd ~/src/mode
-./install.sh
-```
-
-Take this route if you plan to write your own contracts or change the plugin, because an edit is live in the next session with nothing to reinstall. The cost is that keeping the clone current is now your job.
-
-Either way, `claude plugin list` tells you which one you ended up with.
-
-### What the installer does
-
-Four things, none of which a plugin can do for itself. It never asks your name: contracts say "the user", and Claude already knows who it is talking to.
-
-| It does                                                                                                  | Because                                                                                                                |
-| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| Writes `/mode`, `/style`, `/approve` and `/why` into your commands directory, plus one per shipped skill | A plugin cannot register an un-namespaced command, so without these files those names do not resolve at all            |
-| Creates `~/.claude/mode/{modes,styles,rules,design-systems}/`                                            | Somewhere for contracts and design-system packs you write yourself that a plugin update never overwrites               |
-| Wires the status line                                                                                    | `statusLine` is a key in your `settings.json`, and no plugin can set it                                                |
-| Records the node it ran with in `~/.claude/mode/node`                                                    | Hooks use the node on `PATH` and fall back to this one, so a Claude Code started without nvm on `PATH` still runs them |
-
-It then runs `mode sync`, which adds one palette entry per contract.
-
-On the status line it emits and does not own. `bin/mode chips` prints one entry per axis and your existing line embeds that output, so nothing you already render gets wiped:
-
-| What you have                     | What it does                                                                                                                                                     |
-| --------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| No status line                    | Writes a small one whose only job is to print the chips                                                                                                          |
-| A status line already             | Never overwrites it. Shows the block to add, offers to append, shows the diff first. Appends only to a shell script; a `node …` or `python …` line is left alone |
-| A settings file that is a symlink | Resolves it and writes through it, so it stays a symlink                                                                                                         |
-
-> [!WARNING]
-> That last row is not hypothetical. Claude Code replaces `settings.json` with a regular file whenever it writes a setting, and if yours is a symlink into a dotfiles repo, the repo copy quietly stops being the live one with nothing to tell you. The installer takes a timestamped backup first and prints every path it touched.
-
-Run it twice and the second run reports what is already in place and changes nothing. `./install.sh --help` lists the flags, including `--no-status-line` and `--no-aliases`.
-
----
-
-## Updating
-
-Find out where you are first. These two answer different questions:
-
-```bash
-claude plugin list          # the version Claude Code loads, and by which route
-./bin/mode version          # the version of the clone you are standing in
-```
-
-> [!TIP]
-> When those two disagree, the update has not landed. That is the most useful check on this page, because every failure below shows up as exactly that disagreement.
-
-**Marketplace route** takes two commands, because the marketplace and the plugin are separate things. If the source is a local clone, `git pull` in it first, or the update re-reads the same commit and truthfully reports that nothing changed.
-
-```bash
-claude plugin marketplace update mode
-claude plugin update mode@mode
-```
-
-**Skills-directory route** is just `cd ~/src/mode && git pull`. There is no second copy to bring into line.
-
-> [!IMPORTANT]
-> Either way, restart. Hooks and commands are read once when a session starts, so a running session keeps the old copy until it ends.
-
-An update never touches contracts you wrote yourself, because they live in `~/.claude/mode/` outside the plugin. Anything you edited _inside_ the plugin directory is a different story: the cache copy stops being used, or `git pull` conflicts with it.
-
----
-
-## Using it
-
-```text
-/mode              # list what exists, and say what is held
-/mode debug        # hold debug
-/mode off          # empty the mode slot
-
-/style             # the same three, for the style slot
-/style edu
-/style off
-
-/why               # what is steering this turn, and what the next prompt will carry
-```
-
-Every contract also has its own palette entry, so you can type `/mode:` or `/style:` and pick from the list rather than recalling names. Both spellings do the identical thing.
-
-**A bare name goes to whichever axis owns it**, so you do not have to remember which is which: `/mode native` fills the _style_ slot, because `native` is a style. You can set both at once, in either order, and two commands in one message both land:
-
-```text
-/mode tdd native         # a mode and a style in one go
-/mode:debug /style:edu   # the same thing, as two shortcuts
-```
-
-The slots are independent. Setting one never touches the other, and `off` on one leaves the other exactly as it was.
-
-**A message that is only a switch never reaches the model.** The hook does the switch, prints the chips back, and ends the turn, so it costs no tokens and answers immediately. Add anything else and the turn runs as usual: `/mode debug fix the parser` sets the slot and then gets to work.
-
-Both also accept `auto`, which lets a contract be picked from what you write. A contract you set by hand is never overridden, a message matching two contracts picks neither, and anything chosen for you is marked with a leading tilde in the status line, so `~debug` means the chooser filled the slot and plain `debug` means you typed it.
-
-> [!TIP]
-> A fresh slot starts empty, not on `auto`, so nothing is ever chosen for you until you ask for it. If you would rather the chooser were always live, pin it once and every session below that directory starts there:
->
-> ```bash
-> cd ~ && mode mode pin auto && mode style pin auto
-> ```
-
-### The modes
-
-A **mode** is how the work runs: steps, gates, and a point where you can say it finished.
-
-| Mode         | Reach for it when                                                                                                                                                                                              | It ends                   |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
-| `pair`       | **The default.** Any ask, Claude's hands on all of it, and two views built to differ: a `director` teammate on Opus owns the outcome and signs off before anything is committed, the advisor checks the method | you say so                |
-| `ic`         | The same loop without the director. Any ask, one pair of hands, you in the room. Borrows each specialist's discipline without the ceremony.                                                                    | you say so                |
-| `copilot`    | The work splits into several independent domains and you want a team to build it while you watch                                                                                                               | you say so                |
-| `swarm`      | The same team without the spec. A standing roster of owners, each holding one domain, and every ask routed to whoever owns it                                                                                  | you say so                |
-| `dispatcher` | You have several requests at once and want each triaged without typing a prompt per request: a new conversation, a relay to the live one that holds it, or an answer here. Read-only                           | you say so                |
-| `autopilot`  | You want a result and you are walking away. Every decision is Claude's, one report waits. Typed only, never auto-chosen.                                                                                       | the MR opens              |
-| `debug`      | Something is broken and nobody knows where. Instrument, reproduce, fix the cause, explain why.                                                                                                                 | you approve the explainer |
-| `tdd`        | You want the test to exist before the code, failing for the right reason                                                                                                                                       | you say so                |
-| `goal`       | It has to be truly finished: verified for real, then audited clean by fresh eyes, twice in a row                                                                                                               | you say so                |
-| `tester`     | A feature somebody else built needs sweeping, and you want a verdict rather than a fix                                                                                                                         | you say so                |
-| `studio`     | You are thinking something through and want the ideas on a page that grows as you talk                                                                                                                         | you say so                |
-
-### The styles
-
-A **style** is how Claude sounds while any of that runs. It has no steps of its own.
-
-| Style      | Reach for it when                                                                                                                              |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
-| `edu`      | You want to understand, not just be updated. Explained the way a friend who knows it would, top down, in human prose, drawn where it has shape |
-| `fast`     | You are in a hurry. It gets made to work and nothing gets polished                                                                             |
-| `ship`     | It is going out and other people depend on it: readable, named, and the tests, docs and changelog travel with it                               |
-| `native`   | Somebody else's codebase. Match the local idiom and add none of your own                                                                       |
-| `creative` | The safe first answer is not good enough. Go wide, several real options, boldness spent in one place                                           |
-| `xyz`      | You write short and expect the rest inferred. Every reply opens with the read                                                                  |
-
-### Picking a pair
-
-Most combinations just work. Three are worth knowing:
-
-- `tdd` with `fast` contradicts itself, since one wants a failing test before every line and the other wants tests skipped.
-- `studio` with `ship` fights too, because studio deliberately ships nothing.
-- `debug` with `fast` picks the workaround over the durable fix, which is what you want while production is burning. `debug` with `ship` picks the other half of that fork.
-
----
-
-## What else ships with it
-
-Beyond the two slots, the plugin carries the skills the contracts reach for, so a mode that says
-"build an artifact" is naming something that is actually installed.
-
-| Skill              | What it does                                                                           |
-| ------------------ | -------------------------------------------------------------------------------------- |
-| `create-artifact`  | Builds one self-contained HTML page in a named design system and hands over its path   |
-| `edge-induction`   | Turns a problem's structure into an edge-case checklist rather than a list from memory |
-| `design`           | Interface craft: polish, component design, animation decisions                         |
-| `showpiece-prompt` | Writes a one-shot generative prompt using the six-slot anatomy                         |
-
-They are namespaced `mode:<name>`, and the installer writes a bare `/<name>` command for each.
-
-`create-artifact` comes with a CLI, `bin/artifact`, which scaffolds a page, resolves a slug to a file,
-stamps its metadata and installs the review layer. `artifact new <slug> --ds <key>` writes a page with the
-pack's stylesheets and the component kit already in it, so Claude writes markup rather than CSS and
-JavaScript, and `artifact kit <slug>` refreshes the kit in an older page. The comment round trip that
-lets you review a page and have Claude answer the threads is the sidecar's: `sidecar comments <slug>`
-reads and answers them, and `sidecar open --artifact <slug>` shows the page in the sidecar's Artifacts face
-when you want to look at it. Claude never runs it for you. `sidecar open --artifact localhost:3000/guide`,
-or any http or https address, does the same for a live site: the sidecar serves it through a local proxy
-that adds the comment layer, keeps the Web artifact in `~/.claude/sidecar/web/`, and `sidecar comments`
-answers its threads like a page's. A Web artifact is a tab, and every Web artifact is a tab of the same
-browser. Open a URL always makes a new one, and inside it links, redirects, forms and the address bar go
-to any site in place, with back and forward walking through all of them. Every site gets one host of its
-own under the sidecar's, such as `www.reddit.com.https.sidecar.localhost`, the same in every artifact, so
-a site's cookies are shared by its other hosts as in a tab, cross-site scripts and their CORS answers
-work, and a sign-in, a solved captcha or anything a site stores carries from one Web artifact to the
-next. Cookies and storage last across conversations and restarts. Text that isn't an
-address searches Google, in Open a URL and in the address bar alike. `sidecar open --artifact <url>` and a link
-clicked in the sidecar reuse the conversation's artifact already opened on or showing that address, so
-Claude opening localhost:3000 every turn doesn't pile up copies. The proxy sends each request as a
-browser tab would rather than as a framed page, while a frame a site makes inside its own page still
-reaches the site as a frame, which claude.ai's artifacts need, and a sign-in popup such as Google's is
-told and answered at the site's real address. A site can never navigate the sidecar window itself, and
-a page reaches no host closer to this machine than its own, so a remote site can't call localhost or the
-local network through it, the way Chrome's Private Network Access draws the line. Each artifact keeps its
-own back and forward history in its record, so ⌘[ and ⌘] step through it after a switch or a reload, and
-⌘L edits the address. A link clicked in the sidecar opens there too, a web address as a Web entry and a local
-`.md` or `.html` as a File entry, which `~/.claude/sidecar/tracked.json` remembers until you remove it, so
-the sidecar serves only files someone opened. A web address you or Claude write in the chat, outside
-code, becomes a Web entry of that conversation too, once per address and read off the transcript, so a
-link you remove stays removed. It lands as it is said, whichever conversation is on screen, with the toast a
-new page gets, and one said while the sidecar was stopped lands quietly once it is back. A page a WebFetch
-or WebSearch brought back never does, even when Claude cites it in its sources, unless you write it
-yourself. Three lookups are worth knowing:
-
-| It resolves           | In this order                                                                                   |
-| --------------------- | ----------------------------------------------------------------------------------------------- |
-| A design system       | The packs shipped here, then `~/.claude/mode/design-systems/`, where yours wins on a name clash |
-| Where artifacts live  | `NOTES_ARTIFACTS`, then `~/.claude/sidecar/artifacts`                                           |
-| Who a comment is from | The `user` key in `~/.claude/sidecar/config.json`, defaulting to "User"                         |
-
-`~/.claude/mode/config.json` holds the plugin's own settings: `guards` turns every guard off at once,
-`disarm` turns off only the guards it lists by file stem, such as `["board-check"]`.
-`review-lines`, 30 when absent, is how many changed lines a `pair` commit may record before
-`pair-guard` wants the director to have answered after the last edit.
-`mode triage` reads its key from `OPENROUTER_API_KEY` or the Keychain item `openrouter`, and
-`jev-model` swaps the judge it asks, `typesafe/jev-1.13` when absent. Without a key it stays
-silent and the dispatcher decides alone.
-
-The sidecar, the Nuxt app at the root of this repo, has its own CLI, `bin/sidecar`, and the
-`sidecar` mod's `/sidecar` is that CLI inside a Claude Code session, so `/sidecar stop` is `sidecar stop`:
+`bin/sidecar` is the sidecar's CLI, and `/sidecar` is that CLI inside a Claude Code session with the session's id in `CLAUDE_CODE_SESSION_ID`, so `/sidecar stop` is `sidecar stop`:
 
 ```sh
 sidecar             # same as open
 sidecar open [key]  # start it when down, point it at the conversation, raise an open sidecar or open one
-sidecar open --artifact <slug>  # the same, showing that page in Artifacts
+sidecar open --artifact <slug|url>  # the same, showing that page or address in Artifacts
+sidecar comments <slug>  # a page's threads; --reply <n> "..." answers one, --resolve <n> "..." closes it
 sidecar setup [desktop|web]  # choose how it runs and set it up; prompts on first run
 sidecar publish <topic> <json>  # append an event every open sidecar hears
 sidecar status      # whether it is up and where
@@ -280,6 +54,50 @@ from `CLAUDE_CODE_SESSION_ID`; from a plain terminal it just opens the app. It s
 on the port is left alone. The sidecar starts when you run `sidecar`, `/sidecar` or `open`, which
 brings it up when it is down, so nothing runs it at login.
 
+| It resolves           | In this order                                                           |
+| --------------------- | ----------------------------------------------------------------------- |
+| Where artifacts live  | `NOTES_ARTIFACTS`, then `~/.claude/sidecar/artifacts`                   |
+| Who a comment is from | The `user` key in `~/.claude/sidecar/config.json`, defaulting to "User" |
+
+## Artifacts and their comments
+
+Every page in the artifacts folder lists in the Artifacts face, and each conversation shows the pages it
+wrote, read off `~/.claude/artifacts/session-<key>`, the list a conversation's writes are recorded in. A
+page that list records for the first time while the sidecar is running gets a toast that opens it. A page
+carries a comment layer, and a `.md` is commented in the sidecar, which keeps its threads in one trailing
+`<!-- rv:seed -->` comment, or in `~/.claude/sidecar/comments/` for a `.md` outside the folder.
+`sidecar comments <slug>` prints the threads and answers them, and picks up a page's Save from
+`~/Downloads` when no sidecar is running.
+
+`sidecar open --artifact localhost:3000/guide`, or any http or https address, opens a live site the same
+way: the sidecar serves it through a local proxy that adds the comment layer, keeps the Web artifact in
+`~/.claude/sidecar/web/`, and `sidecar comments` answers its threads like a page's. A Web artifact is a
+tab, and every Web artifact is a tab of the same browser. Open a URL always makes a new one, and inside it
+links, redirects, forms and the address bar go to any site in place, with back and forward walking through
+all of them. Every site gets one host of its own under the sidecar's, such as
+`www.reddit.com.https.sidecar.localhost`, the same in every artifact, so a site's cookies are shared by its
+other hosts as in a tab, cross-site scripts and their CORS answers work, and a sign-in, a solved captcha or
+anything a site stores carries from one Web artifact to the next. Cookies and storage last across
+conversations and restarts. Text that isn't an address searches Google, in Open a URL and in the address
+bar alike. `sidecar open --artifact <url>` and a link clicked in the sidecar reuse the conversation's
+artifact already opened on or showing that address, so Claude opening localhost:3000 every turn doesn't
+pile up copies. The proxy sends each request as a browser tab would rather than as a framed page, while a
+frame a site makes inside its own page still reaches the site as a frame, which claude.ai's artifacts
+need, and a sign-in popup such as Google's is told and answered at the site's real address. A site can
+never navigate the sidecar window itself, and a page reaches no host closer to this machine than its own,
+so a remote site can't call localhost or the local network through it, the way Chrome's Private Network
+Access draws the line. Each artifact keeps its own back and forward history in its record, so ⌘[ and ⌘]
+step through it after a switch or a reload, and ⌘L edits the address. A link clicked in the sidecar opens
+there too, a web address as a Web entry and a local `.md` or `.html` as a File entry, which
+`~/.claude/sidecar/tracked.json` remembers until you remove it, so the sidecar serves only files someone
+opened. A web address you or Claude write in the chat, outside code, becomes a Web entry of that
+conversation too, once per address and read off the transcript, so a link you remove stays removed. It
+lands as it is said, whichever conversation is on screen, with the toast a new page gets, and one said
+while the sidecar was stopped lands quietly once it is back. A page a WebFetch or WebSearch brought back
+never does, even when Claude cites it in its sources, unless you write it yourself.
+
+## Desktop or web
+
 A Web artifact has two setups, and which one you get is the surface you pick in `sidecar setup`. The
 light option is the proxy above: a Web artifact is a framed page, and most sites, a sign-in asked once
 inside the sidecar and a reCAPTCHA work, while a few sites refuse to be framed and passkeys do not.
@@ -294,10 +112,12 @@ so a session that expires is refreshed by importing again. A site's own sign-in 
 and the like, opens as a sheet centred over the page with the rest dimmed rather than a separate window,
 staying a real child window underneath so the sign-in still completes, though a fresh Google sign-in from
 scratch may still be refused inside any embedded browser, with an Open in Chrome item in the View menu as
-the escape hatch. On
-the desktop surface `sidecar open` opens the app rather than a Chrome window; `sidecar uninstall` removes
-it and all its data, back to a clean slate. The shell is `desktop/`, its own pnpm package, so the Electron
-binary is downloaded only when you build the app and never by the light setup.
+the escape hatch. On the desktop surface `sidecar open` opens the app rather than a Chrome window;
+`sidecar uninstall` removes it and all its data, back to a clean slate. The shell is `desktop/`, its own
+pnpm package, so the Electron binary is downloaded only when you build the app and never by the light
+setup.
+
+## Events
 
 Claude talks to the sidecar through events, the way a Kafka producer talks to its consumers. Each
 event is one line appended to `~/.claude/sidecar/events.jsonl` under a topic, with the conversation's
@@ -321,16 +141,18 @@ Inside the server a write to any transcript reaches `transcripts.on("grew", ({ k
 `server/utils/sessions/transcripts.ts`, fed by the one watcher in `server/plugins/transcripts.ts`, so the
 mascot's turn stream and link adoption subscribe to it instead of watching files of their own.
 
+## Asking Claude
+
 Ask Claude is `/btw` from the sidecar: the mascot beside the notes slides its field out on hover, and ⌥↵
-or a click puts the cursor in it, folding back once the pointer and focus have left, asks a side question with the whole conversation as context, and nothing
-reaches the transcript or interrupts the turn. Its exchanges stack in one scrolling thread, which Clear
-empties with Undo, and they live in the page's memory only.
-`POST /api/sessions/<key>/ask` with `kind: "btw"` copies the transcript to the OS temp dir with its `last-prompt` record
-pointed at the newest entry, so the running turn is included, then runs the session's own build from
-`~/.local/share/claude/versions` with `--resume <copy> --fork-session --no-session-persistence` and hooks
-off, and sends the undocumented `side_question` control request over stream-json. It works on a finished
-conversation too, and since that request is internal, a Claude Code upgrade can break it, which shows as
-a failed answer.
+or a click puts the cursor in it, folding back once the pointer and focus have left, asks a side question
+with the whole conversation as context, and nothing reaches the transcript or interrupts the turn. Its
+exchanges stack in one scrolling thread, which Clear empties with Undo, and they live in the page's memory
+only. `POST /api/sessions/<key>/ask` with `kind: "btw"` copies the transcript to the OS temp dir with its
+`last-prompt` record pointed at the newest entry, so the running turn is included, then runs the session's
+own build from `~/.local/share/claude/versions` with `--resume <copy> --fork-session
+--no-session-persistence` and hooks off, and sends the undocumented `side_question` control request over
+stream-json. It works on a finished conversation too, and since that request is internal, a Claude Code
+upgrade can break it, which shows as a failed answer.
 
 A comment asks a blank Claude instead: Ask (⌘↵) in the comment popover opens a side question card where
 you picked, under the lines in Review and Files or in an artifact's margin, and posts `kind: "blank"`.
@@ -340,123 +162,69 @@ folder, plus the picked file's folder through `--add-dir` when it sits outside. 
 two minutes, and with the session's folder gone it reads nothing. Its first question carries the place
 and the picked lines numbered from the file, so a "line 14" in the answer is the file's line 14, and Send
 to conversation hands the place, a short quote and the exchanges over as your next message, with
-whatever is still in the field as its last paragraph.
-The threads live in the `$sideQuestion` store, in memory only like `/btw`.
+whatever is still in the field as its last paragraph. The threads live in the `$sideQuestion` store, in
+memory only like `/btw`.
 
----
+## The mod
 
-## Pinning a pair to a directory
+Bare `/sidecar` is `sidecar open`: it starts the sidecar when it is down and points it at this conversation,
+brings a sidecar window already open to the front, and otherwise opens it as the surface `sidecar setup`
+chose. Typing in a session's prompt moves the sidecar there too, at most once every two seconds, and never
+holds up a keystroke. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
+is how the sidecar still lists a conversation after it has ended.
 
-Both slots die with the conversation, which is right for a contract you set for one piece of work and wrong for the answer that is the same every time you open a particular repo. A **pin** is that answer, written once and adopted by every conversation that starts inside the directory.
+It also keeps the review the sidecar's Review face shows. Before Claude's first edit to a file, through
+Edit, Write, NotebookEdit or a shell command, it stores what the file held, and each turn it records which
+files moved, in `~/.claude/sidecar/review/<session id>/review.json` beside a `blobs/` folder of contents by
+hash. Every hook reads the session id afresh, because a `/clear` carries on under a new id with no
+`session.start` and a compaction can leave the mod's state empty, so the review and the sidecar both move
+to the live id and reload what is on disk. Review's approve and reject, for lines, hunks, files or a whole
+folder, arrive as relayed messages whose whole body is the action's JSON, which the mod takes out of the
+conversation and applies itself, so it stays the only writer, and a reject tells Claude which files
+changed under it. Every decision keeps both sides of what it touched, so Review's ⌘Z undoes the last one
+and ⌘⇧Z redoes it, up to 50 back, unless Claude edited that file since. A decision over several files is
+labelled by how many and the folder they share, as in `approving 8 files in .claude/hooks/`, so the undo
+tooltip stays one line.
 
-```bash
-mode style pin native          # every session under this directory starts in native
-mode mode pin off              # and none of them starts in a mode
-mode pins                      # what a fresh conversation here would begin in, and why
+The sidecar URL is the `url` option in `/config`, `http://sidecar.localhost:4747` by default: its own name
+and port, so it never shares an origin or a port with another app on `localhost:3000`. The name needs no
+setup, because Chrome, curl and Node resolve any `*.localhost` to this machine and the dev server accepts
+those names; the port is `devServer.port` in `nuxt.config.ts`. Typing's point goes to `localhost` on the
+same port, and the CLI gets the option as `SIDECAR_URL`.
+
+```
+POST /api/follow  {"key":"<8-hex session key>","source":"claude"|"prompt","face"?:"files"|"history"|"review","slug"?:"<artifact>"}  ->  {"listeners": <open pages>}
 ```
 
-There are two layers, and they resolve the way the contract folders do.
+The sidecar keeps the latest target in memory and streams it to every open page on `/api/follow/stream`.
+While a page listens it also reads Terminal's front tab title with osascript once a second and moves when
+that tab switches to another conversation, so a terminal tab switch moves it without typing.
 
-| Layer        | Lives in                                                | Reach                         |
-| ------------ | ------------------------------------------------------- | ----------------------------- |
-| **Personal** | `~/.claude/mode/pins.tsv`, written by `mode <axis> pin` | This machine only             |
-| **Shared**   | a `.mode` file committed at any directory               | Everybody who clones the repo |
+What the sidecar sends a session, notes and Review's buttons alike, opens on a `[[sidecar]]` line
+(`[[cc-sidecar]]` and `[[mode-relay v1]]` before it, still read) and reaches Claude Code as a peer message.
+Claude Code frames a peer message, with the "Another Claude session sent a message:" line above it and the
+"This came from another Claude session" paragraph below, only when it stores the row, after
+`session.receive` has run. So the mod's `session.receive` drops the marker and its `session.append` takes
+the frame off the row, and the conversation shows only what you wrote. A Review action is the whole body
+under the marker, run by `session.receive` and never shown; a note that only quotes one is left alone:
 
-A shared `.mode` is two lines, and hand-writing it is the point:
-
-```text
-mode: tdd
-style: native
+```
+[[sidecar]]
+{"do":"approve"|"reject","paths":[...]}
+{"do":"accept-lines"|"reject-lines","path":"...","old":[1-based],"new":[1-based]}
+{"do":"undo"|"redo"}
 ```
 
-Resolution walks up from the working directory and stops at the first answer, so the **deepest** file wins and one package in a monorepo can differ from the repo around it. Where both layers answer in the same directory, the personal one wins: it is your machine against somebody else's default. `mode <axis> pin off` writes a personal no that masks a shared file, and `--forget` drops the personal row so the shared one shows through again.
+## Develop
 
-Three restraints keep a pin a default rather than an override.
+The app is `pnpm dev`, `pnpm typecheck`, `pnpm test` and `pnpm build`. The mod is one hooks module,
+`hooks/register.tsx`, with the review logic in `hooks/review/`, checked with `pnpm test:mod`, which runs
+`claude plugin validate` on the repo root and `claude plugin test` on a copy of the mod alone, since the
+test runner takes every `*.test.ts` under its folder.
 
-- **A slot you have spoken for is never adopted into.** Typing a name wins, and so does `/mode off`, for the rest of that conversation.
-- **A pin fills a slot once per conversation.** Switching away from an adopted contract is not undone on the next prompt.
-- **A name this machine has no contract for is stepped over in silence.** A repo pinning a contract you never installed costs you nothing, and does not take the rest of its `.mode` file down with it.
-
-A pinned slot is marked in the status line with a leading `=`, so `=native` says the directory chose it, `~native` says the chooser did, and a bare name says you typed it.
-
----
-
-## Asking what is actually running
-
-Everything this plugin does is either a chip too small to explain itself or text injected where you cannot see it. `/why` is the window into that:
-
-```text
-/why
-```
-
-It is answered in the hook, so like a switch it costs no tokens and returns immediately. It prints what each slot holds and how it got there, where the pipeline stands, every gate the held mode declares with whether it is open right now and what would open it, which ground rules have already been injected and which are still waiting on a trigger, and whether your next prompt costs the whole contract or the four-line reminder.
-
-`/why fix the parser` puts the same report in front of Claude and then runs the turn.
-
----
-
-## Writing your own
-
-One markdown file in `~/.claude/mode/modes/` or `~/.claude/mode/styles/`. It is live as soon as you save it.
-
-```markdown
----
-name: recon
-summary: A codebase you have not seen. Build the map before touching anything.
-color: cyan
-enter-when: new repo|unfamiliar|where do I start
-exit-when: manual
----
-
-# Recon mode
-
-The full contract, at whatever length it needs. Read once, at the switch.
-
-## Standing reminder
-
-- Read before writing. Entry points, data flow, conventions, the test command.
-- Report the map, then propose.
-- No edits in the first pass.
-```
-
-| Key                            | Meaning                                                                                                                                                   |
-| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `name`                         | Must equal the filename without its extension                                                                                                             |
-| `summary`                      | One line, under 80 characters. It is what the listing prints and the chip shows                                                                           |
-| `color`                        | One of red, green, yellow, blue, magenta, cyan, grey, sky, pink, orange                                                                                   |
-| `enter-when`                   | Alternatives split on a vertical bar, matched at a word boundary. Consulted while the slot holds `auto`, or a pin when the contract sets `enter-over-pin` |
-| `enter-over-pin`               | Lets a phrase in the prompt's opening sentence take a slot that only holds a pinned default, never one you typed                                          |
-| `style`                        | The style the mode runs in, put in place when it is entered unless you typed a style in this conversation                                                 |
-| `exit-when`                    | `manual`, `approved`, or `mr-opened`                                                                                                                      |
-| `no-dispatch-without-approval` | Arms a gate that refuses to spawn a teammate until a yes is recorded                                                                                      |
-| `no-code-without-red`          | Arms a guard that refuses an edit to an implementation file while no watched failure stands                                                               |
-
-The last two are the flags with mechanisms behind them, and any contract may declare either. A flag is **on** whenever the key is present and does not explicitly say no.
-
-The four-line cap on `## Standing reminder` is real: it is what the hook's preview carries when an injection runs over Claude Code's 10,000-character cap. The contract itself goes out whole once and again only on a switch, a resume or a compact. A file of yours named the same as a shipped contract wins.
-
-There is a third kind of file too, `~/.claude/mode/rules/`, holding **ground rules** that are always on and injected once per conversation rather than switched. The [guide](GUIDE.md#ground-rules-the-third-kind-of-file) covers those.
-
----
-
-## Limitations
-
-Every item here is a real thing this release does not do.
-
-**A slot still dies with the conversation. Only the pin outlives it.** A pin says where a conversation _starts_; nothing carries a mid-conversation switch into the next session, and nothing should. If you switch to `debug` today, tomorrow's session in the same directory opens on the pin again.
-
-**Two flags have mechanisms. Every other rule is held by agreement.** `no-dispatch-without-approval` refuses a teammate until a yes is on record, and `no-code-without-red` refuses an implementation edit while no watched failure stands. Take everything else as a written agreement Claude is reminded of every single turn, which is genuinely useful and is not a guarantee. `no-implement` is the clearest remaining gap: `copilot` declares it and no hook reads it, because no hook can tell a two-line seam between two finished domains from a domain somebody decided to build themselves.
-
-**The red gate cannot tell a red from a broken test.** It opens on a suite the recorder watched exit non-zero, and an import error exits non-zero too. It stops the failure that actually happens, which is skipping the test entirely. It does not certify that the assertion fired, so the contract's own sentence about what red means is still yours to keep.
-
-**The approval gate checks that you approved, not that there was anything to approve.** Typing `/approve` followed by any word at all opens it. Read it as "a person deliberately typed a yes", not as "the spec was written and reviewed".
-
-**A committed `.mode` file is content from the repo that changes how a session behaves.** It can only name a contract already installed on the machine reading it, and an unknown name is ignored, so the worst a hostile one can do is start you in one of your own contracts. Read it like you read a `.editorconfig`, and `mode pins` tells you which file answered.
-
-**`auto` matches plain substrings at a word boundary.** It is deliberately simple and will sometimes pick wrong. Leave the slots on manual and type the name if that bothers you.
-
----
+Removing a conversation in the sidecar also runs `mode forget` when the [mode](https://github.com/EthanITA/Mode)
+plugin is installed, found through `~/.claude/mode/plugin-root`, so mode's share of it goes too.
 
 ## Licence
 
-MIT, in `LICENSE`. This is a small tool made of markdown contracts and one script, and the point is that people copy it, cut it down, and paste their own contracts in.
+MIT, in `LICENSE`.
