@@ -48,6 +48,10 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
   reinstalling, so the rebuilt code actually loads, and a relaunch now opens a window even when the app was
   sitting windowless.
 - **The desktop app wears the sidecar icon** instead of the default Electron one.
+- **Google sign-in no longer stops on a cookie settings error.** The cookie import widened Chrome's host-only
+  cookies into domain cookies, so a site's own cookie landed beside a stale copy and Google refused the pair.
+  They now import host-only, expired ones stay out, and the next launch re-imports once to clear the copies,
+  which asks for the Keychain key one more time.
 
 ## 0.17.0
 

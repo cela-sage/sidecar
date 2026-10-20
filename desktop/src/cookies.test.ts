@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createCipheriv, createHash, pbkdf2Sync } from "node:crypto";
 import { test } from "node:test";
-import { decryptCookie, setDetails } from "./cookies.ts";
+import { decryptCookie, isExpired, setDetails, widenedTwins } from "./cookies.ts";
 
 type Row = Parameters<typeof setDetails>[0];
 
@@ -46,6 +46,38 @@ test("a __Host- cookie imports host-only, so cookies.set accepts it", () => {
   assert.equal(o.url, "https://claude.ai/");
 });
 
-test("a normal cookie keeps its domain", () => {
+test("a domain cookie keeps its domain", () => {
   assert.equal(setDetails(row({ name: "sessionKey", host_key: ".claude.ai" }), "tok").domain, ".claude.ai");
+});
+
+test("a host-only cookie imports without a domain, so it is not widened to subdomains", () => {
+  const o = setDetails(row({ name: "LSID", host_key: "accounts.google.com" }), "tok");
+  assert.equal(o.domain, undefined);
+  assert.equal(o.url, "https://accounts.google.com/");
+});
+
+test("a host-only cookie gets its widened twin expired", () => {
+  assert.deepEqual(
+    widenedTwins([row({ name: "LSID", host_key: "accounts.google.com" })]).map((t) => [t.domain, t.name, t.expirationDate]),
+    [["accounts.google.com", "LSID", 1]],
+  );
+});
+
+test("no twin is expired for a domain cookie, a __Host- cookie, or one Chrome itself also holds dotted", () => {
+  const rows = [
+    row({ name: "SID", host_key: ".google.com" }),
+    row({ name: "__Host-GAPS", host_key: "accounts.google.com" }),
+    row({ name: "OTZ", host_key: "accounts.google.com" }),
+    row({ name: "OTZ", host_key: ".accounts.google.com" }),
+  ];
+  assert.deepEqual(widenedTwins(rows), []);
+});
+
+const chromeTime = (unixSeconds: number): bigint => BigInt(Math.round((unixSeconds + 11_644_473_600) * 1_000_000));
+
+test("an expired row is expired, a session or future one is not", () => {
+  const now = Date.now() / 1000;
+  assert.equal(isExpired(row({ expires_utc: chromeTime(now - 60) })), true);
+  assert.equal(isExpired(row({ expires_utc: chromeTime(now + 3600) })), false);
+  assert.equal(isExpired(row({ expires_utc: 0n })), false);
 });

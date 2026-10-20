@@ -76,23 +76,38 @@ function urlOf(row: CookieRow): string {
 
 function expiryOf(row: CookieRow): number | undefined {
   const micro = Number(row.expires_utc);
-  if (!micro) return undefined;
-  const seconds = micro / 1_000_000 - EPOCH_OFFSET;
-  return seconds > Date.now() / 1000 ? seconds : undefined;
+  return micro ? micro / 1_000_000 - EPOCH_OFFSET : undefined;
 }
 
-// cookies.set rejects a __Host- cookie given a domain, so passing one silently dropped every __Host- cookie on import.
+// Chrome deletes expired rows lazily, so the database can still hold cookies a fresh import must not bring back to life.
+export function isExpired(row: CookieRow): boolean {
+  const at = expiryOf(row);
+  return !!at && at <= Date.now() / 1000;
+}
+
+const isDomainCookie = (row: CookieRow): boolean => row.host_key.startsWith(".");
+
+// cookies.set widens any cookie given a domain to every subdomain, so only Chrome's dotted host_key, a real domain cookie, passes one.
 export function setDetails(row: CookieRow, value: string): CookiesSetDetails {
   const base: CookiesSetDetails = {
     expirationDate: expiryOf(row),
     httpOnly: !!row.is_httponly,
     name: row.name,
+    path: row.path || "/",
     sameSite: SAME_SITE[Number(row.samesite)] ?? "unspecified",
     secure: !!row.is_secure,
     url: urlOf(row),
     value,
   };
-  return row.name.startsWith("__Host-") ? { ...base, path: "/", secure: true } : { ...base, domain: row.host_key, path: row.path };
+  return isDomainCookie(row) ? { ...base, domain: row.host_key } : base;
+}
+
+// The first importer widened host-only cookies into dotted twins, and Google refuses sign-in seeing both, so those twins are expired.
+export function widenedTwins(rows: CookieRow[]): CookiesSetDetails[] {
+  const inChrome = new Set(rows.map((row) => `${row.host_key}|${row.name}|${row.path}`));
+  return rows
+    .filter((row) => !isDomainCookie(row) && !row.name.startsWith("__Host-") && !inChrome.has(`.${row.host_key}|${row.name}|${row.path}`))
+    .map((row) => ({ domain: row.host_key, expirationDate: 1, name: row.name, path: row.path || "/", secure: !!row.is_secure, url: urlOf(row), value: "" }));
 }
 
 export async function importChromeCookies(session: Session, { profile = "Default" }: { profile?: string }): Promise<CookieImport> {
@@ -111,8 +126,14 @@ export async function importChromeCookies(session: Session, { profile = "Default
   const rows = statement.all() as unknown as CookieRow[];
   handle.close();
 
+  for (const twin of widenedTwins(rows)) await session.cookies.set(twin).catch(() => {});
+
   const out: CookieImport = { failed: 0, set: 0, skipped: 0 };
   for (const row of rows) {
+    if (isExpired(row)) {
+      out.skipped += 1;
+      continue;
+    }
     const got = decryptCookie(row.encrypted_value, key, row.host_key);
     if (!got) {
       out.skipped += 1;

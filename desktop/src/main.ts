@@ -63,8 +63,9 @@ function webviewSession(): void {
   });
 }
 
+// Versioned, so an install imported by the domain-widening importer re-imports once and has its twins cleared.
 function importedMark(): string {
-  return join(app.getPath("userData"), "cookies-imported");
+  return join(app.getPath("userData"), "cookies-imported-v2");
 }
 
 async function importCookies(): Promise<{ failed: number; set: number; skipped: number }> {
