@@ -1,5 +1,5 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, openSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -42,6 +42,8 @@ function readSurface(): Surface | undefined {
 function writeSurface(surface: Surface): void {
   SidecarConfig.write({ surface });
 }
+
+const recordNode = (): void => writeFileSync(join(Sidecar.home(), "node"), `${process.execPath}\n`);
 
 const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code session runs the same
 
@@ -438,6 +440,7 @@ async function setup(): Promise<number> {
     }
   }
   writeSurface(surface);
+  recordNode();
   if (surface === "desktop") return installDesktop();
   if (!(await isSidecar()) && (await start()) !== 0) return 1;
   console.log("set up to run as a webapp in Chrome; sidecar open opens it");
