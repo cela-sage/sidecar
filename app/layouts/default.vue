@@ -10,6 +10,9 @@ const dockEl = useTemplateRef<HTMLElement>("dockEl");
 const boardEl = useTemplateRef<HTMLElement>("boardEl");
 const dockHeight = ref(0);
 const isDown = computed(() => !!sc.failure.value);
+// Desktop only, and after mount, since the shell is a client global and the native title bar's traffic lights sit where the lead island does.
+const onShell = ref(false);
+onMounted(() => (onShell.value = !!(window as unknown as { sidecarShell?: unknown }).sidecarShell));
 
 // A restarted server has forgotten what it followed, so the page waits on Listening for whatever is in front.
 watch(isDown, (down) => {
@@ -46,7 +49,7 @@ useResizeObserver(boardEl, ([entry]) => {
 <template>
   <!-- Unset until measured, so the first frame takes the CSS fallback rather than
        reserving nothing and shifting the reading surface once the observer reports. -->
-  <div class="shell" :data-full="artifact.isFull" :style="dockHeight ? { '--dock-h': `${dockHeight}px` } : undefined">
+  <div class="shell" :data-full="artifact.isFull" :data-shell="onShell" :style="dockHeight ? { '--dock-h': `${dockHeight}px` } : undefined">
     <!-- Covered rather than unmounted, so Listening keeps its stream and opens what is in front once the server is back. -->
     <div class="page" :inert="isDown">
       <slot />
@@ -85,6 +88,11 @@ useResizeObserver(boardEl, ([entry]) => {
 
 .row {
   @apply pointer-events-none absolute top-(--gutter) right-(--gutter) left-(--gutter) z-30 flex items-center gap-2 transition-[opacity,visibility] duration-(--duration-fast) ease-out;
+}
+
+/* The desktop shell's hidden-inset title bar puts the traffic lights over the lead island, so hold it clear of them. */
+.shell[data-shell="true"] .row {
+  @apply pl-20;
 }
 
 .foot {

@@ -359,6 +359,7 @@ watch(
       ref="view"
       allowpopups
       :key="`${slug}:${web.edition}`"
+      :data-popup="!!popup"
       :data-state="web.state"
       :partition="shellApi?.partition"
       :src="src"
@@ -395,6 +396,11 @@ webview {
 iframe[data-state="starting"],
 webview[data-state="starting"] {
   @apply opacity-0;
+}
+
+/* A webview always composites over page DOM, so hide it while the OAuth sheet is up or its scrim and header render behind it. */
+webview[data-popup="true"] {
+  @apply invisible;
 }
 
 .pending {

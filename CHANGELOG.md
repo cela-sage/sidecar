@@ -36,6 +36,13 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
   long description can't wrap and throw off the in-place redraw.
 - **The desktop build fetches Electron's binary itself when it is missing** rather than crashing with a raw
   `ENOENT`, which can happen when a checkout links Electron without running its postinstall.
+- **Closing the sign-in sheet in macOS fullscreen no longer crashes the app.** The OAuth child window is a
+  fullscreen auxiliary, so dismissing it stops running the exit-fullscreen transition that AppKit choked on.
+- **The sign-in sheet now reads as embedded.** The page webview hides while the sheet is up, so its dim and
+  origin header show instead of a bare floating Google window, since an Electron webview always paints over
+  page content.
+- **The desktop window has an integrated title bar.** The traffic lights sit inset over the page and the
+  title island clears them, in place of the plain native strip above the floating UI, and ⌘W closes the window.
 
 ## 0.17.0
 

@@ -92,6 +92,7 @@ function guardWebview(contents: WebContents): void {
         overrideBrowserWindowOptions: {
           backgroundColor: "#ffffff",
           frame: false,
+          fullscreenable: false,
           parent: mainWindow,
           resizable: false,
           roundedCorners: true,
@@ -126,6 +127,8 @@ function placePopup(id: number, rect: Rect): void {
 
 function openPopup(child: BrowserWindow, url: string, opener: string): void {
   const id = child.webContents.id;
+  // A fullscreen-auxiliary child coexists with a fullscreen parent, so closing it no longer runs the exit-fullscreen transition that crashes AppKit.
+  child.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   popups.set(id, { win: child });
   child.once("closed", () => {
     popups.delete(id);
@@ -140,6 +143,8 @@ function createWindow(): void {
     height: 900,
     show: false,
     title: NAME,
+    titleBarStyle: "hiddenInset",
+    trafficLightPosition: { x: 19, y: 23 },
     webPreferences: { contextIsolation: true, preload: UI_PRELOAD, sandbox: true, webviewTag: true },
     width: 1280,
   });
@@ -160,6 +165,7 @@ function menu(): Menu {
   };
   return Menu.buildFromTemplate([
     { role: "appMenu" },
+    { role: "fileMenu" },
     { role: "editMenu" },
     {
       label: "View",
