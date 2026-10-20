@@ -402,6 +402,16 @@ function buildDesktop(): boolean {
   return spawnSync(process.execPath, [join(DESKTOP, "build.ts"), "--package"], { cwd: DESKTOP, stdio: "inherit" }).status === 0;
 }
 
+const desktopRunning = (): boolean => spawnSync("pgrep", ["-f", `${DESKTOP_APP}/Contents/MacOS/`]).status === 0;
+
+// Reopening or overwriting a live bundle keeps the old code, and a relaunch only focuses an existing window, so quit the app before reinstalling.
+async function quitDesktop(): Promise<void> {
+  if (!desktopRunning()) return;
+  spawnSync("osascript", ["-e", `tell application "${NAME}" to quit`]);
+  for (const end = Date.now() + 8000; desktopRunning() && Date.now() < end; ) await sleep(200);
+  if (desktopRunning()) spawnSync("pkill", ["-f", `${DESKTOP_APP}/Contents/MacOS/`]);
+}
+
 async function installDesktop(): Promise<number> {
   const electron = join(DESKTOP, "node_modules", "electron");
   // pnpm can link Electron without running its postinstall, so fetch the binary ourselves when it is absent.
@@ -421,6 +431,7 @@ async function installDesktop(): Promise<number> {
     console.error(`the packaged app is not at ${built}`);
     return 1;
   }
+  await quitDesktop();
   mkdirSync(dirname(DESKTOP_APP), { recursive: true });
   rmSync(DESKTOP_APP, { force: true, recursive: true });
   if (spawnSync("cp", ["-R", built, DESKTOP_APP]).status !== 0) {

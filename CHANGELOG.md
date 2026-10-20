@@ -44,6 +44,10 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
   page content.
 - **The desktop window has an integrated title bar.** The traffic lights sit inset over the page and the
   title island clears them, in place of the plain native strip above the floating UI, and ⌘W closes the window.
+- **`sidecar update` no longer leaves the app in the dock with no window.** It quits the running app before
+  reinstalling, so the rebuilt code actually loads, and a relaunch now opens a window even when the app was
+  sitting windowless.
+- **The desktop app wears the sidecar icon** instead of the default Electron one.
 
 ## 0.17.0
 

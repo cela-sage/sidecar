@@ -196,10 +196,10 @@ if (process.argv.includes("--import")) {
 } else {
   app.on("second-instance", () => {
     const [win] = BrowserWindow.getAllWindows();
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
-    }
+    // A relaunch while the app sits in the dock with every window closed must open one, or it looks like nothing happened.
+    if (!win) return createWindow();
+    if (win.isMinimized()) win.restore();
+    win.focus();
   });
 
   app.whenReady().then(async () => {

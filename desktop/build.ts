@@ -61,6 +61,10 @@ function packageApp(): void {
 
   const macos = join(app, "Contents", "MacOS");
   renameSync(join(macos, "Electron"), join(macos, NAME));
+
+  // Overwrite Electron's own icon in place, so the name in Info.plist still resolves and no stale icon is cached under a new name.
+  cpSync(join(root, "icon.icns"), join(app, "Contents", "Resources", "electron.icns"));
+
   const plistPath = join(app, "Contents", "Info.plist");
   let plist = readFileSync(plistPath, "utf8");
   for (const [key, value] of [
