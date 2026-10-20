@@ -1,8 +1,17 @@
 {
-  "name": "mode",
-  "version": "0.17.0",
-  "description": "Give a session a way of working and a way of speaking. Two independent slots, switched by a hook before the model reads your message, so the contract holds by mechanism instead of by the model remembering it.",
+  "name": "sidecar",
+  "version": "0.18.0",
+  "description": "A local app beside the conversation where you read what Claude makes, comment on any block of it and send the notes back. /sidecar opens it on this conversation, typing in a session moves it there, and every file Claude changes is kept for its Review to approve, reject, undo and redo",
   "author": {
     "name": "Marco Dong"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "url": {
+      "type": "string",
+      "title": "Sidecar URL",
+      "description": "Where the sidecar runs, and where /sidecar starts it when nothing answers",
+      "default": "http://sidecar.localhost:4747"
+    }
   }
 }
