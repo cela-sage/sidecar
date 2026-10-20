@@ -8,7 +8,7 @@ const root = dirname(fileURLToPath(import.meta.url));
 const dist = join(root, "dist");
 const agentEntry = join(root, "..", "lib", "web", "page", "agent.ts");
 const NAME = "Claude Code Sidecar";
-const BUNDLE_ID = "local.mode.sidecar.desktop";
+const BUNDLE_ID = "local.sidecar.desktop";
 const VERSION = "0.1.0";
 
 // The comment agent, bundled to one script with no imports so the webview preload can inject it inline into the page.
