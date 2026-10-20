@@ -39,6 +39,7 @@ sidecar status      # whether it is up and where
 sidecar start       # build it, then start it in the background, waiting until it answers
 sidecar stop        # wherever it was started from, a terminal's pnpm dev included
 sidecar restart     # stop, build and start, which is how a change to the sidecar goes live
+sidecar update      # pull the latest sidecar on the branch, then rebuild and relaunch your surface
 sidecar import      # re-read Chrome's cookies into the desktop app, with the app closed
 sidecar uninstall   # remove the desktop app and all its data, back to a clean slate
 ```

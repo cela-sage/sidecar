@@ -12,7 +12,7 @@ import * as Events from "../lib/sidecar/events.ts";
 import type { Topics } from "../shared/types/events.ts";
 
 type Command =
-  "open" | "comments" | "publish" | "status" | "start" | "stop" | "restart" | "setup" | "uninstall" | "import" | "help";
+  "open" | "comments" | "publish" | "status" | "start" | "stop" | "restart" | "update" | "setup" | "uninstall" | "import" | "help";
 type Proc = { pid: number; ppid: number; args: string };
 type Point = { key?: string; slug?: string };
 
@@ -64,6 +64,7 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
   start       build it, then start it in the background and wait until it answers
   stop        stop it, wherever it was started from, a terminal's pnpm dev included
   restart     stop it, then build and start it, which is how a change to the sidecar goes live
+  update      pull the latest sidecar on the current branch, then rebuild and relaunch your surface
   import      re-read Chrome's cookies into the desktop app (close the app first)
   uninstall   remove the desktop app and all its data, back to a clean slate
 
@@ -283,9 +284,11 @@ function promptSelect<T>(title: string, options: readonly Option<T>[]): Promise<
   const { stdin, stdout } = process;
   if (!stdin.isTTY) return Promise.resolve(undefined);
   const width = Math.max(...options.map((o) => o.label.length));
+  // Each row is clipped to the terminal width, because a wrapped row would spill past the fixed cursor-up redraw.
   const row = (o: Option<T>, here: boolean): string => {
-    const body = ` ${here ? "›" : " "} ${o.label.padEnd(width)}  `;
-    return here ? selected(`${body}${o.hint} `) : `${body}${dim(o.hint)}`;
+    const prefix = ` ${here ? "›" : " "} ${o.label.padEnd(width)}  `;
+    const hint = o.hint.slice(0, Math.max(0, (stdout.columns || 80) - 1 - prefix.length));
+    return here ? selected(prefix + hint) : prefix + dim(hint);
   };
   const footer = dim("   ↑↓ move   enter pick   esc cancel");
 
@@ -299,7 +302,7 @@ function promptSelect<T>(title: string, options: readonly Option<T>[]): Promise<
       stdin.off("data", onData);
       stdin.setRawMode(false);
       stdin.pause();
-      stdout.write("\x1b[?25h");
+      stdout.write("\x1b[?7h\x1b[?25h");
       resolve(value);
     };
     const onData = (data: string): void => {
@@ -311,7 +314,7 @@ function promptSelect<T>(title: string, options: readonly Option<T>[]): Promise<
       draw(false);
     };
 
-    stdout.write(`${title}\n\x1b[?25l`);
+    stdout.write(`${title}\n\x1b[?25l\x1b[?7l`);
     draw(true);
     stdin.setRawMode(true);
     stdin.resume();
@@ -400,8 +403,9 @@ function buildDesktop(): boolean {
 }
 
 async function installDesktop(): Promise<number> {
-  if (!existsSync(join(DESKTOP, "node_modules", "electron"))) {
-    console.error(`electron is not installed in ${DESKTOP}; run pnpm install there first`);
+  // The package being present is not enough: pnpm can skip Electron's postinstall, leaving the binary undownloaded.
+  if (!existsSync(join(DESKTOP, "node_modules", "electron", "dist"))) {
+    console.error(`electron's binary is missing in ${DESKTOP}; run: (cd ${DESKTOP} && pnpm install && pnpm rebuild electron)`);
     return 1;
   }
   if (!buildDesktop()) {
@@ -423,6 +427,15 @@ async function installDesktop(): Promise<number> {
   spawnSync(OPEN, [DESKTOP_APP]);
   console.log(`set up the desktop app at ${DESKTOP_APP}, and opened it`);
   return 0;
+}
+
+async function update(): Promise<number> {
+  if (spawnSync("git", ["-C", ROOT, "pull", "--ff-only"], { stdio: "inherit" }).status !== 0) {
+    console.error(`update: git pull failed; sort out the checkout at ${ROOT} and retry`);
+    return 1;
+  }
+  await stop();
+  return readSurface() === "desktop" ? installDesktop() : start();
 }
 
 async function setup(): Promise<number> {
@@ -480,6 +493,7 @@ const COMMANDS = {
   start,
   stop,
   restart: async () => ((await stop()) === 0 ? start() : 1),
+  update,
   setup,
   uninstall: async () => uninstall(),
   import: async () => importCookies(),

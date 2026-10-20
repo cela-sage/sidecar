@@ -26,6 +26,16 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
 - **Installing the sidecar tells Claude it is there.** The mod adds `rules/sidecar.md` to every system
   prompt: where to save pages for you, that a `[[sidecar]]` message is yours, and to read a page's
   threads with `sidecar comments` before changing it.
+- **`sidecar update`** pulls the latest sidecar on the current branch, then rebuilds and relaunches your
+  surface: the desktop app and its server for desktop, the server for a webapp. A dirty or diverged
+  checkout stops it with a message rather than a half-update.
+
+### Fixed
+
+- **The setup picker no longer stacks on narrow terminals.** Each row is clipped to the window width, so a
+  long description can't wrap and throw off the in-place redraw.
+- **`sidecar setup desktop` names the fix when Electron's binary is missing** rather than crashing with a
+  raw `ENOENT`, which happens when pnpm skips Electron's postinstall.
 
 ## 0.17.0
 
