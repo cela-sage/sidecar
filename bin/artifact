@@ -1,7 +1,0 @@
-#!/bin/sh
-# Without the compile cache node strips the types again on every call, about 40ms each time.
-export NODE_COMPILE_CACHE="${NODE_COMPILE_CACHE:-${TMPDIR:-/tmp}/node-compile-cache}"
-# Parameter expansion rather than dirname, which lives in /usr/bin and a stripped PATH may not reach.
-case $0 in */*) here=${0%/*} ;; *) here=. ;; esac
-. "$here/_node.sh"
-exec "$node" "$here/_artifact.ts" "$@"
