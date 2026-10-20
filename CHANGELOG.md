@@ -34,8 +34,8 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
 
 - **The setup picker no longer stacks on narrow terminals.** Each row is clipped to the window width, so a
   long description can't wrap and throw off the in-place redraw.
-- **`sidecar setup desktop` names the fix when Electron's binary is missing** rather than crashing with a
-  raw `ENOENT`, which happens when pnpm skips Electron's postinstall.
+- **The desktop build fetches Electron's binary itself when it is missing** rather than crashing with a raw
+  `ENOENT`, which can happen when a checkout links Electron without running its postinstall.
 
 ## 0.17.0
 

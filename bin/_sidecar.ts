@@ -403,9 +403,13 @@ function buildDesktop(): boolean {
 }
 
 async function installDesktop(): Promise<number> {
-  // The package being present is not enough: pnpm can skip Electron's postinstall, leaving the binary undownloaded.
-  if (!existsSync(join(DESKTOP, "node_modules", "electron", "dist"))) {
-    console.error(`electron's binary is missing in ${DESKTOP}; run: (cd ${DESKTOP} && pnpm install && pnpm rebuild electron)`);
+  const electron = join(DESKTOP, "node_modules", "electron");
+  // pnpm can link Electron without running its postinstall, so fetch the binary ourselves when it is absent.
+  if (!existsSync(join(electron, "dist")) && existsSync(join(electron, "install.js"))) {
+    spawnSync(process.execPath, [join(electron, "install.js")], { cwd: DESKTOP, stdio: "inherit" });
+  }
+  if (!existsSync(join(electron, "dist"))) {
+    console.error(`electron's binary is missing in ${DESKTOP} and could not be fetched; run: (cd ${DESKTOP} && pnpm approve-builds)`);
     return 1;
   }
   if (!buildDesktop()) {
