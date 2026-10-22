@@ -1,7 +1,7 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { app, BrowserWindow, type IpcMainInvokeEvent, ipcMain, Menu, session, shell, type WebContents } from "electron";
+import { app, BrowserWindow, ipcMain, Menu, session, shell, type WebContents } from "electron";
 import { Reach } from "../../lib/web/reach.ts";
 import { importChromeCookies } from "./cookies.ts";
 
@@ -85,7 +85,7 @@ async function importIfNeeded(): Promise<void> {
   await importCookies().catch((error) => console.error(String(error)));
 }
 
-function openExternal(_event: IpcMainInvokeEvent, url: unknown): void {
+function openExternal(url: unknown): void {
   if (typeof url === "string" && /^https?:\/\//i.test(url)) void shell.openExternal(url);
 }
 
@@ -160,6 +160,10 @@ function createWindow(): void {
     width: 1280,
   });
   win.once("ready-to-show", () => win.show());
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    openExternal(url);
+    return { action: "deny" };
+  });
   const reglue = (): void => {
     for (const [id, { rect }] of popups) if (rect) placePopup(id, rect);
   };
@@ -232,7 +236,7 @@ if (process.argv.includes("--import")) {
     ipcMain.on("shell:info", (event) => {
       event.returnValue = { partition: PARTITION, preload: WEBVIEW_PRELOAD, userAgent: chromeUserAgent() };
     });
-    ipcMain.handle("shell:open-external", openExternal);
+    ipcMain.handle("shell:open-external", (_event, url: unknown) => openExternal(url));
     ipcMain.handle("shell:import-cookies", () => importCookies());
     ipcMain.on("popup:place", (_event, { id, rect }: { id: number; rect: Rect }) => placePopup(id, rect));
     ipcMain.on("popup:close", (_event, id: number) => popups.get(id)?.win.close());

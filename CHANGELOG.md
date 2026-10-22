@@ -55,6 +55,8 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
 - **A local https dev server opens in the desktop app.** A site on this machine with a cert the system doesn't
   trust, such as mkcert's, failed with `ERR_CERT_AUTHORITY_INVALID`, and it now loads the way it already did
   through the proxy, while a remote site with a bad cert is still refused.
+- **Open in your browser opens your default browser in the desktop app**, along with the links in a page or
+  a reply, where each one used to open a second sidecar window.
 
 ## 0.17.0
 
