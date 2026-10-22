@@ -1,8 +1,6 @@
-import { lookup } from "node:dns/promises";
 import { readFile } from "node:fs/promises";
 import { createServer, type IncomingMessage, type RequestListener, type Server } from "node:http";
 import { stripTypeScriptTypes } from "node:module";
-import { BlockList, isIP } from "node:net";
 import { join } from "node:path";
 import type { Duplex } from "node:stream";
 import {
@@ -19,6 +17,7 @@ import { getDomain } from "tldts";
 import { Sidecar } from "../../../lib/sidecar/paths.ts";
 import { type ProxyPlace, WebHost } from "../../../lib/web/host.ts";
 import { CHANNEL } from "../../../lib/web/page/protocol.ts";
+import { Reach } from "../../../lib/web/reach.ts";
 import { siteAgents } from "../../../lib/web/records.ts";
 
 export interface ProxyTarget {
@@ -37,9 +36,6 @@ interface Running {
   sockets: Set<Duplex>;
 }
 
-/** How close to this machine a host is, in Chrome's Private Network Access order. */
-export type Reach = "loopback" | "private" | "public";
-
 const GENERATION = Symbol("web-proxy");
 // IPv4 must bind, since Chrome's *.localhost lookup tries it; a machine without IPv6 just serves one.
 const HOSTS = ["127.0.0.1", "::1"];
@@ -52,22 +48,6 @@ const FRAME_TAG = /^<iframe\b(?![^>]*\scsp\s*=)/i;
 const PERMANENT: Record<number, number> = { 301: 302, 308: 307 };
 const META_CSP = /<meta\b[^>]*http-equiv\s*=\s*["']?content-security-policy["']?[^>]*>/gi;
 const NONCE = /<script\b[^>]*\snonce\s*=\s*["']?([^"'\s>]+)/i;
-const RANK: Record<Reach, number> = { loopback: 2, private: 1, public: 0 };
-
-const LOOPBACK = new BlockList();
-LOOPBACK.addSubnet("127.0.0.0", 8);
-LOOPBACK.addAddress("::1", "ipv6");
-const PRIVATE = new BlockList();
-for (const [net, bits] of [
-  ["10.0.0.0", 8],
-  ["100.64.0.0", 10],
-  ["169.254.0.0", 16],
-  ["172.16.0.0", 12],
-  ["192.168.0.0", 16],
-] as const)
-  PRIVATE.addSubnet(net, bits);
-PRIVATE.addSubnet("fc00::", 7, "ipv6");
-PRIVATE.addSubnet("fe80::", 10, "ipv6");
 
 // Process-wide, so a dev reload that re-imports this module still finds the proxies the last copy opened.
 const scope = globalThis as typeof globalThis & {
@@ -79,32 +59,11 @@ const reaches = new Map<string, Promise<Reach>>();
 // Kept with the proxies, since the API fence reads it for a page that loaded before the reload.
 const known = (scope.sidecarWebKnown ??= new Map<string, Reach>());
 
-function reachOfAddress(address: string): Reach {
-  const family = isIP(address) === 6 ? "ipv6" : "ipv4";
-  if (LOOPBACK.check(address, family)) return "loopback";
-  return PRIVATE.check(address, family) ? "private" : "public";
-}
-
-async function resolveReach(name: string): Promise<Reach> {
-  if (name === "localhost" || name.endsWith(".localhost")) return "loopback";
-  if (isIP(name)) return reachOfAddress(name);
-  if (name.endsWith(".local")) return "private";
-  try {
-    const found = await lookup(name, { all: true });
-    // The closest address decides, since a connect may land on any of them.
-    return found
-      .map(({ address }) => reachOfAddress(address))
-      .reduce<Reach>((best, one) => (RANK[one] > RANK[best] ? one : best), "public");
-  } catch {
-    return "public";
-  }
-}
-
 export function reachOf(host: string): Promise<Reach> {
   const name = host.replace(/^\[|\]$/g, "").toLowerCase();
   let held = reaches.get(name);
   if (!held) {
-    held = resolveReach(name).then((reach) => {
+    held = Reach.resolve(name).then((reach) => {
       known.set(name, reach);
       return reach;
     });
@@ -389,7 +348,7 @@ interface AllowInput {
 // Private Network Access as Chrome draws it: a page reaches no host closer to this machine than its own, bar a plain navigation.
 export async function isAllowed({ from, method, mode, site, to }: AllowInput): Promise<boolean> {
   if (to === "public" || !site || site === "same-origin" || site === "none") return true;
-  if (from && RANK[await reachOf(from.hostname)] >= RANK[to]) return true;
+  if (from && Reach.rank[await reachOf(from.hostname)] >= Reach.rank[to]) return true;
   return mode === "navigate" && (method === "GET" || method === "HEAD");
 }
 
@@ -474,7 +433,7 @@ async function upgrade(held: Running, req: IncomingMessage, socket: Duplex, head
   const origin = req.headers.origin;
   const from = origin ? upstreamOf(origin, held)?.url : undefined;
   const reach = await reachOf(target.hostname);
-  if (origin && reach !== "public" && !(from && RANK[await reachOf(from.hostname)] >= RANK[reach])) {
+  if (origin && reach !== "public" && !(from && Reach.rank[await reachOf(from.hostname)] >= Reach.rank[reach])) {
     socket.destroy();
     return;
   }
