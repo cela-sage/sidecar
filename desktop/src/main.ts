@@ -2,6 +2,7 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { app, BrowserWindow, type IpcMainInvokeEvent, ipcMain, Menu, session, shell, type WebContents } from "electron";
+import { Reach } from "../../lib/web/reach.ts";
 import { importChromeCookies } from "./cookies.ts";
 
 const SIDECAR_URL = (process.env.SIDECAR_URL ?? "http://sidecar.localhost:4747").replace(/\/$/, "");
@@ -60,6 +61,10 @@ function webviewSession(): void {
     const headers = details.responseHeaders ?? {};
     for (const name of Object.keys(headers)) if (/^content-security-policy/i.test(name)) delete headers[name];
     done({ responseHeaders: headers });
+  });
+  ses.setCertificateVerifyProc(({ errorCode, hostname }, done) => {
+    if (!errorCode) return done(-3);
+    void Reach.resolve(hostname).then((reach) => done(reach === "loopback" ? 0 : -3));
   });
 }
 
