@@ -1,5 +1,5 @@
 import { execFileSync, spawn, spawnSync } from "node:child_process";
-import { existsSync, mkdirSync, openSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, openSync, readdirSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
@@ -64,7 +64,7 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
   start       build it, then start it in the background and wait until it answers
   stop        stop it, wherever it was started from, a terminal's pnpm dev included
   restart     stop it, then build and start it, which is how a change to the sidecar goes live
-  update      pull the latest sidecar on the current branch, then rebuild your surface without opening it
+  update      pull the latest sidecar on the current branch and rebuild your surface, leaving a running app open
   import      re-read Chrome's cookies into the desktop app (close the app first)
   uninstall   remove the desktop app and all its data, back to a clean slate
 
@@ -404,12 +404,28 @@ function buildDesktop(): boolean {
 
 const desktopRunning = (): boolean => spawnSync("pgrep", ["-f", `${DESKTOP_APP}/Contents/MacOS/`]).status === 0;
 
-// Reopening or overwriting a live bundle keeps the old code, and a relaunch only focuses an existing window, so quit the app before reinstalling.
+// A running app keeps its old code and a relaunch only focuses its window, so setup quits it before opening the new build.
 async function quitDesktop(): Promise<void> {
   if (!desktopRunning()) return;
   spawnSync("osascript", ["-e", `tell application "${NAME}" to quit`]);
   for (const end = Date.now() + 8000; desktopRunning() && Date.now() < end; ) await sleep(200);
   if (desktopRunning()) spawnSync("pkill", ["-f", `${DESKTOP_APP}/Contents/MacOS/`]);
+}
+
+// Staged beside the live bundle and swapped in by rename, so a running app never spawns a helper from a half-copied one.
+function swapInApp(built: string): boolean {
+  const staged = `${DESKTOP_APP}.new`;
+  const replaced = `${DESKTOP_APP}.old`;
+  rmSync(staged, { force: true, recursive: true });
+  if (spawnSync("cp", ["-R", built, staged]).status !== 0) {
+    console.error(`could not copy the app to ${staged}`);
+    return false;
+  }
+  rmSync(replaced, { force: true, recursive: true });
+  if (existsSync(DESKTOP_APP)) renameSync(DESKTOP_APP, replaced);
+  renameSync(staged, DESKTOP_APP);
+  rmSync(replaced, { force: true, recursive: true });
+  return true;
 }
 
 async function installDesktop(): Promise<number> {
@@ -431,13 +447,8 @@ async function installDesktop(): Promise<number> {
     console.error(`the packaged app is not at ${built}`);
     return 1;
   }
-  await quitDesktop();
   mkdirSync(dirname(DESKTOP_APP), { recursive: true });
-  rmSync(DESKTOP_APP, { force: true, recursive: true });
-  if (spawnSync("cp", ["-R", built, DESKTOP_APP]).status !== 0) {
-    console.error(`could not copy the app to ${DESKTOP_APP}`);
-    return 1;
-  }
+  if (!swapInApp(built)) return 1;
   if (!(await isSidecar()) && (await start()) !== 0) return 1;
   console.log(`installed the desktop app at ${DESKTOP_APP}`);
   return 0;
@@ -470,6 +481,7 @@ async function setup(): Promise<number> {
   recordNode();
   if (surface === "desktop") {
     if ((await installDesktop()) !== 0) return 1;
+    await quitDesktop();
     spawnSync(OPEN, [DESKTOP_APP]);
     console.log("opened the desktop app");
     return 0;
