@@ -70,6 +70,7 @@ useResizeObserver(boardEl, ([entry]) => {
     <div class="foot" data-region="dock-row">
       <div ref="boardEl" class="foot-board" data-region="board-corner">
         <slot name="board" />
+        <ChromeFollowOffer />
       </div>
 
       <div ref="dockEl" class="foot-dock" data-region="dock-corner">

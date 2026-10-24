@@ -173,8 +173,8 @@ memory only like `/btw`.
 
 Bare `/sidecar` is `sidecar open`: it starts the sidecar when it is down and points it at this conversation,
 brings a sidecar window already open to the front, and otherwise opens it as the surface `sidecar setup`
-chose. Typing in a session's prompt moves the sidecar there too, at most once every two seconds, and never
-holds up a keystroke. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
+chose. Typing in a session's prompt points the sidecar there too, at most once every two seconds, and never
+holds up a keystroke, and what that point does is the switching mode below. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
 is how the sidecar still lists a conversation after it has ended.
 
 It also keeps the review the sidecar's Review face shows. Before Claude's first edit to a file, through
@@ -201,8 +201,16 @@ POST /api/follow  {"key":"<8-hex session key>","source":"claude"|"prompt","face"
 ```
 
 The sidecar keeps the latest target in memory and streams it to every open page on `/api/follow/stream`.
-While a page listens it also reads Terminal's front tab title with osascript once a second and moves when
-that tab switches to another conversation, so a terminal tab switch moves it without typing.
+While a page listens it also reads Terminal's front tab title with osascript once a second and points the
+sidecar at the conversation that tab switches to, so a terminal tab switch counts as moving without typing.
+
+Whether a move by typing or by Terminal's tab switches the sidecar is the switching mode, picked from the
+island beside the theme toggle and remembered per window. Ask to switch, the default, shows a card in the
+bottom left with the conversation's name, folder and what it is doing, which switches there when pressed and
+stays until pressed, dismissed or no longer needed, asking once per move so typing on in that conversation
+doesn't bring a dismissed card back. Auto switch moves straight there, as the sidecar always did, and Manual
+switch never moves on its own. An explicit `/sidecar` or `sidecar open` always lands whatever the mode, and so
+does Listening, which has no conversation of its own to stay on.
 
 What the sidecar sends a session, notes and Review's buttons alike, opens on a `[[sidecar]]` line
 (`[[cc-sidecar]]` and `[[mode-relay v1]]` before it, still read) and reaches Claude Code as a peer message.

@@ -20,6 +20,10 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
   `~/.claude/sidecar/node`, where it was `~/.claude/mode/node`, carried over once.
 - **The desktop app's bundle id is `local.sidecar.desktop`**, so macOS asks once more for the Keychain
   key the cookie import reads.
+- **The sidecar no longer jumps to the conversation you type in by default.** A switching mode beside the
+  theme toggle picks Ask to switch, the new default, which shows a card in the bottom left that switches when
+  pressed, Auto switch, which moves straight there as before, or Manual switch, which never moves on its own.
+  An explicit `/sidecar` still always lands.
 
 ### Added
 

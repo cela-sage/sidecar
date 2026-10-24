@@ -40,6 +40,7 @@ function closePage(): void {
     </UiSurface>
 
     <ChromeCommentToggle v-if="onArtifact" shape="island" />
+    <ChromeFollowToggle v-if="inSession" />
     <ChromeThemeToggle />
     <ChromeAction
       v-if="onArtifact"
