@@ -24,8 +24,9 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
 ### Added
 
 - **Installing the sidecar tells Claude it is there.** The mod adds `rules/sidecar.md` to every system
-  prompt: where to save pages for you, that a `[[sidecar]]` message is yours, and to read a page's
-  threads with `sidecar comments` before changing it.
+  prompt: where to save pages for you, that a long explanation goes there as a `.md` with only a line
+  and the path in chat, that a `[[sidecar]]` message is yours, and to read a page's threads with
+  `sidecar comments` before changing it.
 - **`sidecar update`** pulls the latest sidecar on the current branch, then rebuilds and relaunches your
   surface: the desktop app and its server for desktop, the server for a webapp. A dirty or diverged
   checkout stops it with a message rather than a half-update.
