@@ -33,9 +33,9 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
   `sidecar comments` before changing it.
 - **⌘F finds in a Web artifact on the desktop surface.** The title island turns into a find field with a
   match count, ↵ and ⌘G step forward, ⇧↵ and ⇧⌘G step back, and Esc hands the keys back to the page.
-- **`sidecar update`** pulls the latest sidecar on the current branch, then rebuilds and relaunches your
-  surface: the desktop app and its server for desktop, the server for a webapp. A dirty or diverged
-  checkout stops it with a message rather than a half-update.
+- **`sidecar update`** pulls the latest sidecar on the current branch, then rebuilds your surface: the
+  desktop app and its server for desktop, the server for a webapp. It never opens the app, so `sidecar open`
+  does that when you want it. A dirty or diverged checkout stops it with a message rather than a half-update.
 
 ### Fixed
 
@@ -51,9 +51,8 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
   page content.
 - **The desktop window has an integrated title bar.** The traffic lights sit inset over the page and the
   title island clears them, in place of the plain native strip above the floating UI, and ⌘W closes the window.
-- **`sidecar update` no longer leaves the app in the dock with no window.** It quits the running app before
-  reinstalling, so the rebuilt code actually loads, and a relaunch now opens a window even when the app was
-  sitting windowless.
+- **`sidecar update` quits the running app before reinstalling**, so the rebuilt code loads the next time it
+  opens, and a relaunch now opens a window even when the app was sitting windowless.
 - **The desktop app wears the sidecar icon** instead of the default Electron one.
 - **Google sign-in no longer stops on a cookie settings error.** The cookie import widened Chrome's host-only
   cookies into domain cookies, so a site's own cookie landed beside a stale copy and Google refused the pair.

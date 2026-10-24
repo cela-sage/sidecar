@@ -64,7 +64,7 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
   start       build it, then start it in the background and wait until it answers
   stop        stop it, wherever it was started from, a terminal's pnpm dev included
   restart     stop it, then build and start it, which is how a change to the sidecar goes live
-  update      pull the latest sidecar on the current branch, then rebuild and relaunch your surface
+  update      pull the latest sidecar on the current branch, then rebuild your surface without opening it
   import      re-read Chrome's cookies into the desktop app (close the app first)
   uninstall   remove the desktop app and all its data, back to a clean slate
 
@@ -439,8 +439,7 @@ async function installDesktop(): Promise<number> {
     return 1;
   }
   if (!(await isSidecar()) && (await start()) !== 0) return 1;
-  spawnSync(OPEN, [DESKTOP_APP]);
-  console.log(`set up the desktop app at ${DESKTOP_APP}, and opened it`);
+  console.log(`installed the desktop app at ${DESKTOP_APP}`);
   return 0;
 }
 
@@ -469,7 +468,12 @@ async function setup(): Promise<number> {
   }
   writeSurface(surface);
   recordNode();
-  if (surface === "desktop") return installDesktop();
+  if (surface === "desktop") {
+    if ((await installDesktop()) !== 0) return 1;
+    spawnSync(OPEN, [DESKTOP_APP]);
+    console.log("opened the desktop app");
+    return 0;
+  }
   if (!(await isSidecar()) && (await start()) !== 0) return 1;
   console.log("set up to run as a webapp in Chrome; sidecar open opens it");
   return 0;
