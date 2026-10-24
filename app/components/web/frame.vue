@@ -3,14 +3,16 @@ import { useEventListener } from "@vueuse/core";
 import type { FrameAnchor, FrameHit, FrameMark, ViewBox, ViewRect } from "~/types/frame";
 import type { ProxyPlace } from "~~/lib/web/host";
 import { isTyping } from "~~/lib/web/page/blocks";
-import { isAddressKey, stepOf } from "~~/lib/web/page/keys";
+import { findOf, isAddressKey, stepOf } from "~~/lib/web/page/keys";
 import type { CommentOffer } from "~/composables/useChrome";
 import {
   type AgentMessage,
   CHANNEL,
   type Envelope,
+  type FindKey,
   type SidecarMessage,
   type WebHit,
+  type WebKey,
   type WebSelection,
 } from "~~/lib/web/page/protocol";
 import type { WebArrival, WebServeReply } from "~~/shared/types/web";
@@ -66,11 +68,17 @@ interface SidecarShell {
   present: true;
 }
 interface WebviewTag extends HTMLElement {
+  findInPage(text: string, options: { findNext: boolean; forward: boolean }): number;
   send(channel: string, ...args: unknown[]): void;
+  stopFindInPage(action: "clearSelection" | "keepSelection"): void;
+}
+interface FoundInPage {
+  result: { activeMatchOrdinal: number; matches: number; requestId: number };
 }
 
 const chrome = useChrome();
 const web = $web();
+const find = $find();
 const artifact = $artifact();
 const shown = useFaceShown();
 const look = useTheme();
@@ -86,16 +94,37 @@ const on = ref<string>();
 const src = ref<string>();
 const popup = ref<PopupOpen>();
 let started = 0;
+let sought = 0;
 
+const SEEK: Record<FindKey, () => boolean> = {
+  find: () => find.open(),
+  "find-next": () => find.step(1),
+  "find-previous": () => find.step(-1),
+};
+
+// The proxy frame is left to Chrome's own find, which already searches inside it.
 if (shellApi) {
   const offOpen = shellApi.onPopupOpen((open) => (popup.value = open));
   const offClosed = shellApi.onPopupClosed((id) => {
     if (popup.value?.id === id) popup.value = undefined;
   });
+  const detach = find.attach({
+    clear: () => view.value?.stopFindInPage("clearSelection"),
+    focus: () => view.value?.focus(),
+    search: (query, { forward, fresh }) => {
+      if (view.value) sought = view.value.findInPage(query, { findNext: fresh, forward });
+    },
+    stop: () => view.value?.stopFindInPage("keepSelection"),
+  });
   onUnmounted(() => {
     offOpen();
     offClosed();
+    detach();
   });
+}
+
+function onFound({ result }: FoundInPage): void {
+  if (result.requestId === sought) find.result = { active: result.activeMatchOrdinal, matches: result.matches };
 }
 
 function placePopup(rect: ViewRect): void {
@@ -202,6 +231,7 @@ function onLoad(): void {
 
 function onReady(): void {
   if (web.state === "starting") web.state = "live";
+  if (find.isOpen) find.rerun();
 }
 
 function onStop(): void {
@@ -216,8 +246,9 @@ function onFail(event: { errorCode: number; isMainFrame: boolean }): void {
   web.isBusy = false;
 }
 
-function onKey(key: string): void {
-  if (key === "comment") {
+function onKey(key: WebKey): void {
+  if (key === "find" || key === "find-next" || key === "find-previous") SEEK[key]();
+  else if (key === "comment") {
     if (chrome.comment.openOffer()) return;
     if (chrome.comment.armed.value) chrome.comment.disarm();
     else chrome.comment.arm();
@@ -301,14 +332,15 @@ useEventListener(window, "message", (event: MessageEvent<Partial<Envelope<AgentM
   receive(event.data as Envelope<AgentMessage>);
 });
 
-// With the sidecar focused, ⌘R, ⌘[ and ⌘L would act on the sidecar itself rather than the page in it.
+// With the sidecar focused, ⌘R, ⌘[, ⌘L and ⌘F would act on the sidecar itself rather than the page in it.
 useEventListener(window, "keydown", (event: KeyboardEvent) => {
   if (!shown.value || !(event.metaKey || event.ctrlKey)) return;
   const by = isTyping(event.target) ? undefined : stepOf(event);
+  const seek = findOf(event);
   if (event.key.toLowerCase() === "r" && !event.shiftKey) web.reload();
   else if (by) web.step(by);
   else if (isAddressKey(event)) web.askAddress();
-  else return;
+  else if (!seek || !SEEK[seek]()) return;
   event.preventDefault();
 });
 
@@ -334,7 +366,10 @@ watch(
 );
 watch(
   () => slug,
-  () => void start(),
+  () => {
+    find.close();
+    void start();
+  },
   { immediate: true },
 );
 </script>
@@ -369,6 +404,7 @@ watch(
       @did-start-loading="web.isBusy = true"
       @did-stop-loading="onStop"
       @dom-ready="onReady"
+      @found-in-page="onFound"
       @ipc-message="onIpc"
     />
     <UiStateMessage v-if="web.state === 'starting'" align="center" class="pending" kind="loading">

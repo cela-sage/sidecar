@@ -16,7 +16,7 @@ import {
   selectionIn,
 } from "./blocks.ts";
 import type { WebArrival } from "../../../shared/types/web.ts";
-import { isAddressKey, stepOf } from "./keys.ts";
+import { findOf, isAddressKey, stepOf } from "./keys.ts";
 import {
   type AgentMessage,
   CHANNEL,
@@ -208,6 +208,7 @@ function widen(on: boolean): void {
 function onKeyDown(event: KeyboardEvent): void {
   const meta = event.metaKey || event.ctrlKey;
   const by = isTyping(event.target) ? undefined : stepOf(event);
+  const find = findOf(event);
   if (event.key === "Alt") {
     widen(true);
     post({ type: "key", key: "wide" });
@@ -217,6 +218,9 @@ function onKeyDown(event: KeyboardEvent): void {
   } else if (isAddressKey(event)) {
     event.preventDefault();
     post({ type: "key", key: "address" });
+  } else if (find) {
+    // A site with a search of its own, as Docs has, keeps ⌘F the way Chrome lets it.
+    setTimeout(() => event.defaultPrevented || post({ type: "key", key: find }));
   } else if (meta && event.key.toLowerCase() === "k") {
     event.preventDefault();
     post({ type: "key", key: "comment" });

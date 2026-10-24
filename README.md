@@ -105,7 +105,10 @@ inside the sidecar and a reCAPTCHA work, while a few sites refuse to be framed a
 Choosing desktop builds a small Electron shell around the same sidecar, packages it to
 `~/Applications/Claude Code Sidecar.app` and opens it. Inside the shell a Web artifact is a real top-level
 page on Chromium rather than a framed one, so Gmail, Reddit and anything that refused framing all work,
-and the comment layer, the pins and Ask Claude draw over it as before. On first launch the shell copies
+and the comment layer, the pins and Ask Claude draw over it as before. Since Electron has no find bar of its
+own, ⌘F there turns the title island into one, searching the page and its frames, with ↵ or ⌘G for the next
+match and ⇧↵ or ⇧⌘G for the previous; a site with its own ⌘F, such as Docs, keeps it, and the web surface
+leaves ⌘F to Chrome. On first launch the shell copies
 your Chrome cookies into its own session, decrypting them with a key it reads from the login Keychain once
 (the one macOS prompt you will see), so you arrive signed in to the same accounts as in Chrome.
 `sidecar import` re-reads them later, with the app closed. The cookies are a copy rather than shared live,

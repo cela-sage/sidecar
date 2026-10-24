@@ -28,7 +28,10 @@ export interface WebPage {
   url: string;
 }
 
+export type FindKey = "find" | "find-next" | "find-previous";
+
 export type WebKey =
+  | FindKey
   | "address"
   | "back"
   | "comment"

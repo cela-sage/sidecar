@@ -1,12 +1,14 @@
 <script lang="ts" setup>
 import type { SurfaceVariant } from "@cela/design";
-import { ChevronLeft, ChevronRight, ExternalLink, RotateCw } from "@lucide/vue";
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, RotateCw, Search, X } from "@lucide/vue";
 
 const { slug, variant } = defineProps<{ slug: string; variant: SurfaceVariant }>();
 
 const sc = useSidecar();
 const web = $web();
+const find = $find();
 const field = useTemplateRef<HTMLInputElement>("field");
+const seek = useTemplateRef<HTMLElement>("seek");
 const scrolled = ref(0);
 const { address, cancel, commit, draft, edit, host, isEditing, openOut, page } = useWebAddress({
   focus: () => {
@@ -15,6 +17,37 @@ const { address, cancel, commit, draft, edit, host, isEditing, openOut, page } =
   },
   slug: () => slug,
 });
+
+const count = computed(() => {
+  const got = find.result;
+  if (!find.query || !got) return "";
+  return got.matches ? `${got.active} of ${got.matches}` : "No matches";
+});
+
+watch(
+  () => find.focusing,
+  async () => {
+    cancel();
+    await nextTick();
+    const input = seek.value?.querySelector("input");
+    input?.focus();
+    input?.select();
+  },
+);
+watch(isEditing, (on) => {
+  if (on) find.close();
+});
+
+function onSeekKey(event: KeyboardEvent): void {
+  if (event.key === "Enter") {
+    event.preventDefault();
+    find.step(event.shiftKey ? -1 : 1);
+  } else if (event.key === "Escape") {
+    event.preventDefault();
+    event.stopPropagation();
+    find.leave();
+  }
+}
 
 const title = computed(
   () => web.page?.title || (sc.artifact.value?.slug === slug ? sc.artifact.value.title : "") || page.value,
@@ -33,75 +66,111 @@ function track(): void {
     class="island"
     data-region="title-island"
     :data-editing="isEditing"
+    :data-finding="find.isOpen"
     pad="none"
     shape="pill"
     :variant="variant"
   >
-    <ChromeAction
-      data-region="web-back"
-      :icon="ChevronLeft"
-      :is-disabled="!web.history.back"
-      shape="inset"
-      tip="Back · {cmd [}"
-      @click="web.step(-1)"
-    />
-    <ChromeAction
-      data-region="web-forward"
-      :icon="ChevronRight"
-      :is-disabled="!web.history.forward"
-      shape="inset"
-      tip="Forward · {cmd ]}"
-      @click="web.step(1)"
-    />
-    <ChromeAction
-      data-region="web-reload"
-      :icon="RotateCw"
-      shape="inset"
-      tip="Reload · {cmd R}"
-      @click="web.reload()"
-    />
-    <span class="rule" />
-    <form v-if="isEditing" class="edit" data-region="web-address" @submit.prevent="commit">
-      <WebFavicon class="icon" :address="draft" :page="web.page" />
-      <span class="box">
-        <input
-          ref="field"
-          v-model="draft"
-          aria-label="Address"
-          autocomplete="off"
-          class="field"
-          inputmode="url"
-          spellcheck="false"
-          type="text"
-          @blur="cancel"
-          @input="track"
-          @keydown.esc.prevent.stop="cancel"
-          @keyup="track"
-          @scroll="track"
-          @select="track"
-        />
-        <span class="mirror" aria-hidden="true">
-          <span class="line" :style="{ translate: `${-scrolled}px 0` }"
-            ><span class="lead">{{ lead }}</span
-            >{{ tail }}</span
-          >
+    <div v-if="find.isOpen" ref="seek" class="seek" data-region="web-find" role="search">
+      <UiTextInput
+        v-model="find.query"
+        aria-label="Find in page"
+        autocomplete="off"
+        placeholder="Find in page"
+        spellcheck="false"
+        type="search"
+        variant="bare"
+        @keydown="onSeekKey"
+      >
+        <template #leading>
+          <UiIcon class="icon" :icon="Search" size="sm" />
+        </template>
+      </UiTextInput>
+      <span v-if="count" class="count" aria-live="polite">{{ count }}</span>
+      <span class="rule" />
+      <ChromeAction
+        :icon="ChevronUp"
+        :is-disabled="!find.result?.matches"
+        shape="inset"
+        tip="Previous match · {cmd shift G}"
+        @click="find.step(-1)"
+      />
+      <ChromeAction
+        :icon="ChevronDown"
+        :is-disabled="!find.result?.matches"
+        shape="inset"
+        tip="Next match · {cmd G}"
+        @click="find.step(1)"
+      />
+      <ChromeAction :icon="X" shape="inset" tip="Close · {esc}" @click="find.leave()" />
+    </div>
+    <template v-else>
+      <ChromeAction
+        data-region="web-back"
+        :icon="ChevronLeft"
+        :is-disabled="!web.history.back"
+        shape="inset"
+        tip="Back · {cmd [}"
+        @click="web.step(-1)"
+      />
+      <ChromeAction
+        data-region="web-forward"
+        :icon="ChevronRight"
+        :is-disabled="!web.history.forward"
+        shape="inset"
+        tip="Forward · {cmd ]}"
+        @click="web.step(1)"
+      />
+      <ChromeAction
+        data-region="web-reload"
+        :icon="RotateCw"
+        shape="inset"
+        tip="Reload · {cmd R}"
+        @click="web.reload()"
+      />
+      <span class="rule" />
+      <form v-if="isEditing" class="edit" data-region="web-address" @submit.prevent="commit">
+        <WebFavicon class="icon" :address="draft" :page="web.page" />
+        <span class="box">
+          <input
+            ref="field"
+            v-model="draft"
+            aria-label="Address"
+            autocomplete="off"
+            class="field"
+            inputmode="url"
+            spellcheck="false"
+            type="text"
+            @blur="cancel"
+            @input="track"
+            @keydown.esc.prevent.stop="cancel"
+            @keyup="track"
+            @scroll="track"
+            @select="track"
+          />
+          <span class="mirror" aria-hidden="true">
+            <span class="line" :style="{ translate: `${-scrolled}px 0` }"
+              ><span class="lead">{{ lead }}</span
+              >{{ tail }}</span
+            >
+          </span>
         </span>
-      </span>
-    </form>
-    <button
-      v-else
-      v-press
-      class="named focusable"
-      type="button"
-      data-region="web-address"
-      data-tip="Show the URL · {cmd L}"
-      @click="edit"
-    >
-      <WebFavicon class="icon" :address="address" :page="web.page" />
-      <span class="title">{{ title }}</span>
-      <span class="host">{{ host }}</span>
-    </button>
-    <ChromeAction :icon="ExternalLink" is-quiet shape="inset" tip="Open in your browser" @click="openOut" />
+      </form>
+      <button
+        v-else
+        v-press
+        class="named focusable"
+        type="button"
+        data-region="web-address"
+        data-tip="Show the URL · {cmd L}"
+        @click="edit"
+      >
+        <WebFavicon class="icon" :address="address" :page="web.page" />
+        <span class="title">{{ title }}</span>
+        <span class="host">{{ host }}</span>
+      </button>
+      <ChromeAction :icon="ExternalLink" is-quiet shape="inset" tip="Open in your browser" @click="openOut" />
+    </template>
   </UiSurface>
 </template>
 
@@ -111,8 +180,17 @@ function track(): void {
   @apply flex h-(--island-row-h) w-full items-center gap-0.5 px-1 py-0 transition-[background-color,box-shadow,backdrop-filter] duration-(--duration-base) ease-in-out;
 }
 
-.island[data-editing="true"] {
+.island[data-editing="true"],
+.island[data-finding="true"]:focus-within {
   @apply ring-3 ring-primary-soft ring-offset-1 ring-offset-primary duration-(--duration-fast) ease-out;
+}
+
+.seek {
+  @apply flex min-w-0 flex-1 items-center gap-0.5 self-stretch pl-2;
+}
+
+.count {
+  @apply flex-none pr-1 typo-meta-strong whitespace-nowrap text-muted tabular-nums;
 }
 
 .rule {

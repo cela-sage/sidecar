@@ -27,6 +27,8 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
   prompt: where to save pages for you, that chat says only what Claude did while any explanation goes
   there as a `.md`, that a `[[sidecar]]` message is yours, and to read a page's threads with
   `sidecar comments` before changing it.
+- **⌘F finds in a Web artifact on the desktop surface.** The title island turns into a find field with a
+  match count, ↵ and ⌘G step forward, ⇧↵ and ⇧⌘G step back, and Esc hands the keys back to the page.
 - **`sidecar update`** pulls the latest sidecar on the current branch, then rebuilds and relaunches your
   surface: the desktop app and its server for desktop, the server for a webapp. A dirty or diverged
   checkout stops it with a message rather than a half-update.

@@ -1,3 +1,13 @@
+import type { FindKey } from "./protocol.ts";
+
+export function findOf(event: KeyboardEvent): FindKey | undefined {
+  if (!(event.metaKey || event.ctrlKey) || event.altKey) return undefined;
+  const key = event.key.toLowerCase();
+  if (key === "f" && !event.shiftKey) return "find";
+  if (key === "g") return event.shiftKey ? "find-previous" : "find-next";
+  return undefined;
+}
+
 export function stepOf(event: KeyboardEvent): -1 | 1 | undefined {
   if (!(event.metaKey || event.ctrlKey) || event.shiftKey || event.altKey) return undefined;
   // By the key's place too, since a layout that types [ with ⌥ never reports "[" under ⌘.
