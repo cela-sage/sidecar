@@ -491,10 +491,14 @@ async function setup(): Promise<number> {
   return 0;
 }
 
-// Close the app first: a running one holds the cookie store, so a separate import process cannot open it.
+// A running app keeps the cookies it loaded in memory and never reads an import written under it, so it must be closed first.
 function importCookies(): number {
   if (!isDesktopInstalled()) {
     console.error("no desktop app to import into; run sidecar setup and choose desktop first");
+    return 1;
+  }
+  if (desktopRunning()) {
+    console.error("quit the desktop app first, since a running one never sees the import, then run sidecar import again");
     return 1;
   }
   return spawnSync(join(DESKTOP_APP, "Contents", "MacOS", NAME), ["--import"], { stdio: "inherit" }).status === 0 ? 0 : 1;

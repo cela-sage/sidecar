@@ -53,6 +53,8 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
 - **The desktop window has an integrated title bar.** The traffic lights sit inset over the page and the
   title island clears them, in place of the plain native strip above the floating UI, and ⌘W closes the window.
 - **Relaunching the desktop app opens a window** even when it was sitting windowless in the dock.
+- **`sidecar import` refuses to run while the desktop app is open**, since a running app keeps the cookies it
+  loaded in memory and never sees the import.
 - **The desktop app wears the sidecar icon** instead of the default Electron one.
 - **Google sign-in no longer stops on a cookie settings error.** The cookie import widened Chrome's host-only
   cookies into domain cookies, so a site's own cookie landed beside a stale copy and Google refused the pair.
