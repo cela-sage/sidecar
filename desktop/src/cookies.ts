@@ -102,12 +102,21 @@ export function setDetails(row: CookieRow, value: string): CookiesSetDetails {
   return isDomainCookie(row) ? { ...base, domain: row.host_key } : base;
 }
 
-// The first importer widened host-only cookies into dotted twins, and Google refuses sign-in seeing both, so those twins are expired.
+// The first importer widened host-only cookies into dotted twins Google refuses sign-in beside, and only an HttpOnly write may expire an HttpOnly twin.
 export function widenedTwins(rows: CookieRow[]): CookiesSetDetails[] {
   const inChrome = new Set(rows.map((row) => `${row.host_key}|${row.name}|${row.path}`));
   return rows
     .filter((row) => !isDomainCookie(row) && !row.name.startsWith("__Host-") && !inChrome.has(`.${row.host_key}|${row.name}|${row.path}`))
-    .map((row) => ({ domain: row.host_key, expirationDate: 1, name: row.name, path: row.path || "/", secure: !!row.is_secure, url: urlOf(row), value: "" }));
+    .map((row) => ({
+      domain: row.host_key,
+      expirationDate: 1,
+      httpOnly: true,
+      name: row.name,
+      path: row.path || "/",
+      secure: !!row.is_secure,
+      url: urlOf(row),
+      value: "",
+    }));
 }
 
 export async function importChromeCookies(session: Session, { profile = "Default" }: { profile?: string }): Promise<CookieImport> {
@@ -126,9 +135,12 @@ export async function importChromeCookies(session: Session, { profile = "Default
   const rows = statement.all() as unknown as CookieRow[];
   handle.close();
 
-  for (const twin of widenedTwins(rows)) await session.cookies.set(twin).catch(() => {});
-
   const out: CookieImport = { failed: 0, set: 0, skipped: 0 };
+  for (const twin of widenedTwins(rows)) {
+    await session.cookies.set(twin).catch(() => {
+      out.failed += 1;
+    });
+  }
   for (const row of rows) {
     if (isExpired(row)) {
       out.skipped += 1;

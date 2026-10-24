@@ -52,7 +52,7 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
 - **Google sign-in no longer stops on a cookie settings error.** The cookie import widened Chrome's host-only
   cookies into domain cookies, so a site's own cookie landed beside a stale copy and Google refused the pair.
   They now import host-only, expired ones stay out, and the next launch re-imports once to clear the copies,
-  which asks for the Keychain key one more time.
+  HttpOnly ones such as Google's `LSID` included, which asks for the Keychain key one more time.
 - **A local https dev server opens in the desktop app.** A site on this machine with a cert the system doesn't
   trust, such as mkcert's, failed with `ERR_CERT_AUTHORITY_INVALID`, and it now loads the way it already did
   through the proxy, while a remote site with a bad cert is still refused.

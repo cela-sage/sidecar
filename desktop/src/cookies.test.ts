@@ -56,10 +56,10 @@ test("a host-only cookie imports without a domain, so it is not widened to subdo
   assert.equal(o.url, "https://accounts.google.com/");
 });
 
-test("a host-only cookie gets its widened twin expired", () => {
+test("a host-only cookie gets its widened twin expired by an HttpOnly write, which Chromium lets replace an HttpOnly twin", () => {
   assert.deepEqual(
-    widenedTwins([row({ name: "LSID", host_key: "accounts.google.com" })]).map((t) => [t.domain, t.name, t.expirationDate]),
-    [["accounts.google.com", "LSID", 1]],
+    widenedTwins([row({ name: "LSID", host_key: "accounts.google.com" })]).map((t) => [t.domain, t.name, t.expirationDate, t.httpOnly]),
+    [["accounts.google.com", "LSID", 1, true]],
   );
 });
 
