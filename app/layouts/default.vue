@@ -70,12 +70,15 @@ useResizeObserver(boardEl, ([entry]) => {
     <div class="foot" data-region="dock-row">
       <div ref="boardEl" class="foot-board" data-region="board-corner">
         <slot name="board" />
-        <ChromeFollowOffer />
       </div>
 
       <div ref="dockEl" class="foot-dock" data-region="dock-corner">
         <slot name="dock" />
       </div>
+    </div>
+
+    <div class="notices" data-region="notices">
+      <ChromeFollowOffer />
     </div>
   </div>
 </template>
@@ -110,6 +113,15 @@ useResizeObserver(boardEl, ([entry]) => {
 
 .foot-board:not(:has(*)) {
   @apply hidden;
+}
+
+/* The toaster's level, the top of the scale, so a card asking to switch shows over a grown sheet, the veil and any popover. */
+.notices {
+  @apply pointer-events-none absolute bottom-(--gutter) left-(--gutter) z-50;
+}
+
+.notices > :deep(*) {
+  @apply pointer-events-auto;
 }
 
 .row > :deep(*),
