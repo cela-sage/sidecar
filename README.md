@@ -59,16 +59,43 @@ brings it up when it is down, so nothing runs it at login.
 | --------------------- | ----------------------------------------------------------------------- |
 | Where artifacts live  | `NOTES_ARTIFACTS`, then `~/.claude/sidecar/artifacts`                   |
 | Who a comment is from | The `user` key in `~/.claude/sidecar/config.json`, defaulting to "User" |
+| What runs a notebook  | `SIDECAR_PYTHON`, then `python3`                                        |
 
 ## Artifacts and their comments
 
-Every page in the artifacts folder lists in the Artifacts face, and each conversation shows the pages it
-wrote, read off `~/.claude/artifacts/session-<key>`, the list a conversation's writes are recorded in. A
-page that list records for the first time while the sidecar is running gets a toast that opens it. A page
-carries a comment layer, and a `.md` is commented in the sidecar, which keeps its threads in one trailing
-`<!-- rv:seed -->` comment, or in `~/.claude/sidecar/comments/` for a `.md` outside the folder.
-`sidecar comments <slug>` prints the threads and answers them, and picks up a page's Save from
-`~/Downloads` when no sidecar is running.
+Every page in the artifacts folder lists in the Artifacts face, a `.html`, a `.md` or a `.ipynb` notebook, and
+each conversation shows the pages it wrote, read off `~/.claude/artifacts/session-<key>`, the list a
+conversation's writes are recorded in. A page that list records for the first time while the sidecar is
+running gets a toast that opens it. A page carries a comment layer, and a `.md` is commented in the sidecar,
+which keeps its threads in one trailing `<!-- rv:seed -->` comment, or in `~/.claude/sidecar/comments/` for a
+`.md` outside the folder and for a notebook or an image anywhere. `sidecar comments <slug>` prints the threads
+and answers them, and picks up a page's Save from `~/Downloads` when no sidecar is running.
+
+An open artifact follows its file. The sidecar keeps one watch per open file and draws the page again when
+what it renders changes, putting the block that was at the top of the pane back where it was, so Claude
+rewriting a plan you are reading leaves you on the same paragraph. A comment written into a page's own seed,
+or a write the sidecar made itself, never reloads it.
+
+Every artifact sits in the same browser frame. The address island in the middle shows a site's title and
+host, or a file's name and folder, and ⌘L edits it: an address or a search opens a site, and `~/…`, `/…` or
+`file:///…` opens the file, which Open a URL above the list takes as well. Back, forward and reload show only
+for a site, since a file refreshes itself, and ⌘R reads either again. Hovering a link shows where it goes in
+the bottom left corner, the path as `~/…` for a file, cut in the middle when it is long so the host and the
+file name both stay in view. The open-outside action sends a site to your browser and a file to its own app.
+Fullscreen hides the bar until the pointer reaches the top edge of the window, and keeps it while you type in
+it, find, or have the list open.
+
+## Notebooks
+
+A `.ipynb` renders as a page: Markdown cells through the sidecar's Markdown, code highlighted, and the outputs
+Jupyter would draw, tables, images, text and tracebacks in their colours. A bar above it shows the kernel with
+Run all, Interrupt and Restart, and each code cell has its own run button. The first run starts
+`python3 -m jupyter_server` on 127.0.0.1 with a random token, so the Python it uses needs `jupyter_server` and
+`ipykernel` (`pip install jupyter_server ipykernel`), and then one kernel per notebook in the notebook's own
+folder. Outputs stream into the page as they arrive, and each finished cell's outputs and count are written back
+into the `.ipynb` the way Jupyter saves, so they survive a reload and Claude can read what ran. A failing cell
+cancels the cells queued after it. The Jupyter server stops with the sidecar, and stops itself after an hour
+idle if the sidecar died first. In Files a notebook previews without its run buttons.
 
 `sidecar open --artifact localhost:3000/guide`, or any http or https address, opens a live site the same
 way: the sidecar serves it through a local proxy that adds the comment layer, keeps the Web artifact in
@@ -89,9 +116,9 @@ never navigate the sidecar window itself, and a page reaches no host closer to t
 so a remote site can't call localhost or the local network through it, the way Chrome's Private Network
 Access draws the line. Each artifact keeps its own back and forward history in its record, so ⌘[ and ⌘]
 step through it after a switch or a reload, and ⌘L edits the address. A link clicked in the sidecar opens
-there too, a web address as a Web entry and a local `.md` or `.html` as a File entry, which
-`~/.claude/sidecar/tracked.json` remembers until you remove it, so the sidecar serves only files someone
-opened. A web address you or Claude write in the chat, outside code, becomes a Web entry of that
+there too, a web address as a Web entry and a local file the sidecar can draw, a page, a `.md`, a notebook, an
+image, a video, audio or a PDF, as a File entry, which `~/.claude/sidecar/tracked.json` remembers until you
+remove it, so the sidecar serves only files someone opened. A file it cannot draw opens in Files. A web address you or Claude write in the chat, outside code, becomes a Web entry of that
 conversation too, once per address and read off the transcript, so a link you remove stays removed. It
 lands as it is said, whichever conversation is on screen, with the toast a new page gets, and one said
 while the sidecar was stopped lands quietly once it is back. A page a WebFetch or WebSearch brought back
@@ -106,9 +133,9 @@ Choosing desktop builds a small Electron shell around the same sidecar, packages
 `~/Applications/Claude Code Sidecar.app` and opens it. Inside the shell a Web artifact is a real top-level
 page on Chromium rather than a framed one, so Gmail, Reddit and anything that refused framing all work,
 and the comment layer, the pins and Ask Claude draw over it as before. Since Electron has no find bar of its
-own, ⌘F there turns the title island into one, searching the page and its frames, with ↵ or ⌘G for the next
-match and ⇧↵ or ⇧⌘G for the previous; a site with its own ⌘F, such as Docs, keeps it, and the web surface
-leaves ⌘F to Chrome. On first launch the shell copies
+own, ⌘F there turns the title island into one for any artifact, searching the page and its frames, with ↵ or
+⌘G for the next match and ⇧↵ or ⇧⌘G for the previous; a site with its own ⌘F, such as Docs, keeps it, and the
+web surface leaves ⌘F to Chrome. On first launch the shell copies
 your Chrome cookies into its own session, decrypting them with a key it reads from the login Keychain once
 (the one macOS prompt you will see), so you arrive signed in to the same accounts as in Chrome.
 `sidecar import` re-reads them later, with the app closed. The cookies are a copy rather than shared live,

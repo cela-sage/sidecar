@@ -7,6 +7,29 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.19.0
+
+### Added
+
+- **Jupyter notebooks are artifacts you can run.** A `.ipynb` in the artifacts folder lists as a page, and one
+  opened by a link or a path lists as a file. It renders with its outputs, and a bar above it runs every cell,
+  interrupts or restarts the kernel, while each code cell has its own run button. The kernel is a real
+  Jupyter one started by `python3 -m jupyter_server`, or the Python in `SIDECAR_PYTHON`, which needs
+  `jupyter_server` and `ipykernel`. Outputs stream in as they arrive and are saved back into the notebook.
+- **An open artifact refreshes when its file changes,** keeping the block you were reading at the top of the
+  pane where it was.
+- **Every artifact is a tab of the same browser.** A file gets the address island with its name and folder,
+  ⌘L, ⌘R, the open-outside action, find on the desktop surface, and the link status, and Open a URL takes
+  `~/…`, `/…` and `file:///…` paths. Images, video, audio and PDFs open as File artifacts.
+- **Hovering a link shows where it goes** in the sheet's bottom left corner, cut in the middle when it is long.
+- **Fullscreen hides the top bar** until the pointer reaches the top edge of the window.
+
+### Changed
+
+- **A link to an image, a video, audio or a PDF opens in Artifacts** as a File entry, where it opened Files.
+- **A notebook or an image keeps its threads in `~/.claude/sidecar/comments/`** even inside the artifacts
+  folder, since neither has room for a seed.
+
 ## 0.18.0
 
 ### Changed
