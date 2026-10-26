@@ -8,6 +8,7 @@ import { after, test } from "node:test";
 import { runInNewContext } from "node:vm";
 import { WebHost } from "../../../lib/web/host.ts";
 import { siteIcon } from "./icon.ts";
+import { linkPreview } from "./preview.ts";
 import { asTab, captchaFor, isAllowed, isFencedOrigin, keptCookie, rewriteResponse, serve, stopAll } from "./proxy.ts";
 
 const PARENT = "http://sidecar.localhost:4747";
@@ -569,4 +570,36 @@ test("a site's icon is the one its head links, read as an image by its bytes, an
     createServer((_req, res) => res.writeHead(200, { "content-type": "text/html" }).end("<head></head><div id=app>")),
   );
   assert.equal(await siteIcon({ origin: `http://127.0.0.1:${spa}` }), undefined);
+});
+
+test("a link's card is read off its page's head after redirects, with its Open Graph tags over the plain ones", async () => {
+  const site = await listen(
+    createServer((req, res) => {
+      if (req.url === "/old") return res.writeHead(301, { location: "/post" }).end();
+      if (req.url === "/post")
+        return res
+          .writeHead(200, { "content-type": "text/html; charset=utf-8" })
+          .end(
+            `<head><title>Plain &amp; dull</title><meta name="description" content="plain"><meta property="og:title" content="Ship &quot;it&quot;"><meta property="og:description" content="Why we ship on Fridays"><meta property="og:image" content="/card.png"><meta property="og:site_name" content="The Log"></head><body>`,
+          );
+      if (req.url === "/bare") return res.writeHead(200, { "content-type": "text/html" }).end("<title>Bare</title>");
+      res.writeHead(404).end();
+    }),
+  );
+  const base = `http://127.0.0.1:${site}`;
+  assert.deepEqual(await linkPreview({ url: new URL(`${base}/old`) }), {
+    description: "Why we ship on Fridays",
+    image: `${base}/card.png`,
+    site: "The Log",
+    title: 'Ship "it"',
+    url: `${base}/post`,
+  });
+  assert.deepEqual(await linkPreview({ url: new URL(`${base}/bare`) }), {
+    description: undefined,
+    image: undefined,
+    site: "127.0.0.1",
+    title: "Bare",
+    url: `${base}/bare`,
+  });
+  assert.equal(await linkPreview({ url: new URL(`${base}/gone`) }), undefined);
 });

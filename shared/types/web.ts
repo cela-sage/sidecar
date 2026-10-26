@@ -16,3 +16,11 @@ export type WebArrival = "push" | "reload" | "replace" | "traverse";
 export interface WebServeReply {
   port: number;
 }
+
+export interface LinkPreview {
+  description?: string;
+  image?: string;
+  site: string;
+  title?: string;
+  url: string;
+}
