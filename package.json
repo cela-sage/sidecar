@@ -26,7 +26,9 @@
     "@speed-highlight/core": "^1.2.24",
     "@vueuse/core": "^14.3.0",
     "animejs": "^4.4.1",
+    "ansi_up": "^6.0.6",
     "beautiful-mermaid": "^1.1.3",
+    "chokidar": "^5.0.0",
     "comark": "^0.6.2",
     "h3": "1.15.11",
     "httpxy": "0.5.5",
@@ -35,7 +37,8 @@
     "nuxt": "^4.4.5",
     "pinia": "^3.0.4",
     "tldts": "^7.4.18",
-    "vue": "^3.5.34"
+    "vue": "^3.5.34",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
     "@nuxt/kit": "4.5.2",

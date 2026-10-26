@@ -24,7 +24,7 @@ function isIn(path: string, folder: string): boolean {
 
 // A page or plan already has its entry, so only a file from anywhere else is tracked under a slug of its own.
 function slugOf(path: string, session: string): string {
-  if (isIn(path, Sidecar.artifacts())) {
+  if (isIn(path, Sidecar.artifacts()) && /\.(html|ipynb|md)$/i.test(path)) {
     const slug = basename(path, extname(path));
     if (session) ArtifactLists.record(slug, session);
     return slug;

@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { open, readdir, readFile, stat, writeFile } from "node:fs/promises";
-import { basename, dirname, join } from "node:path";
+import { basename, dirname, extname, join } from "node:path";
 import type {
   ArtifactDetail,
   ArtifactFormat,
@@ -9,6 +10,7 @@ import type {
   ThreadAnchor,
   ThreadReply,
 } from "../../shared/types/artifact";
+import { FileKind } from "../../shared/utils/file-kind.ts";
 import { Sidecar, plansHome } from "../../lib/sidecar/paths.ts";
 import {
   commentsFile,
@@ -22,7 +24,9 @@ import {
 import { Tracked } from "../../lib/sidecar/tracked.ts";
 import { listRecords, readRecord, recordPath, type WebRecord, writeRecord } from "../../lib/web/records.ts";
 import { Markdown } from "./markdown.ts";
+import { NotebookFormat } from "./notebooks/format.ts";
 import { Documents } from "./sessions/artifact-lists.ts";
+import { Watched } from "./watched.ts";
 
 const META_BLOCK = /<!--\s*artifact\b([\s\S]*?)-->/;
 const TITLE_TAG = /<title>([\s\S]*?)<\/title>/i;
@@ -41,7 +45,15 @@ const SAFE_SLUG = /^[a-zA-Z0-9._-]+$/;
 // A pre-build source, never an artifact. One constant, so listing and direct access cannot diverge.
 const SRC_SUFFIX = ".src.html";
 // Precedence on a slug clash: a page beside a same-named .md is the artifact, and the .md its brief.
-const FORMATS: ArtifactFormat[] = ["html", "md"];
+const FORMATS: ArtifactFormat[] = ["html", "ipynb", "md"];
+const FORMAT_OF: Partial<Record<FileKind, ArtifactFormat>> = { markdown: "md", notebook: "ipynb", page: "html" };
+// A notebook carries its plots inline, so past this its title is not worth reading the whole file for.
+const NOTEBOOK_BYTES = 4 * 1024 * 1024;
+
+function formatOf(path: string): ArtifactFormat {
+  const kind = FileKind.of(path);
+  return (kind && FORMAT_OF[kind]) || "media";
+}
 
 // The list route touches every file in the dir, so a partial fd read beats loading each one whole.
 async function readHead(path: string, bytes: number = HEAD_BYTES): Promise<string> {
@@ -100,6 +112,30 @@ function parseMeta({ format, head, fallbackSlug, path }: ParseMetaInput): Artifa
     kind: kindOf(path),
   };
 }
+
+interface DescribeInput {
+  file: ArtifactFile;
+  path: string;
+  text: string;
+}
+
+const DESCRIBE: Record<ArtifactFormat, (input: DescribeInput) => ArtifactMeta> = {
+  html: ({ file, path, text }) => parseMeta({ format: file.format, head: text, fallbackSlug: file.slug, path }),
+  md: ({ file, path, text }) => parseMeta({ format: file.format, head: text, fallbackSlug: file.slug, path }),
+  ipynb: ({ file, path, text }) => {
+    const notebook = NotebookFormat.parse(text);
+    const title = (notebook && NotebookFormat.titleOf(notebook)) || basename(path, extname(path));
+    return { format: "ipynb", kind: kindOf(path), path, slug: file.slug, target: "s", title };
+  },
+  media: ({ file, path }) => ({
+    format: "media",
+    kind: kindOf(path),
+    path,
+    slug: file.slug,
+    target: "s",
+    title: basename(path),
+  }),
+};
 
 // external contract: validating the shape of raw JSON.parse output read off disk
 function isRecord(x: unknown): x is Record<string, unknown> {
@@ -246,11 +282,12 @@ async function artifactFiles(dir: string): Promise<ArtifactFile[]> {
   } catch {
     return [];
   }
-  const files = names.map(fileOf).filter((file): file is ArtifactFile => Boolean(file));
-  const pages = new Set(files.filter((file) => file.format === "html").map((file) => file.slug));
-  return files
-    .filter((file) => file.format === "html" || !pages.has(file.slug))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const best = new Map<string, ArtifactFile>();
+  for (const file of names.map(fileOf)) {
+    const held = file && best.get(file.slug);
+    if (file && (!held || FORMATS.indexOf(file.format) < FORMATS.indexOf(held.format))) best.set(file.slug, file);
+  }
+  return [...best.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // Each row costs 160 KB of reads, so a list that has not changed on disk is answered from here.
@@ -269,18 +306,34 @@ async function metaOf({ file, path, stats, stored }: MetaOfInput): Promise<Artif
   const hit = listed.get(path);
   if (hit && hit.size === stats.size && hit.mtimeMs === stats.mtimeMs && hit.storeMtimeMs === storeMtimeMs)
     return hit.meta;
+  const meta = await READ_META[file.format]({ file, path, stats, stored });
+  listed.set(path, { size: stats.size, mtimeMs: stats.mtimeMs, storeMtimeMs, meta });
+  return meta;
+}
+
+async function pageMeta({ file, path, stats, stored }: MetaOfInput): Promise<ArtifactMeta> {
   const [head, tail] = await Promise.all([readHead(path, BODY_BYTES), readTail(path, stats.size)]);
   const comments = stored ? readComments(path, tail) : undefined;
-  const meta: ArtifactMeta = {
-    ...parseMeta({ format: file.format, head: head.slice(0, HEAD_BYTES), fallbackSlug: file.slug, path }),
+  return {
+    ...DESCRIBE[file.format]({ file, path, text: head.slice(0, HEAD_BYTES) }),
     threadCount: comments
       ? threadsOf(comments.threads).length
       : countThreads({ format: file.format, tail, whole: stats.size <= TAIL_BYTES }),
     preview: previewOf(file.format === "md" ? `<body>${await Markdown.body(head)}` : head),
   };
-  listed.set(path, { size: stats.size, mtimeMs: stats.mtimeMs, storeMtimeMs, meta });
-  return meta;
 }
+
+const storedCount = (path: string): number => threadsOf(readComments(path, "")?.threads).length;
+
+const READ_META: Record<ArtifactFormat, (input: MetaOfInput) => Promise<ArtifactMeta>> = {
+  html: pageMeta,
+  md: pageMeta,
+  ipynb: async ({ file, path, stats }) => {
+    const text = stats.size <= NOTEBOOK_BYTES ? await readFile(path, "utf8") : "";
+    return { ...DESCRIBE.ipynb({ file, path, text }), threadCount: storedCount(path) };
+  },
+  media: async ({ file, path }) => ({ ...DESCRIBE.media({ file, path, text: "" }), threadCount: storedCount(path) }),
+};
 
 function webMeta(record: WebRecord): ArtifactMeta {
   return {
@@ -337,7 +390,7 @@ async function artifactFile(slug: string): Promise<(ArtifactFile & { path: strin
 }
 
 function documentFile({ path, slug }: { path: string; slug: string }): ArtifactFile {
-  return { format: path.toLowerCase().endsWith(".html") ? "html" : "md", name: basename(path), slug };
+  return { format: formatOf(path), name: basename(path), slug };
 }
 
 async function readWhole(path: string): Promise<string | undefined> {
@@ -356,9 +409,11 @@ export async function readArtifact(slug: string): Promise<ArtifactSource | undef
   const record = readRecord(slug);
   if (record) return { ...webMeta(record), text: "" };
   const file = await artifactFile(slug);
-  const text = file ? await readWhole(file.path) : undefined;
-  if (!file || !text) return undefined;
-  const meta = parseMeta({ format: file.format, head: text.slice(0, HEAD_BYTES), fallbackSlug: slug, path: file.path });
+  if (!file) return undefined;
+  const text = file.format === "media" ? "" : ((await readWhole(file.path)) ?? "");
+  if (!text && file.format !== "media") return undefined;
+  const head = file.format === "ipynb" ? text : text.slice(0, HEAD_BYTES);
+  const meta = DESCRIBE[file.format]({ file: { ...file, slug }, path: file.path, text: head });
   return { ...meta, kind: Tracked.paths().has(slug) ? "file" : meta.kind, text };
 }
 
@@ -382,6 +437,15 @@ export async function getArtifact(slug: string): Promise<ArtifactDetail | undefi
 export async function writeArtifact({ path, text }: { path: string; text: string }): Promise<void> {
   await writeFile(path, text, "utf8");
   listed.delete(path);
+  Watched.own(path, await Watched.signatureOf(path));
+}
+
+// A comment rewrites the seed inside a page or a .md, so what a reader shows is told apart from the threads stored in it.
+export async function contentSignature({ format, path }: Pick<ArtifactMeta, "format" | "path">): Promise<string> {
+  if (format !== "html" && format !== "md") return Watched.signatureOf(path);
+  const text = await readFile(path, "utf8");
+  const shown = format === "md" ? text.replace(MD_SEED, "") : text.replace(RV_LAYER, "").replace(RV_SEED, "");
+  return createHash("sha1").update(shown).digest("hex");
 }
 
 const SKIP_TAGS = new Set(["script", "style", "svg", "template"]);

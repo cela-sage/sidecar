@@ -1,5 +1,6 @@
 <script lang="ts" setup>
-import type { PreviewKind, PreviewScroll } from "~/utils/preview";
+import type { PreviewScroll } from "~/utils/preview";
+import type { FileKind } from "~~/shared/utils/file-kind";
 
 export type PreviewSide = { src: string } | { empty: string };
 
@@ -7,7 +8,7 @@ type Side = "after" | "before";
 type Followable = { follow: (at: PreviewScroll) => void };
 
 const { kind, before, after, isSynced } = defineProps<{
-  kind: PreviewKind;
+  kind: FileKind;
   before: PreviewSide;
   after: PreviewSide;
   isSynced: boolean;

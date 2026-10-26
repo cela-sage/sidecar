@@ -3,7 +3,10 @@ import { basename } from "node:path";
 import type { H3Event } from "h3";
 import mime from "mime";
 import { readTextSafe } from "../../lib/files.ts";
+import { FileKind } from "../../shared/utils/file-kind.ts";
 import { Markdown } from "./markdown.ts";
+import { NotebookFormat } from "./notebooks/format.ts";
+import { NotebookPage } from "./notebooks/page.ts";
 
 type Span = { start: number; end: number };
 
@@ -23,13 +26,24 @@ function typeOf(name: string): string {
   return type.startsWith("text/") || type.endsWith("+xml") ? `${type}; charset=utf-8` : type;
 }
 
+// A preview in Files has nothing listening for a run, so a notebook draws there without its run buttons.
+async function pageOf({ file, name }: Pick<Media.Send, "file" | "name">): Promise<string> {
+  const text = readTextSafe(file) ?? "";
+  const title = basename(name);
+  if (FileKind.of(name) !== "notebook") return Markdown.page({ markdown: text, title });
+  const notebook = NotebookFormat.parse(text);
+  if (!notebook)
+    throw createError({ statusCode: 422, statusMessage: `${title} is not a notebook the sidecar can read` });
+  return NotebookPage.page({ notebook, runnable: false, title });
+}
+
 // `file` is what is read and `name` what it is, since a review original sits in a blob with no extension.
-async function send(event: H3Event, { file, name, isMarkdownPage }: Media.Send): Promise<unknown> {
+async function send(event: H3Event, { file, name, asPage }: Media.Send): Promise<unknown> {
   // A turn rewrites the file in place, so a cached copy would show the version before it.
   setResponseHeader(event, "cache-control", "no-store");
-  if (isMarkdownPage) {
+  if (asPage) {
     setResponseHeader(event, "content-type", "text/html; charset=utf-8");
-    return Markdown.page({ markdown: readTextSafe(file) ?? "", title: basename(name) });
+    return pageOf({ file, name });
   }
   const { size } = statSync(file);
   const span = spanOf(getRequestHeader(event, "range"), size);
@@ -52,6 +66,6 @@ export namespace Media {
   export interface Send {
     file: string;
     name: string;
-    isMarkdownPage?: boolean;
+    asPage?: boolean;
   }
 }

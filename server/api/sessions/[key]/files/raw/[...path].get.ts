@@ -12,5 +12,5 @@ export default defineEventHandler((event): Promise<unknown> => {
   if (!(isReviewed || isReachable({ key, path })) || !isFile(path)) {
     throw createError({ statusCode: 404, statusMessage: "not here" });
   }
-  return Media.send(event, { file: path, isMarkdownPage: getQuery(event).as === "page", name: path });
+  return Media.send(event, { asPage: getQuery(event).as === "page", file: path, name: path });
 });

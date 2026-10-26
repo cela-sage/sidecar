@@ -129,6 +129,10 @@ export const Markdown = {
   },
 
   async page({ ds, markdown, title }: Markdown.Page): Promise<string> {
+    return Markdown.document({ body: await Markdown.body(markdown), ds, title });
+  },
+
+  document({ body, css = "", ds, title }: Markdown.Document): string {
     houseCss ??= STYLESHEETS.map(readStyle).join("\n");
     const system = ds ? ` data-ds="${escapeHtml(ds)}"` : "";
     return [
@@ -138,18 +142,27 @@ export const Markdown = {
       '<meta charset="utf-8">',
       '<meta name="viewport" content="width=device-width, initial-scale=1">',
       `<title>${escapeHtml(title)}</title>`,
-      `<style>${houseCss}\n${MARKDOWN_CSS}\n${DIAGRAM_CSS}</style>`,
+      `<style>${houseCss}\n${MARKDOWN_CSS}\n${DIAGRAM_CSS}\n${css}</style>`,
       "</head>",
-      `<body><main class="page">${await Markdown.body(markdown)}</main></body>`,
+      `<body><main class="page">${body}</main></body>`,
       "</html>",
     ].join("\n");
   },
+
+  escape: escapeHtml,
 };
 
 export namespace Markdown {
   export interface Page {
     ds?: string;
     markdown: string;
+    title: string;
+  }
+
+  export interface Document {
+    body: string;
+    css?: string;
+    ds?: string;
     title: string;
   }
 }

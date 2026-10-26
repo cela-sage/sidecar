@@ -2,7 +2,8 @@
 import { useElementSize } from "@vueuse/core";
 import type { FrameAnchor, FrameMark } from "~/types/frame";
 import { OneDarkVivid } from "~/utils/monaco/one-dark-vivid";
-import type { PreviewKind, PreviewScroll } from "~/utils/preview";
+import type { PreviewScroll } from "~/utils/preview";
+import type { FileKind } from "~~/shared/utils/file-kind";
 import { measure, readAnchors } from "~~/lib/web/page/blocks";
 
 const {
@@ -14,7 +15,7 @@ const {
   /** Given only where notes on the rendering have somewhere to show, which turns block picking on. */
   file?: string;
   inset?: number;
-  kind: PreviewKind;
+  kind: FileKind;
   src: string;
 }>();
 const zoom = defineModel<number>("zoom", { required: true });
@@ -49,7 +50,7 @@ const isBroken = ref(false);
 
 let teardown: (() => void)[] = [];
 
-const isFramed = computed(() => kind === "markdown" || kind === "page" || kind === "pdf");
+const isFramed = computed(() => kind === "markdown" || kind === "notebook" || kind === "page" || kind === "pdf");
 // Never wider than it really is, so a small icon is not blown up into a blur.
 const width = computed(() => (natural.value ? Math.min(natural.value, room.value) : room.value));
 const title = computed(() => decodeURIComponent(src.split("?")[0]?.split("/").pop() ?? ""));

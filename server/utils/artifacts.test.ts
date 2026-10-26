@@ -6,7 +6,7 @@ import { test } from "node:test";
 import { readComments } from "../../lib/sidecar/comments.ts";
 import { Tracked } from "../../lib/sidecar/tracked.ts";
 import { openRecord, readRecord } from "../../lib/web/records.ts";
-import { applyReviewChange, applyStoredReview, applyWebReview, listArtifacts } from "./artifacts.ts";
+import { applyReviewChange, applyStoredReview, applyWebReview, getArtifact, listArtifacts } from "./artifacts.ts";
 import { Markdown } from "./markdown.ts";
 import { Documents } from "./sessions/artifact-lists.ts";
 
@@ -92,6 +92,37 @@ test("a listed entry is a page in the artifacts folder, a plan in the plans fold
     writeFileSync(join(dir, "artifacts", "session-0123abcd"), `${plan}\n${scratch}\n`);
     const kinds = Object.fromEntries((await listArtifacts()).map((one) => [one.title, one.kind]));
     assert.deepEqual(kinds, { Deck: "page", Plan: "plan", Notes: "document" });
+  } finally {
+    delete process.env.CLAUDE_CONFIG_DIR;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("a notebook lists under its first heading over its .md brief, and an opened image lists as media with its threads kept outside it", async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "formats-")));
+  process.env.CLAUDE_CONFIG_DIR = dir;
+  try {
+    const folder = join(dir, "sidecar", "artifacts");
+    mkdirSync(folder, { recursive: true });
+    const cells = [{ cell_type: "markdown", id: "a", metadata: {}, source: ["# Churn by cohort\n"] }];
+    writeFileSync(join(folder, "churn.ipynb"), JSON.stringify({ cells, metadata: {}, nbformat: 4, nbformat_minor: 5 }));
+    writeFileSync(join(folder, "churn.md"), "# The brief\n");
+    const image = join(dir, "chart.png");
+    writeFileSync(image, Buffer.from([0x89, 0x50, 0x4e, 0x47]));
+    const slug = Tracked.track(image);
+    const rows = Object.fromEntries(
+      (await listArtifacts()).map((one) => [one.slug, [one.format, one.kind, one.title]]),
+    );
+    assert.deepEqual(rows, { churn: ["ipynb", "page", "Churn by cohort"], [slug]: ["media", "file", "chart.png"] });
+    const made = applyStoredReview({
+      action: "create",
+      anchor: { label: "Chart" },
+      body: "log scale?",
+      path: image,
+      text: "",
+    });
+    if (!made.ok) assert.fail(made.reason);
+    assert.equal((await getArtifact(slug))?.threads.length, 1);
   } finally {
     delete process.env.CLAUDE_CONFIG_DIR;
     rmSync(dir, { recursive: true, force: true });

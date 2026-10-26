@@ -8,11 +8,11 @@ import { isReachable } from "~~/server/utils/sessions/files";
 export default defineEventHandler((event): Promise<unknown> => {
   const key = getRouterParam(event, "key") || "";
   const path = resolve("/", getRouterParam(event, "path", { decode: true }) ?? "");
-  const isMarkdownPage = getQuery(event).as === "page";
+  const asPage = getQuery(event).as === "page";
   const original = originalOf({ key, path });
-  if (original.kind === "blob") return Media.send(event, { file: original.file, isMarkdownPage, name: path });
+  if (original.kind === "blob") return Media.send(event, { asPage, file: original.file, name: path });
   if (original.kind === "created" || !isReachable({ key, path }) || !isFile(path)) {
     throw createError({ statusCode: 404, statusMessage: "no original" });
   }
-  return Media.send(event, { file: path, isMarkdownPage, name: path });
+  return Media.send(event, { asPage, file: path, name: path });
 });

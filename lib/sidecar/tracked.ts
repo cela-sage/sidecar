@@ -1,10 +1,9 @@
 import { mkdirSync, renameSync, writeFileSync } from "node:fs";
-import { dirname, extname, join } from "node:path";
+import { dirname, join } from "node:path";
+import { FileKind } from "../../shared/utils/file-kind.ts";
 import { readTextSafe } from "../files.ts";
 import { Sidecar } from "./paths.ts";
 import { documentSlug } from "./comments.ts";
-
-const FORMATS = [".html", ".md"];
 
 const listPath = (): string => join(Sidecar.home(), "tracked.json");
 
@@ -29,7 +28,7 @@ function write(all: Record<string, string>): void {
 
 // A local file a link opened, kept by its document slug so the sidecar serves only paths someone chose to open.
 export const Tracked = {
-  isTrackable: (path: string): boolean => FORMATS.includes(extname(path).toLowerCase()),
+  isTrackable: (path: string): boolean => !!FileKind.of(path),
 
   paths(): Map<string, string> {
     return new Map(Object.entries(read()));

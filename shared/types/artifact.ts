@@ -1,6 +1,6 @@
 import type { WebTrail } from "./web.ts";
 
-export type ArtifactFormat = "html" | "md";
+export type ArtifactFormat = "html" | "ipynb" | "md" | "media";
 // Where it lives: the artifacts folder, Claude Code's plans folder, any other .md a conversation wrote, or a live site.
 export type ArtifactKind = "page" | "plan" | "document" | "file" | "web";
 

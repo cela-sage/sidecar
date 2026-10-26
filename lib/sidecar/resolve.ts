@@ -11,14 +11,20 @@ import { Tracked } from "./tracked.ts";
 
 const stem = (file: string): string => basename(file, extname(file));
 
+// The server's own precedence on a slug clash: a page, then a notebook, then a .md.
+const ORDER = [".html", ".ipynb", ".md"];
+
 const pages = (): string[] => {
   const dir = Sidecar.artifacts();
   if (!isDir(dir)) return [];
-  const names = readdirSync(dir);
-  const html = names.filter((name) => name.endsWith(".html") && !name.endsWith(".src.html"));
-  const taken = new Set(html.map((name) => name.slice(0, -5)));
-  const notes = names.filter((name) => name.endsWith(".md") && !taken.has(name.slice(0, -3)));
-  return [...html, ...notes].sort().map((name) => join(dir, name));
+  const best = new Map<string, string>();
+  for (const name of readdirSync(dir)) {
+    const rank = ORDER.indexOf(extname(name));
+    if (rank < 0 || name.endsWith(".src.html")) continue;
+    const held = best.get(stem(name));
+    if (!held || rank < ORDER.indexOf(extname(held))) best.set(stem(name), name);
+  }
+  return [...best.values()].sort().map((name) => join(dir, name));
 };
 
 const recordedDocuments = (): Map<string, string> => {
@@ -30,8 +36,9 @@ const recordedDocuments = (): Map<string, string> => {
 };
 
 const path = (given: string, sid?: string): string => {
-  if (given.includes("/") && given.endsWith(".md") && isFile(expandHome(given))) return resolvePath(expandHome(given));
-  const token = given.replace(/\.(html|md)$/, "");
+  if (given.includes("/") && /\.(ipynb|md)$/.test(given) && isFile(expandHome(given)))
+    return resolvePath(expandHome(given));
+  const token = given.replace(/\.(html|ipynb|md)$/, "");
   const document = recordedDocuments().get(token) ?? Tracked.paths().get(token);
   if (document) return document;
   const files = [...pages(), ...listRecords().map((site) => recordPath(site.slug))];

@@ -24,9 +24,9 @@ export function documentSlug(path: string): string {
   return `${stem}--${createHash("sha1").update(real).digest("hex").slice(0, 6)}`;
 }
 
-// A file outside the artifacts folder is somebody's own, so its comments stay out of it.
+// A file outside the artifacts folder is somebody's own, and only a page or a .md has room for a seed, so the rest keep their comments here.
 export function isStoredDocument(path: string, artifactsDir: string): boolean {
-  return dirname(path) !== artifactsDir;
+  return dirname(path) !== artifactsDir || !/\.(html|md)$/i.test(path);
 }
 
 export function commentsFile(path: string): string {
