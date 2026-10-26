@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { Trash2 } from "@lucide/vue";
+import { isLocalPath } from "~~/lib/web/target";
 import type { ArtifactMeta } from "~~/shared/types/artifact";
 
 const { initial: sideInitial, width: side } = usePaneWidth();
@@ -69,6 +70,7 @@ watch(
 );
 
 const web = $web();
+const links = useLinks();
 const address = ref("");
 const refused = ref<string>();
 const isFocused = ref(false);
@@ -96,7 +98,8 @@ async function openUrl(): Promise<void> {
   isOpening.value = true;
   refused.value = undefined;
   try {
-    selected.value = (await web.open(url)).slug;
+    if (isLocalPath(url)) await links.open(url);
+    else selected.value = (await web.open(url)).slug;
     address.value = "";
   } catch {
     refused.value = "The sidecar could not open that. Try again in a moment.";
@@ -123,7 +126,7 @@ async function openUrl(): Promise<void> {
         <form
           class="open"
           data-region="open-url"
-          data-tip="An address or a search opens live here, as a tab of its own · {enter}"
+          data-tip="An address, a search or a path like ~/notes.md opens here, as a tab of its own · {enter}"
           :data-focused="isFocused"
           :data-refused="!!refused"
           @submit.prevent="openUrl"
@@ -131,11 +134,11 @@ async function openUrl(): Promise<void> {
           <WebFavicon class="globe" :address="address" />
           <input
             v-model="address"
-            aria-label="Open a URL"
+            aria-label="Open a URL or a file"
             autocomplete="off"
             class="field"
             inputmode="url"
-            placeholder="Open a URL"
+            placeholder="Open a URL or a file"
             spellcheck="false"
             type="text"
             :aria-invalid="!!refused"

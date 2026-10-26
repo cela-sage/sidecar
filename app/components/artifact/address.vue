@@ -4,13 +4,12 @@ import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, ExternalLink, Rotate
 
 const { slug, variant } = defineProps<{ slug: string; variant: SurfaceVariant }>();
 
-const sc = useSidecar();
 const web = $web();
 const find = $find();
 const field = useTemplateRef<HTMLInputElement>("field");
 const seek = useTemplateRef<HTMLElement>("seek");
 const scrolled = ref(0);
-const { address, cancel, commit, draft, edit, host, isEditing, openOut, page } = useArtifactAddress({
+const { address, cancel, commit, draft, edit, host, isEditing, isWeb, meta, openOut, title } = useArtifactAddress({
   focus: () => {
     field.value?.focus();
     field.value?.select();
@@ -49,11 +48,12 @@ function onSeekKey(event: KeyboardEvent): void {
   }
 }
 
-const title = computed(
-  () => web.page?.title || (sc.artifact.value?.slug === slug ? sc.artifact.value.title : "") || page.value,
-);
 // The host reads quieter than the path, as the design draws it; the field under it carries the caret and the selection.
-const lead = computed(() => /^([a-z][a-z0-9+.-]*:\/\/)?[^/?#]*/i.exec(draft.value)?.[0] ?? "");
+const lead = computed(() =>
+  isWeb.value
+    ? (/^([a-z][a-z0-9+.-]*:\/\/)?[^/?#]*/i.exec(draft.value)?.[0] ?? "")
+    : draft.value.slice(0, draft.value.lastIndexOf("/") + 1),
+);
 const tail = computed(() => draft.value.slice(lead.value.length));
 
 function track(): void {
@@ -105,32 +105,35 @@ function track(): void {
       <ChromeAction :icon="X" shape="inset" tip="Close · {esc}" @click="find.leave()" />
     </div>
     <template v-else>
-      <ChromeAction
-        data-region="web-back"
-        :icon="ChevronLeft"
-        :is-disabled="!web.history.back"
-        shape="inset"
-        tip="Back · {cmd [}"
-        @click="web.step(-1)"
-      />
-      <ChromeAction
-        data-region="web-forward"
-        :icon="ChevronRight"
-        :is-disabled="!web.history.forward"
-        shape="inset"
-        tip="Forward · {cmd ]}"
-        @click="web.step(1)"
-      />
-      <ChromeAction
-        data-region="web-reload"
-        :icon="RotateCw"
-        shape="inset"
-        tip="Reload · {cmd R}"
-        @click="web.reload()"
-      />
-      <span class="rule" />
+      <template v-if="isWeb">
+        <ChromeAction
+          data-region="web-back"
+          :icon="ChevronLeft"
+          :is-disabled="!web.history.back"
+          shape="inset"
+          tip="Back · {cmd [}"
+          @click="web.step(-1)"
+        />
+        <ChromeAction
+          data-region="web-forward"
+          :icon="ChevronRight"
+          :is-disabled="!web.history.forward"
+          shape="inset"
+          tip="Forward · {cmd ]}"
+          @click="web.step(1)"
+        />
+        <ChromeAction
+          data-region="web-reload"
+          :icon="RotateCw"
+          shape="inset"
+          tip="Reload · {cmd R}"
+          @click="web.reload()"
+        />
+        <span class="rule" />
+      </template>
       <form v-if="isEditing" class="edit" data-region="web-address" @submit.prevent="commit">
-        <WebFavicon class="icon" :address="draft" :page="web.page" />
+        <WebFavicon v-if="isWeb" class="icon" :address="draft" :page="web.page" />
+        <ArtifactsKindIcon v-else-if="meta" :meta="meta" />
         <span class="box">
           <input
             ref="field"
@@ -162,14 +165,21 @@ function track(): void {
         class="named focusable"
         type="button"
         data-region="web-address"
-        data-tip="Show the URL · {cmd L}"
+        :data-tip="isWeb ? 'Show the URL · {cmd L}' : 'Show the path · {cmd L}'"
         @click="edit"
       >
-        <WebFavicon class="icon" :address="address" :page="web.page" />
+        <WebFavicon v-if="isWeb" class="icon" :address="address" :page="web.page" />
+        <ArtifactsKindIcon v-else-if="meta" :meta="meta" />
         <span class="title">{{ title }}</span>
         <span class="host">{{ host }}</span>
       </button>
-      <ChromeAction :icon="ExternalLink" is-quiet shape="inset" tip="Open in your browser" @click="openOut" />
+      <ChromeAction
+        :icon="ExternalLink"
+        is-quiet
+        shape="inset"
+        :tip="isWeb ? 'Open in your browser' : 'Open in its own app'"
+        @click="openOut"
+      />
     </template>
   </UiSurface>
 </template>
@@ -210,7 +220,7 @@ function track(): void {
 }
 
 .host {
-  @apply ml-auto flex-none font-mono typo-meta-strong text-muted;
+  @apply ml-auto min-w-0 flex-initial truncate font-mono typo-meta-strong text-muted;
 }
 
 /* The icon sits where it does unedited, so the typed address starts where the title did. */

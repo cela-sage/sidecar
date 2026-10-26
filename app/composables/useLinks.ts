@@ -6,6 +6,7 @@ export interface LinkOpenOptions {
 }
 
 export interface Links {
+  describe: (href: string, options?: LinkOpenOptions) => string | undefined;
   open: (href: string, options?: LinkOpenOptions) => Promise<void>;
   /** True for what open() takes over: a web address or a file, never an in-page anchor or a mail link. */
   owns: (href: string) => boolean;
@@ -32,6 +33,16 @@ export function useLinks(): Links {
     return !!raw && !raw.startsWith("#") && (WEB.test(raw) || /^file:/i.test(raw) || !SCHEME.test(raw));
   };
 
+  const cwd = (): string | undefined => sc.sessions.value.find((one) => one.key === sc.sessionKey.value)?.cwd;
+
+  function describe(href: string, { base }: LinkOpenOptions = {}): string | undefined {
+    const raw = href.trim();
+    if (!raw || !owns(raw) || WEB.test(raw)) return raw || undefined;
+    const path = pathOf(raw);
+    if (/^[/~]/.test(path)) return homePath(path);
+    return homePath(decodeURIComponent(new URL(path, `file://${base ?? cwd() ?? ""}/`).pathname));
+  }
+
   async function open(href: string, { base }: LinkOpenOptions = {}): Promise<void> {
     const raw = href.trim();
     const key = sc.sessionKey.value;
@@ -41,9 +52,8 @@ export function useLinks(): Links {
         follow.show({ key, slug: (await web.open(raw, { reuse: true })).slug });
         return;
       }
-      const cwd = sc.sessions.value.find((one) => one.key === key)?.cwd;
       const got = await $fetch<FileOpenReply>("/api/files/open", {
-        body: { base: base ?? cwd, path: pathOf(raw), session: key },
+        body: { base: base ?? cwd(), path: pathOf(raw), session: key },
         method: "POST",
       });
       if (got.at === "files") {
@@ -62,5 +72,5 @@ export function useLinks(): Links {
     }
   }
 
-  return { open, owns };
+  return { describe, open, owns };
 }

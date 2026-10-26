@@ -40,6 +40,7 @@
   --mascot-eye: #ffffff;
   /* VS Code's file icon colours, which make the marks recognisable at a glance; same carve-out as the mark. */
   --file-html: #e37933;
+  --file-ipynb: #f37726;
   --file-md: #519aba;
 
   /* The props are objects, not the brand, so they carry object colours and only the body is coral. */
@@ -75,6 +76,7 @@
   --color-mascot: var(--mascot);
   --color-mascot-eye: var(--mascot-eye);
   --color-file-html: var(--file-html);
+  --color-file-ipynb: var(--file-ipynb);
   --color-file-md: var(--file-md);
   --color-prop-dark: var(--prop-dark);
   --color-prop-screen: var(--prop-screen);

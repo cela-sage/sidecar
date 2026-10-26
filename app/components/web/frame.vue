@@ -1,9 +1,8 @@
 <script lang="ts" setup>
 import { useEventListener } from "@vueuse/core";
 import type { FrameAnchor, FrameHit, FrameMark, ViewBox, ViewRect } from "~/types/frame";
+import type { FindTarget } from "~/stores/find";
 import type { ProxyPlace } from "~~/lib/web/host";
-import { isTyping } from "~~/lib/web/page/blocks";
-import { findOf, isAddressKey, stepOf } from "~~/lib/web/page/keys";
 import type { CommentOffer } from "~/composables/useChrome";
 import {
   type AgentMessage,
@@ -108,19 +107,32 @@ if (shellApi) {
   const offClosed = shellApi.onPopupClosed((id) => {
     if (popup.value?.id === id) popup.value = undefined;
   });
-  const detach = find.attach({
+  const target: FindTarget = {
     clear: () => view.value?.stopFindInPage("clearSelection"),
     focus: () => view.value?.focus(),
     search: (query, { forward, fresh }) => {
       if (view.value) sought = view.value.findInPage(query, { findNext: fresh, forward });
     },
     stop: () => view.value?.stopFindInPage("keepSelection"),
-  });
+  };
+  let detach: (() => void) | undefined;
+  watch(
+    shown,
+    (on) => {
+      detach?.();
+      detach = on ? find.attach(target) : undefined;
+    },
+    { immediate: true },
+  );
   onUnmounted(() => {
     offOpen();
     offClosed();
-    detach();
+    detach?.();
   });
+}
+
+function onTarget({ url }: { url: string }): void {
+  artifact.link = url || undefined;
 }
 
 function onFound({ result }: FoundInPage): void {
@@ -297,6 +309,9 @@ function receive(message: Envelope<AgentMessage>): void {
     case "layout":
       onLayout(message);
       return;
+    case "link":
+      artifact.link = message.url && realUrl(message.url);
+      return;
     case "page": {
       const address = realUrl(message.page.url);
       if (!address) return;
@@ -332,17 +347,7 @@ useEventListener(window, "message", (event: MessageEvent<Partial<Envelope<AgentM
   receive(event.data as Envelope<AgentMessage>);
 });
 
-// With the sidecar focused, ⌘R, ⌘[, ⌘L and ⌘F would act on the sidecar itself rather than the page in it.
-useEventListener(window, "keydown", (event: KeyboardEvent) => {
-  if (!shown.value || !(event.metaKey || event.ctrlKey)) return;
-  const by = isTyping(event.target) ? undefined : stepOf(event);
-  const seek = findOf(event);
-  if (event.key.toLowerCase() === "r" && !event.shiftKey) web.reload();
-  else if (by) web.step(by);
-  else if (isAddressKey(event)) web.askAddress();
-  else if (!seek || !SEEK[seek]()) return;
-  event.preventDefault();
-});
+useBrowserKeys();
 
 watch(chrome.comment.armed, (armed) => post({ type: "arm", armed }));
 watch(look.theme, (theme) => post({ type: "theme", theme }));
@@ -406,6 +411,7 @@ watch(
       @dom-ready="onReady"
       @found-in-page="onFound"
       @ipc-message="onIpc"
+      @update-target-url="onTarget"
     />
     <UiStateMessage v-if="web.state === 'starting'" align="center" class="pending" kind="loading">
       Opening the page…

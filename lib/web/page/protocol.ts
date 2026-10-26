@@ -51,6 +51,7 @@ export type AgentMessage =
   | { type: "down"; url: string }
   | { type: "key"; key: WebKey }
   | { type: "layout"; anchors: FrameAnchor[]; hot?: WebHit; marks: FrameMark[]; picked?: WebHit }
+  | { type: "link"; url?: string }
   | { type: "page"; how: WebArrival; page: WebPage }
   | { type: "pick"; hit: WebHit }
   | { type: "ready" }

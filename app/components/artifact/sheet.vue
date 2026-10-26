@@ -2,7 +2,7 @@
 import type { SurfaceVariant } from "@cela/design";
 import { EASE_CSS, MOTION_DURATION, prefersReducedMotion } from "@cela/design/utils/motion";
 import { Maximize2, Minimize2, PanelLeft, Send } from "@lucide/vue";
-import { useEventListener } from "@vueuse/core";
+import { useElementHover, useEventListener, useFocusWithin } from "@vueuse/core";
 import type { ComponentPublicInstance } from "vue";
 import { isTyping } from "~~/lib/web/page/blocks";
 import type { ArtifactKind } from "~~/shared/types/artifact";
@@ -20,10 +20,12 @@ type Box = { height: number; left: number; top: number; width: number };
 const GROW = { duration: MOTION_DURATION.slow, easing: EASE_CSS.drawer } satisfies KeyframeAnimationOptions;
 const SHRINK = { duration: MOTION_DURATION.base, easing: EASE_CSS.drawer } satisfies KeyframeAnimationOptions;
 const LIST: Partial<Record<Face, string>> = { artifacts: "Artifacts", files: "Files" };
+const PEEK_MS = 1200;
 
 const sc = useSidecar();
 const chrome = useChrome();
 const artifact = $artifact();
+const find = $find();
 const notes = $notes();
 const tray = useTray();
 const shown = useFaceShown();
@@ -33,14 +35,38 @@ const isGrown = ref(false);
 const slot = useTemplateRef<HTMLElement>("slot");
 const preview = useTemplateRef<ComponentPublicInstance>("preview");
 const read = useTemplateRef<HTMLElement>("read");
+const head = useTemplateRef<HTMLElement>("head");
+const edge = useTemplateRef<HTMLElement>("edge");
 const hasBar = computed(() => !!(path && slug && conversation));
+const isShell = !!(window as { sidecarShell?: unknown }).sidecarShell;
+const isOverHead = useElementHover(head);
+const isOverEdge = useElementHover(edge);
+const { focused: isFocusedIn } = useFocusWithin(head);
+const isPeeking = ref(false);
+// The bar stays while anything in it is in use, or a field would slide away under the caret.
+const isTucked = computed(
+  () => isGrown.value && !isPeeking.value && !isFocusedIn.value && !artifact.isListed && !find.isOpen,
+);
+let tuck: ReturnType<typeof setTimeout> | undefined;
+
+function peek(linger: number = MOTION_DURATION.slow): void {
+  isPeeking.value = true;
+  clearTimeout(tuck);
+  tuck = setTimeout(() => (isPeeking.value = isOverHead.value || isOverEdge.value), linger);
+}
+
+watch([isOverHead, isOverEdge], ([over, near]) => {
+  if (over || near) {
+    clearTimeout(tuck);
+    isPeeking.value = true;
+  } else if (isPeeking.value) peek();
+});
 // Glass only when grown, since a raised pill in the sheet's header reads as one more of the app's islands.
 const pill = computed<SurfaceVariant>(() => (isGrown.value ? "glass-liquid" : "sunken"));
 const list = computed(() => LIST[chrome.view.current.value] ?? "Artifacts");
-const title = computed(() => {
-  const meta = slug ? sc.catalogue.value.find((one) => one.slug === slug) : undefined;
-  return meta?.title || (slug ? deslug(slug) : path ? basename(path) : "");
-});
+const meta = computed(() => (slug ? sc.catalogue.value.find((one) => one.slug === slug) : undefined));
+const title = computed(() => meta.value?.title || (slug ? deslug(slug) : path ? basename(path) : ""));
+const format = computed(() => meta.value?.format);
 // Where the reading starts at rest, which the grown sheet eases its padding from so the words never jump.
 let rest = { offset: 0, radius: "0px" };
 let growth: Animation | undefined;
@@ -79,6 +105,7 @@ async function expand(): Promise<void> {
   };
   isExpanded.value = true;
   isGrown.value = true;
+  peek(PEEK_MS);
   await nextTick();
   if (prefersReducedMotion()) return;
   growth?.cancel();
@@ -148,6 +175,7 @@ useEventListener(window, "keydown", (event: KeyboardEvent) => {
   if (isPlain && event.key.toLowerCase() === "f") artifact.toggleFull();
 });
 onBeforeUnmount(() => {
+  clearTimeout(tuck);
   artifact.isFull = false;
   artifact.canGrow = false;
 });
@@ -161,16 +189,21 @@ onBeforeUnmount(() => {
       data-region="artifact-sheet"
       :data-expanded="isExpanded"
       :data-grown="isGrown"
+      :data-shell="isShell"
+      :data-tucked="isTucked"
       pad="none"
       variant="raised"
     >
+      <div v-if="isGrown" ref="edge" class="edge" aria-hidden="true" />
       <!-- One header grown or not, so the title island and an address being typed in it survive the switch. -->
       <header
         v-if="isExpanded || hasBar"
+        ref="head"
         class="head"
         :data-bare="!hasBar"
         :data-grown="isGrown"
         :data-region="isGrown ? 'full-island' : 'sheet-bar'"
+        :data-tucked="isTucked"
       >
         <UiSurface class="island nav" data-region="nav-island" pad="none" shape="pill" variant="glass-liquid">
           <ChromeAction
@@ -183,7 +216,7 @@ onBeforeUnmount(() => {
           />
         </UiSurface>
         <div class="middle">
-          <ArtifactAddress v-if="kind === 'web' && slug && conversation" :slug="slug" :variant="pill" />
+          <ArtifactAddress v-if="slug && conversation" :slug="slug" :variant="pill" />
           <UiSurface v-else class="island named" data-region="title-island" pad="none" shape="pill" :variant="pill">
             <span class="name">{{ title }}</span>
           </UiSurface>
@@ -227,7 +260,7 @@ onBeforeUnmount(() => {
         </span>
       </header>
       <template v-if="path && slug && conversation">
-        <div ref="read" class="read" :data-kind="kind">
+        <div ref="read" class="read" :data-format="format" :data-kind="kind">
           <WebReader v-if="kind === 'web'" :conversation="conversation" :slug="slug" />
           <ArtifactReader v-else :conversation="conversation" :slug="slug" />
         </div>
@@ -235,6 +268,7 @@ onBeforeUnmount(() => {
       <div v-else ref="read" class="read" data-kind="files">
         <slot />
       </div>
+      <ArtifactLinkStatus />
     </UiSurface>
   </div>
 </template>
@@ -246,7 +280,7 @@ onBeforeUnmount(() => {
 }
 
 .preview {
-  @apply flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
+  @apply relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden;
 }
 
 /* Fixed, so it fills the window past the shell's max width; the header sits above the page, never over it. */
@@ -269,6 +303,27 @@ onBeforeUnmount(() => {
 
 .preview[data-expanded="true"] .head {
   @apply z-30;
+}
+
+.head[data-grown="true"] {
+  @apply absolute inset-x-0 top-0 bg-canvas shadow-sm transition-[translate,opacity] duration-(--duration-fast) ease-out;
+}
+
+.head[data-tucked="true"] {
+  @apply pointer-events-none -translate-y-full opacity-0 shadow-none;
+}
+
+.edge {
+  @apply absolute inset-x-0 top-0 z-31 h-8;
+}
+
+/* A webview composites over the sidecar's own DOM, so on the desktop surface the bar pushes a live site down instead. */
+.preview[data-shell="true"][data-grown="true"] .read[data-kind="web"] {
+  @apply pt-14 transition-[padding] duration-(--duration-base) ease-out;
+}
+
+.preview[data-shell="true"][data-tucked="true"] .read[data-kind="web"] {
+  @apply pt-8;
 }
 
 .island {
@@ -348,11 +403,14 @@ onBeforeUnmount(() => {
 }
 
 /* A file brings its own bar and scrolls itself, so the sheet only lends it the room. */
-.read[data-kind="files"] {
+.read[data-kind="files"],
+.read[data-format="media"] {
   @apply flex flex-col overflow-hidden p-0;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .head,
+  .read,
   .middle,
   .nav,
   .face,

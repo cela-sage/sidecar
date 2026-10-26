@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import type { FrameAnchor, FrameMark, FramePending } from "~/types/frame";
-import { measure, readAnchors, readPending } from "~~/lib/web/page/blocks";
+import { framesIn, measure, readAnchors, readPending } from "~~/lib/web/page/blocks";
 
 const {
   canAsk = false,
@@ -37,7 +37,6 @@ const SUPPRESS_ID = "sidecar-suppress";
 const EDIT_ID = "sidecar-edit";
 
 const look = useTheme();
-const links = useLinks();
 
 const frame = ref<HTMLIFrameElement>();
 const height = ref(0);
@@ -58,21 +57,21 @@ const pick = useCommentPick({
   owner: () => ({ canAsk, canEdit, file, slug }),
 });
 
+const docs = (): Document[] => {
+  const root = frame.value?.contentDocument;
+  return root ? framesIn(root) : [];
+};
+
+const browser = useBrowserFrame({ base: () => file && file.slice(0, file.lastIndexOf("/")), docs });
+
 function reset(): void {
   loadGen += 1;
   loaded.value = false;
   height.value = 0;
   pick.detach();
+  browser.detach();
   emit("anchors", []);
   emit("pending", []);
-}
-
-// Followed in place, a link would navigate the artifact out of its own frame.
-function onLink(event: MouseEvent): void {
-  const href = (event.target as Element | undefined)?.closest?.("a[href]")?.getAttribute("href") ?? "";
-  if (!links.owns(href)) return;
-  event.preventDefault();
-  void links.open(href, { base: file && file.slice(0, file.lastIndexOf("/")) });
 }
 
 function onLoad(): void {
@@ -82,7 +81,7 @@ function onLoad(): void {
   syncTheme(doc);
   suppressPageChrome(doc);
   injectEditStyle(doc);
-  doc.addEventListener("click", onLink, true);
+  browser.attach();
   pick.attach();
   loaded.value = true;
   void nextTick(() => {
@@ -120,7 +119,7 @@ watch(look.theme, () => {
 
 watch(() => [edition, html, slug, version], reset);
 
-defineExpose({ clearPick: pick.clearPick });
+defineExpose({ clearPick: pick.clearPick, docs, element: (): HTMLIFrameElement | undefined => frame.value });
 </script>
 
 <template>

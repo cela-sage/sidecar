@@ -52,6 +52,7 @@ let holdCode: string | undefined;
 let theme: string | undefined;
 let indexed: Indexed[] = [];
 let hot: Element | undefined;
+let linked = "";
 let picked: { el: Element; path: string; text: string } | undefined;
 let selectedIn: Document | undefined;
 let stale = true;
@@ -293,6 +294,13 @@ function bind(doc: Document): void {
     hot = undefined;
     schedule();
   });
+  doc.addEventListener("mouseover", (event) => {
+    const href = (event.target as Element | undefined)?.closest?.("a[href]")?.getAttribute("href");
+    const url = href && URL.canParse(href, doc.baseURI) ? new URL(href, doc.baseURI).href : "";
+    if (url === linked) return;
+    linked = url;
+    post({ type: "link", url: url || undefined });
+  });
   // The selection settles after the release, so it is read on the next frame.
   win.addEventListener("pointerup", () => requestAnimationFrame(() => postSelection(doc)), true);
   doc.addEventListener("selectionchange", () => {
@@ -343,6 +351,9 @@ function fromChild(from: HTMLIFrameElement, origin: string, message: Envelope<Ag
     }
     case "key":
       post({ type: "key", key: message.key });
+      return;
+    case "link":
+      post({ type: "link", url: message.url });
   }
 }
 

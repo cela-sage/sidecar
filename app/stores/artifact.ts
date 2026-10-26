@@ -8,6 +8,7 @@ export const $artifact = defineStore(() => {
   const isListed = ref(false);
   // Slugs are unique across the catalogue, so one record serves every conversation.
   const openedAt = useLocalStorage<Record<string, number>>("sc:opened", {});
+  const link = ref<string>();
 
   watch(isFull, (full) => {
     if (!full) isListed.value = false;
@@ -21,5 +22,5 @@ export const $artifact = defineStore(() => {
     openedAt.value = { ...openedAt.value, [slug]: Date.now() };
   }
 
-  return { canGrow, isFull, isListed, markOpened, openedAt, toggleFull };
+  return { canGrow, isFull, isListed, link, markOpened, openedAt, toggleFull };
 });

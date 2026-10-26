@@ -20,6 +20,10 @@ export function parseTarget(raw: string): URL | undefined {
   }
 }
 
+export function isLocalPath(raw: string): boolean {
+  return /^(file:|~(\/|$)|\/)/i.test(raw.trim());
+}
+
 /** Where typing it in an address bar goes: the address it names, or a search for it. */
 export function addressOf(raw: string): URL | undefined {
   const typed = raw.trim();

@@ -3,8 +3,8 @@ import { useElementSize } from "@vueuse/core";
 import type { FrameAnchor, FrameMark } from "~/types/frame";
 import { OneDarkVivid } from "~/utils/monaco/one-dark-vivid";
 import type { PreviewScroll } from "~/utils/preview";
+import { framesIn, measure, readAnchors } from "~~/lib/web/page/blocks";
 import type { FileKind } from "~~/shared/utils/file-kind";
-import { measure, readAnchors } from "~~/lib/web/page/blocks";
 
 const {
   file,
@@ -27,7 +27,6 @@ const emit = defineEmits<{
 }>();
 
 const look = useTheme();
-const links = useLinks();
 const scroller = useTemplateRef<HTMLElement>("scroller");
 const content = useTemplateRef<HTMLElement>("content");
 const frame = ref<HTMLIFrameElement>();
@@ -111,6 +110,14 @@ function frameDoc(): Document | undefined {
   return kind === "pdf" ? undefined : (frame.value?.contentDocument ?? undefined);
 }
 
+const browser = useBrowserFrame({
+  base: () => file && file.slice(0, file.lastIndexOf("/")),
+  docs: () => {
+    const root = frameDoc();
+    return root ? framesIn(root) : [];
+  },
+});
+
 // CSS zoom on the page's root reflows it the way the browser's own zoom does.
 function zoomFrame(): void {
   const doc = frameDoc();
@@ -121,6 +128,7 @@ function unhook(): void {
   for (const off of teardown) off();
   teardown = [];
   pick.detach();
+  browser.detach();
 }
 
 function onFrameLoad(): void {
@@ -139,23 +147,15 @@ function onFrameLoad(): void {
     zoom.value = Preview.pinch(zoom.value, event.deltaY);
   };
   const onEngage = (): void => emit("engage");
-  // Followed in place, a link would leave the file behind.
-  const onClick = (event: MouseEvent): void => {
-    const href = event.target instanceof Element ? event.target.closest("a[href]")?.getAttribute("href") : undefined;
-    if (!href || !links.owns(href)) return;
-    event.preventDefault();
-    void links.open(href, { base: file && file.slice(0, file.lastIndexOf("/")) });
-  };
   win.addEventListener("wheel", onFrameWheel, { passive: false });
   win.addEventListener("scroll", onScroll, { passive: true });
   doc.addEventListener("pointerdown", onEngage);
-  doc.addEventListener("click", onClick, true);
   teardown.push(() => {
     win.removeEventListener("wheel", onFrameWheel);
     win.removeEventListener("scroll", onScroll);
     doc.removeEventListener("pointerdown", onEngage);
-    doc.removeEventListener("click", onClick, true);
   });
+  browser.attach();
   if (file) pick.attach();
 }
 
@@ -182,7 +182,7 @@ watch(look.theme, (theme) => {
 
 onBeforeUnmount(unhook);
 
-defineExpose({ follow });
+defineExpose({ follow, scrollerOf });
 </script>
 
 <template>
