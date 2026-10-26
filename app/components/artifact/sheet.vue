@@ -183,7 +183,7 @@ onBeforeUnmount(() => {
           />
         </UiSurface>
         <div class="middle">
-          <WebTitle v-if="kind === 'web' && slug && conversation" :slug="slug" :variant="pill" />
+          <ArtifactAddress v-if="kind === 'web' && slug && conversation" :slug="slug" :variant="pill" />
           <UiSurface v-else class="island named" data-region="title-island" pad="none" shape="pill" :variant="pill">
             <span class="name">{{ title }}</span>
           </UiSurface>

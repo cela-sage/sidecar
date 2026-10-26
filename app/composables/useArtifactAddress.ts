@@ -1,13 +1,13 @@
 import type { ComputedRef, MaybeRefOrGetter, Ref } from "vue";
 import { addressOf } from "~~/lib/web/target";
 
-export interface WebAddressOptions {
+export interface ArtifactAddressOptions {
   /** Puts the caret in the field once it shows, the URL selected so typing replaces it. */
   focus: () => void;
   slug: MaybeRefOrGetter<string>;
 }
 
-export interface WebAddress {
+export interface ArtifactAddress {
   address: ComputedRef<string>;
   cancel: () => void;
   commit: () => void;
@@ -19,7 +19,7 @@ export interface WebAddress {
   page: ComputedRef<string>;
 }
 
-export function useWebAddress({ focus, slug }: WebAddressOptions): WebAddress {
+export function useArtifactAddress({ focus, slug }: ArtifactAddressOptions): ArtifactAddress {
   const sc = useSidecar();
   const web = $web();
   const isEditing = ref(false);

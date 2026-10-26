@@ -10,7 +10,7 @@ const find = $find();
 const field = useTemplateRef<HTMLInputElement>("field");
 const seek = useTemplateRef<HTMLElement>("seek");
 const scrolled = ref(0);
-const { address, cancel, commit, draft, edit, host, isEditing, openOut, page } = useWebAddress({
+const { address, cancel, commit, draft, edit, host, isEditing, openOut, page } = useArtifactAddress({
   focus: () => {
     field.value?.focus();
     field.value?.select();
