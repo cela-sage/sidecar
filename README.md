@@ -81,7 +81,9 @@ host, or a file's name and folder, and ⌘L edits it: an address or a search ope
 `file:///…` opens the file, which Open a URL above the list takes as well. Back, forward and reload show only
 for a site, since a file refreshes itself, and ⌘R reads either again. Hovering a link shows where it goes in
 the bottom left corner, the path as `~/…` for a file, cut in the middle when it is long so the host and the
-file name both stay in view. The open-outside action sends a site to your browser and a file to its own app.
+file name both stay in view. Resting on a web link for a moment grows that address into a card with the
+page's title, description, image and site, read off its head by `/api/web/preview`, which a remote page's
+link to this machine never reaches, the same line the proxy draws. The open-outside action sends a site to your browser and a file to its own app.
 Fullscreen hides the bar until the pointer reaches the top edge of the window, and keeps it while you type in
 it, find, or have the list open.
 
@@ -233,7 +235,7 @@ sidecar at the conversation that tab switches to, so a terminal tab switch count
 
 Whether a move by typing or by Terminal's tab switches the sidecar is the switching mode, picked from the
 island beside the theme toggle and remembered per window. Ask to switch, the default, shows a card in the
-bottom left with the conversation's name, folder and what it is doing, which switches there when pressed and
+bottom left, over everything else including a fullscreen artifact, with the conversation's name, folder and what it is doing, which switches there when pressed and
 stays until pressed, dismissed or no longer needed, asking once per move so typing on in that conversation
 doesn't bring a dismissed card back. Auto switch moves straight there, as the sidecar always did, and Manual
 switch never moves on its own. An explicit `/sidecar` or `sidecar open` always lands whatever the mode, and so

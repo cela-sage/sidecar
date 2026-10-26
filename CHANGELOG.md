@@ -7,6 +7,21 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.20.0
+
+### Added
+
+- **A hovered web link previews its page.** Resting on it grows the address in the bottom left into a small card
+  with the page's title, description, image and site.
+
+### Changed
+
+- **The rule asks for `.md`, `.html` or `.ipynb` over any other format,** since only these list in the Artifacts.
+
+### Fixed
+
+- **The card asking to switch conversation shows over everything,** a fullscreen artifact and its veil included.
+
 ## 0.19.1
 
 ### Fixed
