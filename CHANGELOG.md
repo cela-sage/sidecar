@@ -7,6 +7,14 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.19.1
+
+### Fixed
+
+- **The hidden fullscreen bar leaves nothing behind.** The page itself says when the pointer reaches the window's
+  top edge, so no strip sits over its top to catch it, the desktop app no longer pads a live site with a blank
+  band, and the bar once shown takes every click across its width.
+
 ## 0.19.0
 
 ### Added

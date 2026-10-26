@@ -1,3 +1,6 @@
+import { originIn } from "~~/lib/web/page/blocks";
+import { TOP_EDGE } from "~~/lib/web/page/protocol";
+
 export interface BrowserFrameOptions {
   base: () => string | undefined;
   docs: () => Document[];
@@ -36,14 +39,20 @@ export function useBrowserFrame({ base, docs }: BrowserFrameOptions): BrowserFra
     const onKey = (event: KeyboardEvent): void => {
       if (key?.(event)) event.preventDefault();
     };
+    // A frame keeps the pointer from the sidecar's window, so it says itself when the pointer nears the top edge.
+    const onMove = (event: MouseEvent): void => {
+      artifact.isNearTop = originIn(doc, document).y + event.clientY < TOP_EDGE;
+    };
     doc.addEventListener("click", onClick, true);
     doc.addEventListener("mouseover", onOver);
     doc.addEventListener("mouseout", onOut);
+    doc.addEventListener("mousemove", onMove, { passive: true });
     doc.addEventListener("keydown", onKey);
     unbind.push(() => {
       doc.removeEventListener("click", onClick, true);
       doc.removeEventListener("mouseover", onOver);
       doc.removeEventListener("mouseout", onOut);
+      doc.removeEventListener("mousemove", onMove);
       doc.removeEventListener("keydown", onKey);
     });
   }

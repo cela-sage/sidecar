@@ -5,6 +5,7 @@ import { Maximize2, Minimize2, PanelLeft, Send } from "@lucide/vue";
 import { useElementHover, useEventListener, useFocusWithin } from "@vueuse/core";
 import type { ComponentPublicInstance } from "vue";
 import { isTyping } from "~~/lib/web/page/blocks";
+import { TOP_EDGE } from "~~/lib/web/page/protocol";
 import type { ArtifactKind } from "~~/shared/types/artifact";
 
 const { conversation, kind, path, slug } = defineProps<{
@@ -36,11 +37,9 @@ const slot = useTemplateRef<HTMLElement>("slot");
 const preview = useTemplateRef<ComponentPublicInstance>("preview");
 const read = useTemplateRef<HTMLElement>("read");
 const head = useTemplateRef<HTMLElement>("head");
-const edge = useTemplateRef<HTMLElement>("edge");
 const hasBar = computed(() => !!(path && slug && conversation));
 const isShell = !!(window as { sidecarShell?: unknown }).sidecarShell;
 const isOverHead = useElementHover(head);
-const isOverEdge = useElementHover(edge);
 const { focused: isFocusedIn } = useFocusWithin(head);
 const isPeeking = ref(false);
 // The bar stays while anything in it is in use, or a field would slide away under the caret.
@@ -52,10 +51,14 @@ let tuck: ReturnType<typeof setTimeout> | undefined;
 function peek(linger: number = MOTION_DURATION.slow): void {
   isPeeking.value = true;
   clearTimeout(tuck);
-  tuck = setTimeout(() => (isPeeking.value = isOverHead.value || isOverEdge.value), linger);
+  tuck = setTimeout(() => (isPeeking.value = isOverHead.value || artifact.isNearTop), linger);
 }
 
-watch([isOverHead, isOverEdge], ([over, near]) => {
+useEventListener(window, "pointermove", (event: PointerEvent) => {
+  if (isGrown.value) artifact.isNearTop = event.clientY < TOP_EDGE;
+});
+
+watch([isOverHead, () => artifact.isNearTop], ([over, near]) => {
   if (over || near) {
     clearTimeout(tuck);
     isPeeking.value = true;
@@ -118,6 +121,7 @@ async function expand(): Promise<void> {
 
 async function collapse(): Promise<void> {
   isGrown.value = false;
+  artifact.isNearTop = false;
   const pane = preview.value?.$el;
   if (!(pane instanceof HTMLElement) || !slot.value || !isExpanded.value || prefersReducedMotion()) {
     isExpanded.value = false;
@@ -194,7 +198,6 @@ onBeforeUnmount(() => {
       pad="none"
       variant="raised"
     >
-      <div v-if="isGrown" ref="edge" class="edge" aria-hidden="true" />
       <!-- One header grown or not, so the title island and an address being typed in it survive the switch. -->
       <header
         v-if="isExpanded || hasBar"
@@ -313,17 +316,13 @@ onBeforeUnmount(() => {
   @apply pointer-events-none -translate-y-full opacity-0 shadow-none;
 }
 
-.edge {
-  @apply absolute inset-x-0 top-0 z-31 h-8;
-}
-
 /* A webview composites over the sidecar's own DOM, so on the desktop surface the bar pushes a live site down instead. */
 .preview[data-shell="true"][data-grown="true"] .read[data-kind="web"] {
-  @apply pt-14 transition-[padding] duration-(--duration-base) ease-out;
+  @apply pt-14 transition-[padding] duration-(--duration-fast) ease-out;
 }
 
 .preview[data-shell="true"][data-tucked="true"] .read[data-kind="web"] {
-  @apply pt-8;
+  @apply pt-0;
 }
 
 .island {

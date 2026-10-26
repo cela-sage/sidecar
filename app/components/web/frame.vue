@@ -10,6 +10,7 @@ import {
   type Envelope,
   type FindKey,
   type SidecarMessage,
+  TOP_EDGE,
   type WebHit,
   type WebKey,
   type WebSelection,
@@ -311,6 +312,9 @@ function receive(message: Envelope<AgentMessage>): void {
       return;
     case "link":
       artifact.link = message.url && realUrl(message.url);
+      return;
+    case "top":
+      artifact.isNearTop = message.near && (rect()?.top ?? TOP_EDGE) < TOP_EDGE;
       return;
     case "page": {
       const address = realUrl(message.page.url);

@@ -3,6 +3,8 @@ import type { FrameAnchor, FrameMark, PageBox } from "./blocks.ts";
 
 export const CHANNEL = "sidecar-web";
 
+export const TOP_EDGE = 32;
+
 /** A block in the page's own viewport, which the sidecar offsets by where its frame sits. */
 export interface WebHit {
   height: number;
@@ -52,6 +54,7 @@ export type AgentMessage =
   | { type: "key"; key: WebKey }
   | { type: "layout"; anchors: FrameAnchor[]; hot?: WebHit; marks: FrameMark[]; picked?: WebHit }
   | { type: "link"; url?: string }
+  | { type: "top"; near: boolean }
   | { type: "page"; how: WebArrival; page: WebPage }
   | { type: "pick"; hit: WebHit }
   | { type: "ready" }

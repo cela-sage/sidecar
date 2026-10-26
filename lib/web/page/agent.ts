@@ -22,6 +22,7 @@ import {
   CHANNEL,
   type Envelope,
   type SidecarMessage,
+  TOP_EDGE,
   type WebHit,
   type WebSelection,
 } from "./protocol.ts";
@@ -53,6 +54,7 @@ let theme: string | undefined;
 let indexed: Indexed[] = [];
 let hot: Element | undefined;
 let linked = "";
+let isNearTop = false;
 let picked: { el: Element; path: string; text: string } | undefined;
 let selectedIn: Document | undefined;
 let stale = true;
@@ -246,6 +248,12 @@ function onKeyDown(event: KeyboardEvent): void {
   }
 }
 
+function nearTop(near: boolean): void {
+  if (near === isNearTop) return;
+  isNearTop = near;
+  post({ type: "top", near });
+}
+
 function bind(doc: Document): void {
   const win = doc.defaultView;
   if (!win || bound.has(doc)) return;
@@ -279,6 +287,7 @@ function bind(doc: Document): void {
     "mousemove",
     (event) => {
       resting = event.target ?? undefined;
+      if (doc === document && !nested) nearTop(event.clientY < TOP_EDGE);
       if (event.altKey !== wide) post({ type: "key", key: event.altKey ? "wide" : "narrow" });
       widen(event.altKey);
       if (!armed) return;
@@ -292,6 +301,7 @@ function bind(doc: Document): void {
   doc.addEventListener("mouseleave", () => {
     resting = undefined;
     hot = undefined;
+    if (doc === document) nearTop(false);
     schedule();
   });
   doc.addEventListener("mouseover", (event) => {
