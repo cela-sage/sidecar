@@ -1,6 +1,7 @@
 import z from "zod";
 import { readArtifact, writeArtifact } from "~~/server/utils/artifacts";
 import { Edits } from "~~/server/utils/edits";
+import { TaskLane } from "~~/server/utils/tasks/lane";
 import type { ArtifactEditReply } from "~~/shared/types/artifact";
 
 const Body = z.object({
@@ -33,5 +34,9 @@ export default defineEventHandler(async (event): Promise<ArtifactEditReply> => {
   }
 
   await writeArtifact({ path: source.path, text: outcome.text });
+  if (body.action === "accept" && source.task) {
+    const file = { path: source.path, slug: source.slug, title: source.title, task: source.task };
+    TaskLane.edited({ file, before: source.text, after: outcome.text });
+  }
   return { id: outcome.id };
 });

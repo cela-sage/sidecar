@@ -1,6 +1,7 @@
 import { mkdirSync, watch } from "node:fs";
 import { basename, dirname } from "node:path";
 import * as Events from "~~/lib/sidecar/events.ts";
+import { EventListeners } from "~~/server/utils/listeners";
 
 // Each SSE message is named after its topic and carries its offset as the id, so a browser's own reconnect resumes it.
 export default defineEventHandler((event): Promise<void> => {
@@ -27,7 +28,11 @@ export default defineEventHandler((event): Promise<void> => {
     if (name === basename(Events.logFile())) emit();
   });
   watcher.on("error", () => watcher.close());
-  stream.onClosed(() => watcher.close());
+  const leave = EventListeners.join();
+  stream.onClosed(() => {
+    watcher.close();
+    leave();
+  });
   emit();
   // Hands a consumer that saw no event yet the offset it resumes from after a reconnect.
   void stream.push({ id: String(offset), event: "ready", data: String(offset) });
