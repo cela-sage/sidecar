@@ -7,6 +7,7 @@ import {
   writeComments,
 } from "../../lib/sidecar/comments.ts";
 import { readRecord, writeRecord } from "../../lib/web/records.ts";
+import { Ask } from "./tasks/ask.ts";
 
 export const RV_SEED = /<script type="application\/json" id="rv-seed">([\s\S]*?)<\/script>/;
 export const MD_SEED_START = "<!-- rv:seed\n";
@@ -41,6 +42,7 @@ function toThread(raw: unknown): ReviewThread | undefined {
   const replies = Array.isArray(raw.replies)
     ? raw.replies.map(toReply).filter((r): r is ThreadReply => Boolean(r))
     : [];
+  const ask = Ask.parse(raw.ask);
   return {
     id: raw.id,
     n: raw.n,
@@ -51,6 +53,7 @@ function toThread(raw: unknown): ReviewThread | undefined {
     status: raw.status === "resolved" ? "resolved" : "open",
     anchor: toAnchor(raw.anchor),
     replies,
+    ...(ask ? { ask } : {}),
   };
 }
 

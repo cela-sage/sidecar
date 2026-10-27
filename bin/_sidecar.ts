@@ -10,9 +10,22 @@ import { SidecarConfig } from "../lib/sidecar/config.ts";
 import { Sidecar } from "../lib/sidecar/paths.ts";
 import * as Events from "../lib/sidecar/events.ts";
 import type { Topics } from "../shared/types/events.ts";
+import { TaskCommand } from "./task.ts";
 
 type Command =
-  "open" | "comments" | "publish" | "status" | "start" | "stop" | "restart" | "update" | "setup" | "uninstall" | "import" | "help";
+  | "open"
+  | "comments"
+  | "task"
+  | "publish"
+  | "status"
+  | "start"
+  | "stop"
+  | "restart"
+  | "update"
+  | "setup"
+  | "uninstall"
+  | "import"
+  | "help";
 type Proc = { pid: number; ppid: number; args: string };
 type Point = { key?: string; slug?: string };
 
@@ -53,6 +66,9 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
               --artifact <slug|url> opens that page there, in Artifacts, an address as a new Web artifact
   comments <slug> [--reply <n> "text"] [--resolve <n> ["what changed"]] [--json]
               read the comment threads on an artifact, and answer or close one
+  task <slug> [state|assign|escalate|hire|judge|decide|done ...]
+              a task's lane: where it stands, its state and project, an escalation or a hire that
+              notifies you, a verdict or a decision, every one kept in its history. sidecar task alone lists the verbs
   setup [desktop|web]
               choose how the sidecar runs and set it up. desktop builds and installs the Electron
               app, so Web artifacts render as real pages signed in with Chrome's cookies; web runs
@@ -523,6 +539,7 @@ const COMMANDS = {
     return open({ key, slug: values.artifact && Commands.artifact(values.artifact, key) });
   },
   comments: async () => Commands.comments(process.argv.slice(3)),
+  task: () => TaskCommand.run(process.argv.slice(3), ADDRESS),
   publish: async () => publish(),
   status,
   start,

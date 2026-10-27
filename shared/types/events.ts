@@ -1,5 +1,10 @@
+import type { AskKind, TaskState, Who } from "./task.ts";
+
 export interface Topics {
   "artifact.created": { slug: string; title: string; path: string };
+  "task.changed": { slug: string; state: TaskState };
+  "task.escalated": { slug: string; title: string; thread: string; kind: AskKind; question: string };
+  "task.decided": { slug: string; thread: string; text: string; who: Who };
 }
 
 export type Topic = keyof Topics;

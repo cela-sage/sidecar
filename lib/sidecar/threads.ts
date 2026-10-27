@@ -155,4 +155,4 @@ const reply = ({ path, n, body, resolve }: { path: string; n: string; body: stri
   return thread;
 };
 
-export const Threads = { ingest, read, render, reply };
+export const Threads = { ingest, read, render, reply, write };

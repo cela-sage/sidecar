@@ -189,7 +189,7 @@ test("the event log resumes from an offset, and a half-written line waits for th
   });
   const { events, offset } = Events.read(before);
   assert.deepEqual(
-    events.map(({ topic, data }) => [topic, data.slug, data.title]),
+    events.map((event) => (event.topic === "artifact.created" ? [event.topic, event.data.slug, event.data.title] : [])),
     [["artifact.created", "announced", "Announced"]],
   );
   appendFileSync(Events.logFile(), '{"topic":"artifact.created"');

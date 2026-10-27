@@ -1,4 +1,4 @@
-import type { ArtifactTask } from "./task.ts";
+import type { ArtifactTask, TaskAsk } from "./task.ts";
 import type { WebTrail } from "./web.ts";
 
 export type ArtifactFormat = "html" | "ipynb" | "md" | "media";
@@ -47,6 +47,7 @@ export interface ReviewThread {
   status: "open" | "resolved";
   anchor?: ThreadAnchor;
   replies: ThreadReply[];
+  ask?: TaskAsk;
 }
 
 export interface ArtifactDetail extends ArtifactMeta {
