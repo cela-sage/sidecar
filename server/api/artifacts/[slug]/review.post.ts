@@ -1,12 +1,5 @@
-import {
-  applyReviewChange,
-  applyStoredReview,
-  applyWebReview,
-  isStoredArtifact,
-  readArtifact,
-  toAnchor,
-  writeArtifact,
-} from "~~/server/utils/artifacts";
+import { isStoredArtifact, readArtifact, writeArtifact } from "~~/server/utils/artifacts";
+import { applyReviewChange, applyStoredReview, applyWebReview, toAnchor } from "~~/server/utils/threads";
 import type { ArtifactReviewReply, ArtifactReviewRequest } from "~~/shared/types/artifact";
 
 function payloadOf(raw: unknown): ArtifactReviewRequest | undefined {

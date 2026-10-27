@@ -6,7 +6,8 @@ import { test } from "node:test";
 import { readComments } from "../../lib/sidecar/comments.ts";
 import { Tracked } from "../../lib/sidecar/tracked.ts";
 import { openRecord, readRecord } from "../../lib/web/records.ts";
-import { applyReviewChange, applyStoredReview, applyWebReview, getArtifact, listArtifacts } from "./artifacts.ts";
+import { getArtifact, listArtifacts } from "./artifacts.ts";
+import { applyReviewChange, applyStoredReview, applyWebReview } from "./threads.ts";
 import { Markdown } from "./markdown/index.ts";
 import { Documents } from "./sessions/artifact-lists.ts";
 

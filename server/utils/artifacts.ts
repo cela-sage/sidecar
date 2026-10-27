@@ -1,47 +1,25 @@
 import { createHash } from "node:crypto";
 import { open, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
-import z from "zod";
-import type {
-  ArtifactDetail,
-  ArtifactFormat,
-  ArtifactKind,
-  ArtifactMeta,
-  ReviewThread,
-  ThreadAnchor,
-  ThreadReply,
-} from "../../shared/types/artifact";
-import { TaskState, type ArtifactTask } from "../../shared/types/task.ts";
+import type { ArtifactDetail, ArtifactFormat, ArtifactKind, ArtifactMeta } from "../../shared/types/artifact";
 import { FileKind } from "../../shared/utils/file-kind.ts";
 import { Sidecar, plansHome } from "../../lib/sidecar/paths.ts";
-import {
-  commentsFile,
-  hasLegacyBlock,
-  isStoredDocument,
-  MD_SEED,
-  readComments,
-  withoutLegacyBlock,
-  writeComments,
-} from "../../lib/sidecar/comments.ts";
+import { commentsFile, isStoredDocument, MD_SEED, readComments } from "../../lib/sidecar/comments.ts";
+import { Stamp } from "../../lib/sidecar/stamp.ts";
 import { Tracked } from "../../lib/sidecar/tracked.ts";
-import { listRecords, readRecord, recordPath, type WebRecord, writeRecord } from "../../lib/web/records.ts";
+import { listRecords, readRecord, recordPath, type WebRecord } from "../../lib/web/records.ts";
 import { Markdown } from "./markdown/index.ts";
 import { NotebookFormat } from "./notebooks/format.ts";
 import { Documents } from "./sessions/artifact-lists.ts";
+import { MD_SEED_START, parseThreads, RV_SEED, threadsOf } from "./threads.ts";
 import { Watched } from "./watched.ts";
 
-const META_BLOCK = /<!--\s*artifact\b([\s\S]*?)-->/;
 const TITLE_TAG = /<title>([\s\S]*?)<\/title>/i;
-const RV_SEED = /<script type="application\/json" id="rv-seed">([\s\S]*?)<\/script>/;
-const MD_SEED_START = "<!-- rv:seed\n";
 const COMMENT = /<!--[\s\S]*?-->/g;
 const FENCE = /^(```|~~~)[\s\S]*?^\1/gm;
 const H1 = /^#[ \t]+(.+?)[ \t#]*$/m;
 const RV_LAYER = /<!-- rv:start -->[\s\S]*?<!-- rv:end -->\n?/;
 export const RV_LAYER_START = /<!-- rv:start -->/;
-type MetaField = "slug" | "title" | "url" | "target" | "ds" | "updated" | "project" | "state" | "lead";
-const META_FIELDS = new Set<MetaField>(["slug", "title", "url", "target", "ds", "updated", "project", "state", "lead"]);
-const TASK_STATE = z.enum(TaskState);
 const HEAD_BYTES = 4000;
 // Slug becomes a filename on disk; reject anything that could climb out of the artifacts dir.
 const SAFE_SLUG = /^[a-zA-Z0-9._-]+$/;
@@ -88,31 +66,8 @@ function titleOf(head: string, format: ArtifactFormat): string {
   return H1.exec(head.replace(COMMENT, "").replace(FENCE, ""))?.[1] || "";
 }
 
-// Mirrors the stamp writer in Mode: a task with no project is unassigned whatever its state line says.
-function taskOf({
-  fields,
-  format,
-}: {
-  fields: Partial<Record<MetaField, string>>;
-  format: ArtifactFormat;
-}): ArtifactTask | undefined {
-  const state = format === "md" ? TASK_STATE.safeParse(fields.state) : undefined;
-  if (!state?.success) return undefined;
-  const { lead, project } = fields;
-  return { state: project ? state.data : "unassigned", ...(project ? { project } : {}), ...(lead ? { lead } : {}) };
-}
-
 function parseMeta({ format, head, fallbackSlug, path }: ParseMetaInput): ArtifactMeta {
-  const fields: Partial<Record<MetaField, string>> = {};
-  const block = META_BLOCK.exec(head)?.[1];
-  if (block) {
-    for (const line of block.split("\n")) {
-      const i = line.indexOf(":");
-      if (i === -1) continue;
-      const key = line.slice(0, i).trim().toLowerCase() as MetaField;
-      if (META_FIELDS.has(key)) fields[key] = line.slice(i + 1).trim();
-    }
-  }
+  const fields = Stamp.fields(head);
   // A document's slug carries a hash, so its own file name reads better than a deslugged fallback.
   const title = fields.title || titleOf(head, format) || (format === "md" ? basename(path, ".md") : "");
   // A local showpiece owns its own doctype; a published one never does, and a .md is never published. Mirrors readMeta in Mode's lib/artifact/store.ts.
@@ -127,7 +82,7 @@ function parseMeta({ format, head, fallbackSlug, path }: ParseMetaInput): Artifa
     path,
     format,
     kind: kindOf(path),
-    task: taskOf({ fields, format }),
+    task: format === "md" ? Stamp.task(fields) : undefined,
   };
 }
 
@@ -154,69 +109,6 @@ const DESCRIBE: Record<ArtifactFormat, (input: DescribeInput) => ArtifactMeta> =
     title: basename(path),
   }),
 };
-
-// external contract: validating the shape of raw JSON.parse output read off disk
-function isRecord(x: unknown): x is Record<string, unknown> {
-  return typeof x === "object" && !!x;
-}
-
-function toReply(raw: unknown): ThreadReply | undefined {
-  if (!isRecord(raw) || typeof raw.id !== "string" || typeof raw.body !== "string") return undefined;
-  return {
-    id: raw.id,
-    by: typeof raw.by === "string" ? raw.by : "user",
-    at: typeof raw.at === "string" ? raw.at : "",
-    body: raw.body,
-  };
-}
-
-export function toAnchor(raw: unknown): ThreadAnchor | undefined {
-  if (!isRecord(raw)) return undefined;
-  const label = typeof raw.label === "string" ? raw.label : undefined;
-  const page = typeof raw.page === "string" ? raw.page : undefined;
-  const quote = typeof raw.quote === "string" ? raw.quote : undefined;
-  const sel = typeof raw.sel === "string" ? raw.sel : undefined;
-  const text = typeof raw.text === "string" ? raw.text : undefined;
-  return label || quote || sel || text ? { label, page, quote, sel, text } : undefined;
-}
-
-function toThread(raw: unknown): ReviewThread | undefined {
-  if (!isRecord(raw) || typeof raw.id !== "string" || typeof raw.n !== "number") return undefined;
-  const replies = Array.isArray(raw.replies)
-    ? raw.replies.map(toReply).filter((r): r is ThreadReply => Boolean(r))
-    : [];
-  return {
-    id: raw.id,
-    n: raw.n,
-    by: typeof raw.by === "string" ? raw.by : "user",
-    at: typeof raw.at === "string" ? raw.at : "",
-    updated: typeof raw.updated === "string" ? raw.updated : undefined,
-    body: typeof raw.body === "string" ? raw.body : "",
-    status: raw.status === "resolved" ? "resolved" : "open",
-    anchor: toAnchor(raw.anchor),
-    replies,
-  };
-}
-
-function seedOf(text: string, format: ArtifactFormat): string | undefined {
-  return format === "md" ? MD_SEED.exec(text)?.[2] : RV_SEED.exec(text)?.[1];
-}
-
-function threadsOf(raw: unknown): ReviewThread[] {
-  return Array.isArray(raw) ? raw.map(toThread).filter((t): t is ReviewThread => Boolean(t)) : [];
-}
-
-function parseThreads(text: string, format: ArtifactFormat): ReviewThread[] {
-  const captured = seedOf(text, format);
-  if (!captured) return [];
-  let doc: unknown;
-  try {
-    doc = JSON.parse(captured);
-  } catch {
-    return []; // a half-written seed block reads as no threads rather than crashing the route
-  }
-  return threadsOf(isRecord(doc) ? doc.threads : undefined);
-}
 
 // The review layer sits after the seed and measures ~30 KB, so the window has to clear it.
 const TAIL_BYTES = 96 * 1024;
@@ -468,146 +360,6 @@ export async function contentSignature({ format, path }: Pick<ArtifactMeta, "for
   const text = await readFile(path, "utf8");
   const shown = format === "md" ? text.replace(MD_SEED, "") : text.replace(RV_LAYER, "").replace(RV_SEED, "");
   return createHash("sha1").update(shown).digest("hex");
-}
-
-function parseSeed(text: string, format: ArtifactFormat): Record<string, unknown> | undefined {
-  // A .md has nothing to install first, so no block is an empty one; an unreadable block is still refused.
-  if (format === "md" && !MD_SEED.test(text)) return { v: 1, threads: [] };
-  const captured = seedOf(text, format);
-  if (!captured) return undefined;
-  try {
-    const doc = JSON.parse(captured) as unknown;
-    return isRecord(doc) ? doc : undefined;
-  } catch {
-    return undefined;
-  }
-}
-
-interface WriteSeedInput {
-  format: ArtifactFormat;
-  seed: Record<string, unknown>;
-  text: string;
-}
-
-// Replacer functions, not strings: a `$&` typed into a comment would otherwise be expanded by String.replace.
-function writeSeed({ format, seed, text }: WriteSeedInput): string {
-  if (format === "md") {
-    // `-->` in a comment body would end the block early; the escape reads back as the same text.
-    const block = `${MD_SEED_START}${JSON.stringify(seed).replace(/-->/g, "--\\u003e")}\n-->\n`;
-    return MD_SEED.test(text) ? text.replace(MD_SEED, () => block) : `${text.replace(/\n*$/, "\n\n")}${block}`;
-  }
-  if (!RV_SEED.test(text)) return text;
-  const json = JSON.stringify(seed).replace(/</g, "\\u003c");
-  return text.replace(RV_SEED, () => `<script type="application/json" id="rv-seed">${json}</script>`);
-}
-
-function nowIso(): string {
-  return new Date().toISOString();
-}
-
-function uid8(): string {
-  return crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-}
-
-export type ArtifactReviewFail = "invalid" | "not-found" | "no-seed";
-
-export type ArtifactReviewOutcome =
-  | { ok: true; text: string; thread?: ReviewThread; threads: ReviewThread[] }
-  | { ok: false; reason: ArtifactReviewFail };
-
-interface ThreadChangeInput {
-  action: "create" | "reply" | "resolve";
-  anchor?: ThreadAnchor;
-  body?: string;
-  by?: string;
-  id?: string;
-  threads: ReviewThread[];
-}
-
-export type ThreadChange =
-  { ok: true; thread?: ReviewThread; threads: ReviewThread[] } | { ok: false; reason: ArtifactReviewFail };
-
-function changeThreads(input: ThreadChangeInput): ThreadChange {
-  const { threads } = input;
-
-  if (input.action === "create") {
-    const body = input.body?.trim();
-    if (!body) return { ok: false, reason: "invalid" };
-    const thread: ReviewThread = {
-      id: uid8(),
-      n: threads.reduce((max, one) => Math.max(max, one.n), 0) + 1,
-      by: "user",
-      at: nowIso(),
-      updated: nowIso(),
-      body,
-      status: "open",
-      anchor: input.anchor,
-      replies: [],
-    };
-    const next = [...threads, thread];
-    return { ok: true, thread, threads: next };
-  }
-
-  if (!input.id) return { ok: false, reason: "invalid" };
-  const at = threads.findIndex((one) => one.id === input.id);
-  const held = threads[at];
-  if (at < 0 || !held) return { ok: false, reason: "not-found" };
-
-  if (input.action === "resolve") {
-    const thread: ReviewThread = { ...held, status: "resolved", updated: nowIso() };
-    const next = threads.map((one, i) => (i === at ? thread : one));
-    return { ok: true, thread, threads: next };
-  }
-
-  const body = input.body?.trim();
-  if (!body) return { ok: false, reason: "invalid" };
-  const reply: ThreadReply = { id: uid8(), by: input.by || "user", at: nowIso(), body };
-  const thread: ReviewThread = {
-    ...held,
-    updated: nowIso(),
-    replies: [...held.replies, reply],
-  };
-  const next = threads.map((one, i) => (i === at ? thread : one));
-  return { ok: true, thread, threads: next };
-}
-
-export function applyReviewChange(input: {
-  action: "create" | "reply" | "resolve";
-  anchor?: ThreadAnchor;
-  body?: string;
-  by?: string;
-  format: ArtifactFormat;
-  id?: string;
-  text: string;
-}): ArtifactReviewOutcome {
-  const seed = parseSeed(input.text, input.format);
-  if (!seed) return { ok: false, reason: "no-seed" };
-  const threads = Array.isArray(seed.threads)
-    ? seed.threads.map(toThread).filter((t): t is ReviewThread => Boolean(t))
-    : [];
-  const change = changeThreads({ ...input, threads });
-  if (!change.ok) return change;
-  const text = writeSeed({ format: input.format, seed: { ...seed, threads: change.threads }, text: input.text });
-  return { ...change, text };
-}
-
-/** A document outside the artifacts folder keeps its threads in the sidecar's store, and its text changes only to lose an old block. */
-export function applyStoredReview(
-  input: Omit<ThreadChangeInput, "threads"> & { path: string; text: string },
-): ArtifactReviewOutcome {
-  const doc = readComments(input.path, input.text);
-  const change = changeThreads({ ...input, threads: threadsOf(doc?.threads) });
-  if (!change.ok) return change;
-  writeComments(input.path, { ...doc, threads: change.threads });
-  return { ...change, text: hasLegacyBlock(input.text) ? withoutLegacyBlock(input.text) : input.text };
-}
-
-export function applyWebReview(input: Omit<ThreadChangeInput, "threads"> & { slug: string }): ThreadChange {
-  const record = readRecord(input.slug);
-  if (!record) return { ok: false, reason: "not-found" };
-  const change = changeThreads({ ...input, threads: threadsOf(record.threads) });
-  if (change.ok) writeRecord({ ...record, threads: change.threads });
-  return change;
 }
 
 export function isStoredArtifact(path: string): boolean {
