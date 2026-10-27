@@ -7,6 +7,30 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.30.0
+
+### Added
+
+- **Tasks is the fifth face of the conversation screen,** in its own island beside the other four with the open
+  count and a red mark while something waits on you, so a task is one tap from Artifacts and one tap back.
+- **The org tree is the Tasks rail:** the inbox, the assistant, each project with its Project Lead and Design Lead,
+  each task with its Task Leads, done ones folded, your own conversations out, Attach on every row.
+- **The assistant's door,** bottom right on every screen and ⌥↵, asks the newest live EA conversation through its
+  inbox, follows its turn with receipts and Undo, starts a new one when none runs, and an @ sends to anyone in
+  the tree instead. A message sent from an open task carries its slug and joins that task's history.
+
+### Changed
+
+- **`/desk` and `/tasks/<slug>` redirect into the open conversation's Tasks face,** and a task's History shows in
+  its sheet, the picked entry opening in place.
+- **The conversation's title opens the conversation picker,** which now deletes a conversation, the job the Desk's
+  Conversations list did.
+
+### Removed
+
+- **The Desk, its sentence per project and `GET /api/desk/standing`,** since the tree says where each project
+  stands, and the old Ask panel, whose side question lives on as This conversation in the door.
+
 ## 0.29.0
 
 ### Changed

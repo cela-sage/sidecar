@@ -140,9 +140,8 @@ screen, with the toast a new page gets, and one said while the sidecar was stopp
 
 A task is a `.md` in the artifacts folder whose stamp holds a state, which the Mode plugin writes with
 `artifact stamp <slug> --project cela --state running`. The state is one of unassigned, assigned, assessed,
-running, blocked, waiting and done, and a task is unassigned exactly while its project is empty. `/tasks/<slug>`
-opens it on the task face. On the left the Desk comes first with the inbox of unassigned tasks, then each
-project with its tasks. The sheet shows where the task is in its life, its four parts, and the conversations
+running, blocked, waiting and done, and a task is unassigned exactly while its project is empty. A task opens
+on the Tasks face, and the sheet shows where the task is in its life, its four parts, and the conversations
 on it: a conversation is the task's when its title has a role token and the task's slug, as
 `[Cela] TL sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
 the state `claude agents` gives it and the subagents running inside it. A comment on the document goes to the
@@ -158,21 +157,34 @@ the proposal is written into the file between `<del data-sc-edit>` and `<ins dat
 highlighted until Keep or Discard, so a reload or the read view still offers it. Outside edit mode ⌘K stays
 Comment, and holding C comments in either.
 
-### The Desk
+### The Tasks face
 
-A Tasks tab in the top-right island, beside a conversation's faces or a task's Document and History, and on
-its own wherever there are none, opens the Desk on Tasks from any page.
+Tasks is the fifth face of the conversation screen, switched in place like Artifacts, Review, Files and History,
+so Back never leaves the conversation. Those four sit in one island at the top right and Tasks in its own beside
+them, with the count of open tasks and a red mark while a task or a hire waits on you. From a screen with no
+faces, such as Listening, it opens the Tasks face of the conversation in front. `?face=tasks&task=<slug>` opens a
+task the way `?face=review` picks Review, and the old `/desk` and `/tasks/<slug>` links redirect there.
 
-`/desk` opens on Tasks, with Conversations, the list it showed before, one switch away at the top. A task
-waiting on your decision or a hire comes first as a red card with its question. Each project follows with its
-counts, one sentence from the fast model over its tasks and conversations, cached a minute, and its tasks, open
-while any is. The inbox on the right holds the unassigned tasks, each with the fast model's Route to suggestion,
-cached until the task changes. Dropping a card on a project, or pressing Route, assigns it through the lane with
-`PATCH /api/tasks/:slug`, so it lands in the history and on the bus, and the toast's Undo, or ⌘Z, puts it back.
-Eight seconds after the drop, unless undone, the project's Project Lead, its newest live conversation titled
-with PL and the project's token, gets the task to assess. New task, or N, at the foot of the inbox or of a task
-page's projects rail, asks for a title, writes an unassigned `.md` with the four parts as headings through
-`POST /api/tasks`, and opens it in Edit.
+The rail is the org tree, built from the conversations the sidecar already polls, parsed by their titles. The
+inbox of unassigned tasks heads it, then the assistant's conversations, titled with EA, then each project with
+its Project Lead and Design Lead conversations and its tasks, each task with its Task Leads. A Task Lead whose
+process ended folds under the task as done, and a done task folds under its project. A conversation whose title
+has no role token is yours and stays out. Each row carries its mark: a spinner while it works, red when a task or
+its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
+else, a check once it is idle. Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead,
+the conversation in front has an ink bar, and clicking a conversation brings it in front on the Tasks face with
+its task open.
+
+With no task open the centre stays on the conversation in front, its page from Artifacts, and a task opens the
+sheet with Document and History in its bar and Back, or esc, closing it. Dropping an inbox row on a project, or
+pressing its Route to, the fast model's suggestion cached until the task changes, assigns it through the lane
+with `PATCH /api/tasks/:slug`, so it lands in the history and on the bus, and the toast's Undo, or ⌘Z, puts it
+back. Eight seconds after the drop, unless undone, the project's Project Lead, its newest live conversation
+titled with PL and the project's token, gets the task to assess. New task, or N, drafts a row in the inbox,
+writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
+
+Clicking the conversation's title opens the conversation picker, which lists every conversation the sidecar
+knows, yours included, and deletes one with its trash button or ⌘⌫, the transcript staying on disk.
 
 ### Following the terminal
 
@@ -212,7 +224,7 @@ conversation's title: a role token makes it that role, and no token makes it you
 yours, whichever conversation runs it, since you are the lane's only decider. Waiting needs `--reason`.
 
 Escalate and hire notify you. When a sidecar page is open, the one holding the `sidecar:task-notices` lock
-raises a notification whose click opens `/tasks/<slug>`; with no page open, or without notification permission,
+raises a notification whose click opens the task on the Tasks face; with no page open, or without notification permission,
 it is `osascript display notification`, whose click can only open Script Editor, since macOS ties it to that app.
 
 ### The history
@@ -221,14 +233,16 @@ Each task keeps `~/.claude/sidecar/history/<slug>.jsonl`, one entry a line, from
 Lead ends with an answer, which the mod hands over off `turn.complete` for a conversation whose title holds TL
 and the task's slug or ticket; status and content changes, from the lane and from Edit mode's saves and Keep;
 escalations, verdicts and your decisions; and what you type at a Task Lead's own prompt or send it from the
-sidecar, while a relayed message stays out, since one from another lead reads the same. `sidecar task <slug>` run from a Project Lead also marks
+sidecar, while a relayed message stays out, since one from another lead reads the same. A message the sidecar
+sends with a task's slug, from the assistant's door while that task is open or to someone you @ who works on it,
+joins that task's history whoever it went to. `sidecar task <slug>` run from a Project Lead also marks
 the history read.
 
-History, beside Document at the top of the task face, opens on where it stands: the fast model's two or three
+History, beside Document in the task sheet's bar, opens on where it stands: the fast model's two or three
 sentences over the history, cached in `<slug>.stands.json` until the file changes. Below it each entry has its
 time, a TL, PL or YOU badge and chips for what it moved, consecutive turns and nearby edits fold into one, a
-line marks what is new since the Project Lead read it, and your decisions filters to those. The right panel
-shows a decision as its escalation, a turn as the Task Lead wrote it, and what the history is made of.
+line marks what is new since the Project Lead read it, and your decisions filters to those. The entry you pick
+opens to its full text in place.
 
 On the document, an open escalation sits above the task with its options as one-click choices, the Project
 Lead's pick marked, or your own words, the four parts fold to one line each, and the Task Lead's rail row turns
@@ -300,10 +314,23 @@ settles the reply.
 
 ## Asking Claude
 
-Ask Claude is `/btw` from the sidecar: the mascot beside the notes slides its field out on hover, and ⌥↵
-or a click puts the cursor in it, folding back once the pointer and focus have left, asks a side question
+The assistant's door sits at the bottom right of every screen, the mascot with what the assistant is doing and
+how many tasks wait in the inbox. Ask, or ⌥↵, opens it on the assistant, the newest live conversation titled
+with EA, and what you write goes to it through `/api/sessions/:key/message`, with a removable chip for what you
+are looking at: the conversation in front, or the open task, whose slug goes with the message so it lands in
+that task's history. The door follows the assistant's turn off the conversation bus, shows what it is doing, a
+receipt for each task it moves with Undo when it took one out of the inbox, its answer, and the question it asks
+back in amber, and the header picks another assistant or starts a new one. With no assistant running the door
+says so, and your message starts one through `POST /api/assistant`, which runs
+`claude --bg --agent executive-assistant` in the meta project's folder, both set by `assistant: { agent, project }`
+in `~/.claude/sidecar/config.json`. An @ in the field lists everyone in the tree, and picking one writes their
+title and key into the prompt, which then goes to each one you mentioned, with their task's slug, instead of
+the assistant. When the inbox has tasks and nothing was asked yet, the door opens on it with each task's Route
+to.
+
+This conversation, the first choice in the header, is `/btw` from the sidecar: it asks a side question
 with the whole conversation as context, and nothing reaches the transcript or interrupts the turn. Its
-exchanges stack in one scrolling thread, which Clear empties with Undo, and they live in the page's memory
+exchanges stack in one scrolling thread, which Clear empties, and they live in the page's memory
 only. `POST /api/sessions/<key>/ask` with `kind: "btw"` copies the transcript to the OS temp dir with its
 `last-prompt` record pointed at the newest entry, so the running turn is included, then runs the session's
 own build from `~/.local/share/claude/versions` with `--resume <copy> --fork-session
