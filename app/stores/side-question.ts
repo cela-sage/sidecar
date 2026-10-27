@@ -38,7 +38,6 @@ export const $sideQuestion = defineStore(() => {
       const reply = await $fetch<AskClaudeReply>(`/api/sessions/${encodeURIComponent(thread.key)}/ask`, {
         body: {
           history,
-          kind: "blank",
           path: thread.anchor.path,
           question: turn.prompt ?? turn.question,
         } satisfies AskClaudeRequest,
