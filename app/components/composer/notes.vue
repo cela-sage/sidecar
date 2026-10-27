@@ -14,7 +14,10 @@ const island = useTemplateRef<{ focus: () => void }>("island");
 async function sendAnswer(turn: AskClaudeTurn): Promise<void> {
   const key = sc.sessionKey.value;
   if (!key || !turn.answer) return;
-  const reply = await notes.deliver(`I asked you on the side: ${turn.question}\nYou answered: ${turn.answer}`);
+  const reply = await notes.deliver({
+    key,
+    text: `I asked you on the side: ${turn.question}\nYou answered: ${turn.answer}`,
+  });
   if (!reply) return;
   if (!reply.delivered) return chrome.toast("The conversation did not take it, try again in a moment.", "warning");
   askClaude.markSent(key, turn.id);

@@ -1,4 +1,10 @@
-type Delivery = { delivered: true } | { delivered: false; reason: "no-live-session" | "refused-by-inbox" };
+export type Delivery = { delivered: true } | { delivered: false; reason: "no-live-session" | "refused-by-inbox" };
+
+export interface DeliverOptions {
+  text: string;
+  key?: string;
+  slug?: string;
+}
 
 const FAILED: Record<Exclude<Delivery, { delivered: true }>["reason"], string> = {
   "no-live-session": "This conversation isn't running, so the notes stay in the tray.",
@@ -12,13 +18,12 @@ export const $notes = defineStore(() => {
   const chrome = useChrome();
   const isSending = ref(false);
 
-  async function deliver(text: string): Promise<Delivery | undefined> {
-    const key = sc.sessionKey.value;
+  async function deliver({ text, key = sc.sessionKey.value, slug }: DeliverOptions): Promise<Delivery | undefined> {
     if (!key || !text || isSending.value) return undefined;
     isSending.value = true;
     try {
       return await $fetch<Delivery>(`/api/sessions/${encodeURIComponent(key)}/message`, {
-        body: { text },
+        body: { text, ...(slug ? { slug } : {}) },
         method: "POST",
       });
     } catch {
@@ -32,7 +37,7 @@ export const $notes = defineStore(() => {
   // Claude Code is the chat, so the sidecar only hands over what was left on a page or a line.
   async function send(): Promise<void> {
     const handover = tray.handOver("");
-    const reply = await deliver(handover.text);
+    const reply = await deliver({ text: handover.text });
     if (!reply) return;
     if (!reply.delivered) return chrome.toast(FAILED[reply.reason], "warning");
     handover.settle();
