@@ -4,7 +4,13 @@ import type { Project } from "../../shared/types/task.ts";
 import { readTextSafe } from "../files.ts";
 import { Sidecar } from "./paths.ts";
 
+export interface AssistantSettings {
+  agent?: string;
+  project?: string;
+}
+
 export interface Settings {
+  assistant?: AssistantSettings;
   projects?: Project[];
   surface?: "desktop" | "web";
   user?: string;
