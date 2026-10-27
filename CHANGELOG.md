@@ -7,6 +7,20 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.27.0
+
+### Added
+
+- **A Tasks tab in the top-right island** opens the Desk on Tasks from any page, beside a conversation's faces or
+  a task's Document and History, and on its own where there are none.
+- **The title island carries the sidecar icon,** and in the desktop app it starts at the window's left edge with
+  the traffic lights inside it, moved with the zoom so they stay there.
+
+### Fixed
+
+- **`sidecar terminal` no longer sits silent.** It says it is connecting, and the attach stream greets it with a
+  `ready` event carrying what the sidecar thinks it holds, so a dev server's proxy sends the headers at once.
+
 ## 0.26.0
 
 ### Added

@@ -146,7 +146,18 @@ conversation the stamp's `lead` names, else the first Task Lead on it. The selec
 unless you click another, has a message field that sends what you write through `/api/sessions/:key/message`,
 and anything the sidecar sends a Task Lead that way lands in the task's history as your message.
 
+Edit, or E, puts the markdown in an editor beside the page it renders, and saves as you type unless the file
+changed on disk since you opened it. A pasted image is saved to `~/.claude/sidecar/uploads/<slug>/` and linked
+as `../uploads/<slug>/<name>`, which resolves from the artifacts folder on disk and from `/uploads/` in the
+sidecar, and shows as a captioned figure. ⌘K tunes the paragraph around the selection with the fast model, and
+the proposal is written into the file between `<del data-sc-edit>` and `<ins data-sc-edit>`, struck and
+highlighted until Keep or Discard, so a reload or the read view still offers it. Outside edit mode ⌘K stays
+Comment, and holding C comments in either.
+
 ### The Desk
+
+A Tasks tab in the top-right island, beside a conversation's faces or a task's Document and History, and on
+its own wherever there are none, opens the Desk on Tasks from any page.
 
 `/desk` opens on Tasks, with Conversations, the list it showed before, one switch away at the top. A task
 waiting on your decision or a hire comes first as a red card with its question. Each project follows with its
@@ -166,15 +177,9 @@ with PL and the project's token, gets the task to assess. New task, or N, asks f
 session still running, and runs `claude attach <key>` for the next. The pill says which conversation the terminal
 holds and its menu lists the task's conversations, while a switch you make inside Claude Code with the left arrow
 is not seen. With no follower running, the pill explains `sidecar terminal` and Attach copies the
-`claude attach` line instead. q stops the follower while it holds nothing.
-
-Edit, or E, puts the markdown in an editor beside the page it renders, and saves as you type unless the file
-changed on disk since you opened it. A pasted image is saved to `~/.claude/sidecar/uploads/<slug>/` and linked
-as `../uploads/<slug>/<name>`, which resolves from the artifacts folder on disk and from `/uploads/` in the
-sidecar, and shows as a captioned figure. ⌘K tunes the paragraph around the selection with the fast model, and
-the proposal is written into the file between `<del data-sc-edit>` and `<ins data-sc-edit>`, struck and
-highlighted until Keep or Discard, so a reload or the read view still offers it. Outside edit mode ⌘K stays
-Comment, and holding C comments in either.
+`claude attach` line instead. q stops the follower while it holds nothing. The stream opens with a `ready`
+event carrying what the sidecar thinks the terminal holds, so the follower says it is following at once and
+corrects the sidecar when the two differ.
 
 ### The task lane
 
@@ -241,7 +246,8 @@ own, ⌘F there turns the title island into one for any artifact, searching the 
 web surface leaves ⌘F to Chrome. ⌘+, ⌘− and ⌘0, or a trackpad pinch, zoom the whole app the way a Chrome tab
 zooms, the page inside it included, and the zoom is kept across launches, while a file preview keeps its own
 pinch and zoom pill. The top edge of the app is its title bar, so it drags the window and a double click there
-zooms or minimises it as System Settings says. On first launch the shell copies
+zooms or minimises it as System Settings says. The title island starts at the window's left edge with the
+traffic lights inside it, before the sidecar icon, and the shell moves them with the zoom. On first launch the shell copies
 your Chrome cookies into its own session, decrypting them with a key it reads from the login Keychain once
 (the one macOS prompt you will see), so you arrive signed in to the same accounts as in Chrome.
 `sidecar import` re-reads them later, with the app closed. The cookies are a copy rather than shared live,
