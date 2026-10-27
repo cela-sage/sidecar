@@ -8,7 +8,8 @@ import { TaskCaller } from "../server/utils/tasks/caller.ts";
 import { TaskLane, type AskThread, type Decided } from "../server/utils/tasks/lane.ts";
 import { TaskNotice } from "../server/utils/tasks/notice.ts";
 
-export const TASK_USAGE = `usage: sidecar task <slug> [verb]
+export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slug> [verb]
+  new "<title>"              write an unassigned task with the four parts as headings, and print its slug
   (no verb)                  where it stands: its state, what waits on a decision, your decisions, the history
   state <state> [--reason "why"] [--on "who"]
                              set its state, one of ${TaskState.join(", ")}; waiting needs --reason
@@ -194,6 +195,12 @@ const heard = (kind: string): number => {
   return 0;
 };
 
+const created = (title: string): number => {
+  if (!title.trim()) throw new Refusal('new needs the task\'s title in quotes: sidecar task new "<title>"', 2);
+  console.log(TaskLane.create(title.trim()).slug);
+  return 0;
+};
+
 const run = async (argv: string[], address: string): Promise<number> => {
   const { positionals, values } = parseArgs({ args: argv, allowPositionals: true, options: OPTIONS });
   if (values.heard) return heard(values.heard);
@@ -202,6 +209,7 @@ const run = async (argv: string[], address: string): Promise<number> => {
     console.error(TASK_USAGE);
     return 2;
   }
+  if (slug === "new") return created(positionals.slice(1).join(" "));
   const one = { slug, words, values, address };
   if (!verb) return show(one);
   const act = VERBS[verb];

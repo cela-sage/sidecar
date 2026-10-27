@@ -68,9 +68,9 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
               --artifact <slug|url> opens that page there, in Artifacts, an address as a new Web artifact
   comments <slug> [--reply <n> "text"] [--resolve <n> ["what changed"]] [--json]
               read the comment threads on an artifact, and answer or close one
-  task <slug> [state|assign|escalate|hire|judge|decide|done ...]
-              a task's lane: where it stands, its state and project, an escalation or a hire that
-              notifies you, a verdict or a decision, every one kept in its history. sidecar task alone lists the verbs
+  task new "<title>" | task <slug> [state|assign|escalate|hire|judge|decide|done ...]
+              a task's lane: a new unassigned task, where it stands, its state and project, an escalation
+              or a hire that notifies you, a verdict or a decision, every one kept in its history. sidecar task alone lists the verbs
   terminal    follow the sidecar in this terminal: Attach on a task's conversation opens it here with
               claude attach, and the next Attach detaches it with Ctrl+Z first, so it keeps running
   setup [desktop|web]

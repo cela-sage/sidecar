@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { test } from "node:test";
 import { Stamp } from "../../../lib/sidecar/stamp.ts";
 import { HistoryLines } from "../../../shared/utils/history.ts";
+import { TaskCommand } from "../../../bin/task.ts";
 import { TaskHistory } from "./history.ts";
 import { TaskLane } from "./lane.ts";
 
@@ -80,6 +81,18 @@ test("a new task is an unassigned .md with the four parts, and Undo after a drop
   assert.equal(TaskLane.assign({ given: made.slug, caller: { who: "YOU" }, project: "Cela" }).task.state, "assigned");
   TaskLane.state({ given: made.slug, caller: { who: "YOU" }, state: "unassigned" });
   assert.equal(Stamp.fields(readFileSync(made.path, "utf8")).project, undefined);
+});
+
+test("sidecar task new writes an unassigned task through the lane and prints only its slug", async (context) => {
+  const said = context.mock.method(console, "log", () => undefined);
+  assert.equal(await TaskCommand.run(["new", "Route the Desk inbox"], "http://localhost:0"), 0);
+  assert.deepEqual(
+    said.mock.calls.map((call) => call.arguments),
+    [["route-the-desk-inbox"]],
+  );
+  assert.equal(stateOf(join(artifacts, "route-the-desk-inbox.md")), "unassigned");
+  context.mock.method(console, "error", () => undefined);
+  assert.equal(await TaskCommand.run(["new"], "http://localhost:0"), 2);
 });
 
 test("waiting needs a reason, a task on no project cannot run, and only a Task Lead's turn joins its history", () => {
