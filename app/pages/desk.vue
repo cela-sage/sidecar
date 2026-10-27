@@ -51,6 +51,7 @@ const remove = async (row: DeskRow): Promise<void> => {
 <template>
   <NuxtLayout>
     <template #lead>
+      <UiSurface class="mark-island" pad="none" shape="pill" variant="glass-liquid"><ChromeMark /></UiSurface>
       <ChromeAction data-region="desk-back" :icon="ArrowLeft" shape="island" tip="Back · {esc}" @click="back" />
       <UiSurface v-island-pop="'top'" class="switch" pad="none" shape="pill" variant="glass-liquid">
         <UiSegmented v-model="face" data-region="desk-face" :options="faces" variant="bare" />
@@ -63,6 +64,14 @@ const remove = async (row: DeskRow): Promise<void> => {
 </template>
 
 <style scoped>
+.mark-island {
+  @apply hidden island-row px-3.5;
+}
+
+:global(.shell[data-shell="true"]) .mark-island {
+  @apply flex;
+}
+
 .switch {
   @apply absolute left-1/2 island-row -translate-x-1/2 px-1.5;
 }

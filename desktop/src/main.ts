@@ -138,10 +138,20 @@ function reglue(): void {
   for (const [id, { rect }] of popups) if (rect) placePopup(id, rect);
 }
 
+const LIGHTS = { x: 30, y: 23 };
+const ISLAND_MID_Y = 36;
+
+const placeLights = (): void => {
+  const zoom = mainWindow?.webContents.getZoomFactor() ?? 1;
+  const position = { x: Math.round(LIGHTS.x * zoom), y: Math.round(LIGHTS.y + (zoom - 1) * ISLAND_MID_Y) };
+  mainWindow?.setWindowButtonPosition(position);
+};
+
 function zoomWindow(to: (factor: number) => number): void {
   const contents = mainWindow?.webContents;
   if (!contents) return;
   contents.setZoomFactor(to(contents.getZoomFactor()));
+  placeLights();
   reglue();
 }
 
@@ -169,11 +179,12 @@ function createWindow(): void {
     show: false,
     title: NAME,
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: { x: 19, y: 23 },
+    trafficLightPosition: LIGHTS,
     webPreferences: { contextIsolation: true, preload: UI_PRELOAD, sandbox: true, webviewTag: true },
     width: 1280,
   });
   win.once("ready-to-show", () => win.show());
+  win.webContents.on("did-finish-load", placeLights);
   win.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url);
     return { action: "deny" };

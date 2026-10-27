@@ -12,6 +12,7 @@ const { title } = defineProps<{ title: string }>();
       shape="pill"
       variant="glass-liquid"
     >
+      <ChromeMark />
       <span class="title">{{ title }}</span>
     </UiSurface>
   </div>

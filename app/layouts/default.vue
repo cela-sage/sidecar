@@ -10,7 +10,6 @@ const dockEl = useTemplateRef<HTMLElement>("dockEl");
 const boardEl = useTemplateRef<HTMLElement>("boardEl");
 const dockHeight = ref(0);
 const isDown = computed(() => !!sc.failure.value);
-// Desktop only, and after mount, since the shell is a client global and the native title bar's traffic lights sit where the lead island does.
 const onShell = ref(false);
 onMounted(() => (onShell.value = !!(window as unknown as { sidecarShell?: unknown }).sidecarShell));
 
@@ -94,9 +93,8 @@ useResizeObserver(boardEl, ([entry]) => {
   @apply pointer-events-none absolute top-(--gutter) right-(--gutter) left-(--gutter) z-30 flex items-center gap-2 transition-[opacity,visibility] duration-(--duration-fast) ease-out;
 }
 
-/* The desktop shell's hidden-inset title bar puts the traffic lights over the lead island, so hold it clear of them. */
 .shell[data-shell="true"] .row {
-  @apply pl-20;
+  @apply fixed;
 }
 
 /* On the desktop shell the row is the title bar: it drags the window, and a double click does what System Settings says. */
