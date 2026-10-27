@@ -1,21 +1,16 @@
+import z from "zod";
 import { deliver, type DeliverResult } from "~~/server/utils/sessions/inbox";
+import { TaskCaller } from "~~/server/utils/tasks/caller";
+import { TaskLane } from "~~/server/utils/tasks/lane";
 
-type MessageResponse = DeliverResult;
+const Body = z.object({ text: z.string().min(1), slug: z.string().min(1).optional() });
 
-type MessageBody = { text: string; slug?: string };
-
-function payloadOf(raw: unknown): MessageBody | undefined {
-  if (typeof raw !== "object" || !raw) return undefined;
-  const record = raw as Record<string, unknown>;
-  const text = record.text;
-  if (typeof text !== "string" || !text) return undefined;
-  const slug = record.slug;
-  return { text, slug: typeof slug === "string" && slug ? slug : undefined };
-}
-
-export default defineEventHandler(async (event): Promise<MessageResponse> => {
+export default defineEventHandler(async (event): Promise<DeliverResult> => {
   const key = getRouterParam(event, "key") || "";
-  const body = payloadOf(await readBody(event));
-  if (!key || !body) return { delivered: false, reason: "refused-by-inbox" };
-  return deliver({ key, text: body.text, slug: body.slug });
+  const body = Body.safeParse(await readBody(event));
+  if (!key || !body.success) return { delivered: false, reason: "refused-by-inbox" };
+  const sent = await deliver({ key, ...body.data });
+  const from = TaskCaller.titleByKey(key);
+  if (sent.delivered && from) TaskLane.heard({ caller: { who: "YOU", from }, kind: "message", text: body.data.text });
+  return sent;
 });

@@ -4,9 +4,17 @@ import type { LiveSession } from "~~/shared/types/session";
 import { Titles } from "~~/shared/utils/titles";
 import type { AgentState, TaskLook } from "~/utils/tasks";
 
-const { asking = [], sessions } = defineProps<{ asking?: ReviewThread[]; sessions: LiveSession[] }>();
+const {
+  asking = [],
+  conversation,
+  sessions,
+  slug,
+} = defineProps<{ asking?: ReviewThread[]; conversation?: string; sessions: LiveSession[]; slug: string }>();
 
 const LOOK: Record<AgentState, TaskLook> = { working: "running", "needs input": "needs", completed: "done" };
+
+const terminal = $terminal();
+const picked = ref<string>();
 
 // The lead that escalated has ended its turn, so claude agents calls it completed while it waits on Marco.
 const rows = computed(() =>
@@ -16,12 +24,15 @@ const rows = computed(() =>
     const asked = asking.find((thread) => thread.ask?.from === name);
     const state: AgentState = asked ? "needs input" : Tasks.agentStateOf(session);
     const at = turnAt(asked ? Date.parse(asked.at) : session.lastActive);
+    const isHeld = terminal.state.held?.key === session.key;
     return {
       key: session.key,
+      name,
       token: title?.token,
       rest: title?.rest ?? name,
       isLead: title?.role === "TL",
-      state,
+      isHeld,
+      state: isHeld ? `${state} · in your terminal` : state,
       look: LOOK[state],
       agents: session.agents ?? [],
       detail: asked ? `${asked.body} It's on the task, waiting on you.` : session.detail,
@@ -30,13 +41,23 @@ const rows = computed(() =>
   }),
 );
 
-function turnAt(ms?: number): string {
+const selected = computed(() => {
+  const leads = rows.value.filter((row) => row.isLead);
+  return (leads.find((row) => row.key === picked.value) ?? leads.find((row) => row.key === conversation) ?? leads[0])
+    ?.key;
+});
+
+const pick = (row: { key: string; isLead: boolean }): void => {
+  if (row.isLead) picked.value = row.key;
+};
+
+const turnAt = (ms?: number): string => {
   if (!ms) return "";
   const at = new Date(ms);
   const today = at.toDateString() === new Date().toDateString();
   const time = at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   return today ? time : `${at.toLocaleDateString([], { day: "numeric", month: "short" })} ${time}`;
-}
+};
 </script>
 
 <template>
@@ -56,7 +77,11 @@ function turnAt(ms?: number): string {
         data-cmt="conversation"
         :data-cmt-label="row.rest"
         :data-cmt-tell="`the ${row.rest} conversation on this task`"
+        :data-held="row.isHeld"
+        :data-lead="row.isLead"
         :data-look="row.look"
+        :data-selected="row.key === selected"
+        @click="pick(row)"
       >
         <div class="line">
           <TaskDot class="row-dot" :look="row.look" />
@@ -69,6 +94,7 @@ function turnAt(ms?: number): string {
               <span v-if="!row.isLead && row.detail" class="note">{{ row.detail }}</span>
             </span>
           </div>
+          <TaskAttach :conversation="row.key" />
         </div>
         <div v-if="row.isLead && row.agents.length" class="agents">
           <span class="label mono-meta">subagents</span>
@@ -78,7 +104,16 @@ function turnAt(ms?: number): string {
           <span class="label mono-meta">{{ row.when }}</span>
           <span class="said">{{ row.detail }}</span>
         </div>
+        <TaskMessage v-if="row.key === selected" :conversation="row.key" :name="row.name" :slug="slug" />
       </div>
+      <p class="foot" :data-following="terminal.state.following">
+        <span class="foot-dot" />
+        {{
+          terminal.state.following
+            ? "sidecar terminal is following. Attach detaches the current conversation and opens the one you pick."
+            : "sidecar terminal isn't running, so Attach copies the claude attach line instead."
+        }}
+      </p>
     </div>
   </aside>
 </template>
@@ -110,6 +145,30 @@ function turnAt(ms?: number): string {
 
 .row {
   @apply flex flex-none flex-col gap-2 rounded-xl border border-border py-2.5 pr-2.5 pl-3;
+}
+
+.foot {
+  @apply m-0 mt-auto flex items-start gap-1.75 px-1 pt-2 typo-caption leading-normal text-pretty text-muted;
+}
+
+.foot-dot {
+  @apply mt-1 dot size-1.5 flex-none bg-subtle;
+}
+
+.foot[data-following="true"] .foot-dot {
+  @apply breathe bg-primary;
+}
+
+.row[data-lead="true"] {
+  @apply cursor-pointer;
+}
+
+.row[data-held="true"] {
+  @apply bg-sunken;
+}
+
+.row[data-selected="true"] {
+  @apply border-border-strong;
 }
 
 .row[data-look="needs"] {

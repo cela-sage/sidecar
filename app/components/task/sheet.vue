@@ -167,7 +167,7 @@ onBeforeUnmount(() => (task.isEditing = false));
             </template>
           </article>
         </div>
-        <TaskRail :asking="asking" :sessions="rail" />
+        <TaskRail :asking="asking" :conversation="conversation" :sessions="rail" :slug="meta.slug" />
       </div>
     </div>
   </ArtifactSheet>
