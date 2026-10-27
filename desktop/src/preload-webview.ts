@@ -1,5 +1,6 @@
 import { ipcRenderer } from "electron";
 import { agentSource } from "./generated/agent.ts";
+import { sendPinches } from "./pinch.ts";
 
 const IPC = "sidecar";
 
@@ -23,3 +24,4 @@ ipcRenderer.on(IPC, (_event, payload: unknown) => {
 
 if (document.documentElement) inject();
 else document.addEventListener("DOMContentLoaded", inject, { once: true });
+sendPinches();

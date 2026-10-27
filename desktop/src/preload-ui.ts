@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
+import { sendPinches } from "./pinch.ts";
 
 interface ShellInfo {
   partition: string;
@@ -25,3 +26,5 @@ contextBridge.exposeInMainWorld("sidecarShell", {
   placePopup: (id: number, rect: Rect): void => ipcRenderer.send("popup:place", { id, rect }),
   present: true,
 });
+
+sendPinches();

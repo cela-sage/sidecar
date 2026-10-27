@@ -3,6 +3,7 @@ import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { app, BrowserWindow, ipcMain, Menu, session, shell, type WebContents } from "electron";
 import { Reach } from "../../lib/web/reach.ts";
+import { Zoom } from "../../shared/utils/zoom.ts";
 import { importChromeCookies } from "./cookies.ts";
 
 const SIDECAR_URL = (process.env.SIDECAR_URL ?? "http://sidecar.localhost:4747").replace(/\/$/, "");
@@ -113,13 +114,15 @@ function guardWebview(contents: WebContents): void {
   contents.on("did-create-window", (child, { url }) => openPopup(child, url, contents.getTitle()));
 }
 
+// The rect comes in CSS pixels of a page that may be zoomed, and the screen takes device-independent ones.
 function screenBounds(rect: Rect): Electron.Rectangle {
   const area = mainWindow?.getContentBounds();
+  const zoom = mainWindow?.webContents.getZoomFactor() ?? 1;
   return {
-    height: Math.round(rect.height),
-    width: Math.round(rect.width),
-    x: Math.round((area?.x ?? 0) + rect.x),
-    y: Math.round((area?.y ?? 0) + rect.y),
+    height: Math.round(rect.height * zoom),
+    width: Math.round(rect.width * zoom),
+    x: Math.round((area?.x ?? 0) + rect.x * zoom),
+    y: Math.round((area?.y ?? 0) + rect.y * zoom),
   };
 }
 
@@ -129,6 +132,17 @@ function placePopup(id: number, rect: Rect): void {
   popup.rect = rect;
   popup.win.setBounds(screenBounds(rect));
   if (!popup.win.isVisible()) popup.win.show();
+}
+
+function reglue(): void {
+  for (const [id, { rect }] of popups) if (rect) placePopup(id, rect);
+}
+
+function zoomWindow(to: (factor: number) => number): void {
+  const contents = mainWindow?.webContents;
+  if (!contents) return;
+  contents.setZoomFactor(to(contents.getZoomFactor()));
+  reglue();
 }
 
 function openPopup(child: BrowserWindow, url: string, opener: string): void {
@@ -164,9 +178,6 @@ function createWindow(): void {
     openExternal(url);
     return { action: "deny" };
   });
-  const reglue = (): void => {
-    for (const [id, { rect }] of popups) if (rect) placePopup(id, rect);
-  };
   win.on("move", reglue);
   win.on("resize", reglue);
   mainWindow = win;
@@ -178,6 +189,7 @@ function menu(): Menu {
     const url = BrowserWindow.getAllWindows()[0]?.webContents.getURL();
     if (url) void shell.openExternal(url);
   };
+  const zoomIn = (): void => zoomWindow((factor) => Zoom.step(factor, 1));
   return Menu.buildFromTemplate([
     { role: "appMenu" },
     { role: "fileMenu" },
@@ -187,6 +199,11 @@ function menu(): Menu {
       submenu: [
         { accelerator: "CmdOrCtrl+R", click: () => BrowserWindow.getAllWindows()[0]?.webContents.reload(), label: "Reload" },
         { role: "toggleDevTools" },
+        { type: "separator" },
+        { accelerator: "CmdOrCtrl+0", click: () => zoomWindow(() => 1), label: "Actual Size" },
+        { accelerator: "CmdOrCtrl+Plus", click: zoomIn, label: "Zoom In" },
+        { accelerator: "CmdOrCtrl+=", click: zoomIn, label: "Zoom In", visible: false },
+        { accelerator: "CmdOrCtrl+-", click: () => zoomWindow((factor) => Zoom.step(factor, -1)), label: "Zoom Out" },
         { type: "separator" },
         { click: open, label: "Open in Chrome" },
         { click: () => void importCookies(), label: "Re-import Chrome cookies" },
@@ -240,6 +257,7 @@ if (process.argv.includes("--import")) {
     ipcMain.handle("shell:import-cookies", () => importCookies());
     ipcMain.on("popup:place", (_event, { id, rect }: { id: number; rect: Rect }) => placePopup(id, rect));
     ipcMain.on("popup:close", (_event, id: number) => popups.get(id)?.win.close());
+    ipcMain.on("zoom:pinch", (_event, deltaY: number) => zoomWindow((factor) => Zoom.pinch(factor, deltaY)));
 
     Menu.setApplicationMenu(menu());
 
