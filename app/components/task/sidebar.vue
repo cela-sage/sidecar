@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { useShortcuts } from "@cela/design";
 import { Check, ChevronDown, ChevronRight, Inbox } from "@lucide/vue";
 import type { TaskGroup, TaskSummary } from "~/utils/tasks";
 
@@ -8,6 +9,7 @@ type Group = TaskGroup & { summary: TaskSummary };
 
 const sc = useSidecar();
 const task = $task();
+const desk = $desk();
 const artifact = $artifact();
 
 const tasks = computed(() => Tasks.of(sc.catalogue.value).sort(Tasks.order));
@@ -21,6 +23,15 @@ const groups = computed<Group[]>(() =>
 
 const isOpen = (group: Group): boolean => task.isGroupOpen(group, current);
 const toggle = (group: Group): void => task.toggleGroup(group, current);
+
+useShortcuts(
+  {
+    N: () => {
+      desk.isNaming = true;
+    },
+  },
+  { when: () => !task.isEditing && !sc.failure.value },
+);
 </script>
 
 <template>
@@ -63,6 +74,10 @@ const toggle = (group: Group): void => task.toggleGroup(group, current);
         </template>
       </div>
     </nav>
+
+    <div class="create">
+      <TaskNew data-region="task-new-task" />
+    </div>
 
     <footer class="legend" aria-label="What the colours mean">
       <span class="key"><span class="swatch" data-look="running" />runs on its own</span>
@@ -152,6 +167,10 @@ const toggle = (group: Group): void => task.toggleGroup(group, current);
 
 .group-name {
   @apply min-w-0 flex-1 typo-body font-semibold;
+}
+
+.create {
+  @apply flex flex-none flex-col px-2 pt-1.5 pb-2;
 }
 
 .legend {

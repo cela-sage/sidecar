@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { GripVertical, Plus } from "@lucide/vue";
+import { GripVertical } from "@lucide/vue";
 import type { Project } from "~~/shared/types/task";
 import type { TaskMeta } from "~/utils/tasks";
 
@@ -7,8 +7,6 @@ const { active, tasks } = defineProps<{ active?: string; tasks: TaskMeta[] }>();
 
 const task = $task();
 const desk = $desk();
-const field = useTemplateRef<HTMLInputElement>("field");
-const title = ref("");
 
 const routeOf = (meta: TaskMeta): Project | undefined =>
   task.projects.find((one) => one.key === desk.routes[meta.slug]);
@@ -30,26 +28,6 @@ const route = (meta: TaskMeta): void => {
   const project = routeOf(meta);
   if (project) void desk.place(meta, project);
 };
-
-const create = async (): Promise<void> => {
-  const named = title.value.trim();
-  if (!named) return;
-  const slug = await desk.create(named);
-  if (!slug) return;
-  title.value = "";
-  desk.isNaming = false;
-  await navigateTo(`/tasks/${slug}?edit=1`);
-};
-
-const cancel = (): void => {
-  title.value = "";
-  desk.isNaming = false;
-};
-
-watch(
-  () => desk.isNaming,
-  (naming) => naming && void nextTick(() => field.value?.focus()),
-);
 </script>
 
 <template>
@@ -97,32 +75,7 @@ watch(
       </div>
     </article>
 
-    <form v-if="desk.isNaming" class="naming" @submit.prevent="create">
-      <input
-        ref="field"
-        v-model="title"
-        class="field"
-        type="text"
-        aria-label="Name the new task"
-        placeholder="Name the task, then write it in Edit"
-        @blur="!title.trim() && cancel()"
-        @keydown.esc.stop.prevent="cancel"
-      />
-      <UiButton :disabled="!title.trim()" size="xs" type="submit" variant="secondary">Create</UiButton>
-    </form>
-    <button
-      v-else
-      class="new plain-button focusable"
-      data-region="desk-new-task"
-      data-tip="New task · {N}"
-      type="button"
-      @click="desk.isNaming = true"
-    >
-      <UiIcon :icon="Plus" size="xs" />
-      New task
-      <span class="spacer" />
-      <span class="new-hint">type, paste an image, or ask for a draft</span>
-    </button>
+    <TaskNew data-region="desk-new-task" />
   </section>
 </template>
 
@@ -197,21 +150,5 @@ watch(
 
 .square {
   @apply size-1.75 rounded-xs bg-tint;
-}
-
-.naming {
-  @apply flex h-10 items-center gap-2 rounded-field border border-border-strong bg-raised pr-1.5 pl-3.5;
-}
-
-.field {
-  @apply min-w-0 flex-1 border-0 bg-transparent p-0 font-sans typo-body text-fg outline-none placeholder:text-subtle;
-}
-
-.new {
-  @apply box-border flex h-10 items-center gap-2 rounded-field border border-dashed border-border-strong bg-transparent px-3.5 typo-caption font-semibold text-muted;
-}
-
-.new-hint {
-  @apply font-normal;
 }
 </style>
