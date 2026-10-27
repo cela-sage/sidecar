@@ -7,6 +7,28 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.24.0
+
+### Added
+
+- **A task has a lane, `sidecar task <slug>`.** `state`, `assign`, `escalate`, `hire`, `judge`, `decide` and
+  `done` rewrite the stamp, thread an escalation or a hire on the document, append to the task's history and
+  publish `task.changed`, `task.escalated` or `task.decided`, and bare it prints where the task stands. An
+  escalation blocks the task, its decision puts it back to running and reaches the conversation that asked.
+- **Escalate and hire notify you,** through the open sidecar, whose notification opens the task, or through
+  `osascript` when no sidecar is open, whose click macOS sends to Script Editor.
+- **Every task keeps a history** in `~/.claude/sidecar/history/<slug>.jsonl`, fed by the turns a Task Lead
+  ends with an answer, the lane, Edit mode's saves, and what you type at a Task Lead's prompt. History on the
+  task face opens on where it stands, written by the fast model and cached until the history changes, then
+  each entry with its badge and chips, what is new since the Project Lead read it, and your decisions alone.
+- **The task document shows what waits on you.** An open escalation sits on top with one-click options, the
+  Project Lead's pick or your own words, the four parts fold, the asking lead's row turns red, and once settled
+  it folds to a row that links to the history. A waiting, resumed or done task says so above the document.
+
+### Changed
+
+- **An escalation's thread pins no note in the reader's margin,** since the task face draws it as its own card.
+
 ## 0.23.0
 
 ### Added

@@ -33,6 +33,7 @@ sidecar             # same as open
 sidecar open [key]  # start it when down, point it at the conversation, raise an open sidecar or open one
 sidecar open --artifact <slug|url>  # the same, showing that page or address in Artifacts
 sidecar comments <slug>  # a page's threads; --reply <n> "..." answers one, --resolve <n> "..." closes it
+sidecar task <slug> [verb]  # a task's lane: state, assign, escalate, hire, judge, decide, done; bare prints where it stands
 sidecar setup [desktop|web]  # choose how it runs and set it up; prompts on first run
 sidecar publish <topic> <json>  # append an event every open sidecar hears
 sidecar status      # whether it is up and where
@@ -150,6 +151,53 @@ the proposal is written into the file between `<del data-sc-edit>` and `<ins dat
 highlighted until Keep or Discard, so a reload or the read view still offers it. Outside edit mode ⌘K stays
 Comment, and holding C comments in either.
 
+### The task lane
+
+A task's life goes through `sidecar task`, which the Task Leads and the Project Lead call so the logic that
+comments the board and notifies you lives in one place:
+
+```sh
+sidecar task <slug>                                   # its state, what waits on a decision, your decisions, the history
+sidecar task <slug> state waiting --on "Cosmico" --reason "they confirm they have Fattura 1/2026"
+sidecar task <slug> assign cela
+sidecar task <slug> escalate "Which model runs a Task Lead?" --options "Sonnet xhigh" --options "Opus" --quote "the text it is about"
+sidecar task <slug> hire "a tester, to drive the CLI, Sonnet xhigh"
+sidecar task <slug> judge "Yours, it sets the budget of every task" --pick 1
+sidecar task <slug> decide 1                          # or decide "your own words"; --thread <n> names one
+sidecar task <slug> done
+```
+
+Each verb rewrites the stamp in the layout Mode writes, appends to the task's history and publishes on the
+event bus, so an open task face updates as it happens. An escalation is a thread on the document with an `ask`
+holding its options, the Project Lead's verdict and pick, and in the end the decision; it blocks the task, and
+deciding it puts the task back to running and tells the conversation that asked, under the `[[sidecar]]`
+marker. A hire is the same thread with Approve and Refuse, and blocks nothing. Who called is read off the
+conversation's title: a role token makes it that role, and no token makes it you. Waiting needs `--reason`.
+
+Escalate and hire notify you. When a sidecar page is open, the one holding the `sidecar:task-notices` lock
+raises a notification whose click opens `/tasks/<slug>`; with no page open, or without notification permission,
+it is `osascript display notification`, whose click can only open Script Editor, since macOS ties it to that app.
+
+### The history
+
+Each task keeps `~/.claude/sidecar/history/<slug>.jsonl`, one entry a line, from four feeds: every turn a Task
+Lead ends with an answer, which the mod hands over off `turn.complete` for a conversation whose title holds TL
+and the task's slug or ticket; status and content changes, from the lane and from Edit mode's saves and Keep;
+escalations, verdicts and your decisions; and what you type at a Task Lead's own prompt, while a relayed message
+stays out, since one from another lead reads the same. `sidecar task <slug>` run from a Project Lead also marks
+the history read.
+
+History, beside Document at the top of the task face, opens on where it stands: the fast model's two or three
+sentences over the history, cached in `<slug>.stands.json` until the file changes. Below it each entry has its
+time, a TL, PL or YOU badge and chips for what it moved, consecutive turns and nearby edits fold into one, a
+line marks what is new since the Project Lead read it, and your decisions filters to those. The right panel
+shows a decision as its escalation, a turn as the Task Lead wrote it, and what the history is made of.
+
+On the document, an open escalation sits above the task with its options as one-click choices, the Project
+Lead's pick marked, or your own words, the four parts fold to one line each, and the Task Lead's rail row turns
+red. Once settled it folds to a row that links to the history, and the strip says it was settled by you. A
+waiting task says what it waits on, nothing for you to do, and a resumed or done one says when.
+
 The projects are the `projects` list in `~/.claude/sidecar/config.json`, each `{ key, name, token, folder }`,
 where `token` is the bracketed prefix its conversations' titles carry. Without one they are Moneyfarm, Cela,
 Nana, madong and meta, under `~/Notes`.
@@ -190,6 +238,9 @@ published while the sidecar is down still arrives once it starts. The topics and
 | Topic              | Payload                 | Published by                                                                    | What the sidecar does                       |
 | ------------------ | ----------------------- | ------------------------------------------------------------------------------- | ------------------------------------------- |
 | `artifact.created` | `slug`, `title`, `path` | the sidecar, when a conversation's list first records a page it was not showing | Lists the page, and a notification opens it |
+| `task.changed`     | `slug`, `state`         | the task lane, for every stamp change and every history entry                    | The task face reads the task again          |
+| `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
+| `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the task face             | Settles the escalation on the face          |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
 else runs `sidecar publish artifact.created '{"slug":"…","path":"…"}'`. A component consumes with
@@ -232,7 +283,9 @@ Bare `/sidecar` is `sidecar open`: it starts the sidecar when it is down and poi
 brings a sidecar window already open to the front, and otherwise opens it as the surface `sidecar setup`
 chose. Typing in a session's prompt points the sidecar there too, at most once every two seconds, and never
 holds up a keystroke, and what that point does is the switching mode below. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
-is how the sidecar still lists a conversation after it has ended.
+is how the sidecar still lists a conversation after it has ended. A turn that ends on the main loop with an
+answer, and a prompt you type, go to `sidecar task --heard turn` and `--heard message` on stdin, which keeps them
+only for a Task Lead's conversation, in its task's history.
 
 It also keeps the review the sidecar's Review face shows. Before Claude's first edit to a file, through
 Edit, Write, NotebookEdit or a shell command, it stores what the file held, and each turn it records which
