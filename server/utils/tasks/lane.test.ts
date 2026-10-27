@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import { Stamp } from "../../../lib/sidecar/stamp.ts";
+import { HistoryLines } from "../../../shared/utils/history.ts";
 import { TaskHistory } from "./history.ts";
 import { TaskLane } from "./lane.ts";
 
@@ -56,6 +57,16 @@ test("an escalation blocks the task, Marco's pick settles it back to running, an
       ["decide", undefined],
     ],
   );
+});
+
+test("a decide typed at a Task Lead's prompt is Marco's, in the history and on the thread", () => {
+  task("desk", "running");
+  TaskLane.escalate({ given: "desk", caller: lead, kind: "escalation", text: "Where does the icon go?", options: ["In"] });
+  const decided = TaskLane.decide({ given: "desk", caller: lead, answer: "1" });
+  assert.equal(decided.ask.decision?.who, "YOU");
+  const [entry] = TaskHistory.read("desk").filter((one) => one.kind === "decide");
+  assert.ok(entry && HistoryLines.of(entry).isDecision);
+  assert.equal(entry.from, lead.from);
 });
 
 test("a new task is an unassigned .md with the four parts, and Undo after a drop puts it back in the inbox", () => {

@@ -234,18 +234,15 @@ const decide = ({ given, caller, answer, thread: n }: DecideInput): Decided => {
   const question = String(thread.body ?? "");
   const { text, option } = answerOf(thread.ask, question, answer);
   const at = now();
-  const ask: TaskAsk = {
-    ...thread.ask,
-    decision: { who: caller.who, ...(caller.from ? { from: caller.from } : {}), text, ...(option ? { option } : {}), at },
-  };
-  const resolvedBy = caller.who === "YOU" ? "user" : "claude";
-  const threads = replace(doc.threads, { ...thread, ask, status: "resolved", resolvedBy, updated: at });
+  const marco: Caller = { who: "YOU", ...(caller.from ? { from: caller.from } : {}) };
+  const ask: TaskAsk = { ...thread.ask, decision: { ...saidBy(marco), text, ...(option ? { option } : {}), at } };
+  const threads = replace(doc.threads, { ...thread, ask, status: "resolved", resolvedBy: "user", updated: at });
   Threads.write(opened.path, { ...doc, updated: at, threads });
   const stillBlocked = asksOf(threads).some((one) => one.status !== "resolved" && one.ask.kind === "escalation");
   const unblocks = thread.ask.kind === "escalation" && opened.task.state === "blocked" && !stillBlocked;
   const { file, move: moved } = unblocks ? move(opened, "running") : { file: opened };
   TaskHistory.append(file.slug, {
-    ...saidBy(caller),
+    ...saidBy(marco),
     kind: "decide",
     thread: String(thread.id),
     ask: thread.ask.kind,
@@ -253,16 +250,15 @@ const decide = ({ given, caller, answer, thread: n }: DecideInput): Decided => {
     ...(option ? { option } : {}),
     ...(moved ? { move: moved } : {}),
   });
-  Events.publish({ topic: "task.decided", data: { slug: file.slug, thread: String(thread.id), text, who: caller.who } });
+  Events.publish({ topic: "task.decided", data: { slug: file.slug, thread: String(thread.id), text, who: marco.who } });
   return { file, question, ask, text };
 };
 
 const tell = async ({ file, question, ask, text }: Decided): Promise<boolean> => {
   const key = ask.from ? TaskCaller.keyByTitle(ask.from) : undefined;
   if (!key) return false;
-  const by = ask.decision?.who === "YOU" ? "My decision" : "The Project Lead settled it";
   const what = ask.kind === "hire" ? "the hire" : "your escalation";
-  const sent = await deliver({ key, text: `On ${what} in ${file.slug}, "${question}". ${by}: ${text}` });
+  const sent = await deliver({ key, text: `On ${what} in ${file.slug}, "${question}". My decision: ${text}` });
   return sent.delivered;
 };
 
