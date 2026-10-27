@@ -8,6 +8,7 @@ import * as Events from "../../../lib/sidecar/events.ts";
 import { Tracked } from "../../../lib/sidecar/tracked.ts";
 import { readRecord, removeRecord } from "../../../lib/web/records.ts";
 import { artifactsOf, Documents } from "./artifact-lists.ts";
+import { conversationOf } from "./conversation.ts";
 import { Links } from "./links.ts";
 
 let root: string;
@@ -36,15 +37,17 @@ const assistant = (s: number, content: Record<string, unknown>[]) => ({
 const said = (s: number, text: string) => assistant(s, [{ type: "text", text }]);
 const called = (s: number, id: string, name: string, input: Record<string, unknown>) =>
   assistant(s, [{ type: "tool_use", id, name, input }]);
-const answered = (s: number, id: string, content: string) => ({
-  type: "user",
-  timestamp: at(s),
-  message: { role: "user", content: [{ type: "tool_result", tool_use_id: id, content }] },
-});
+const ended = (s: number) => ({ type: "system", subtype: "turn_duration", timestamp: at(s) });
 const lines = (...entries: Record<string, unknown>[]): string =>
   entries.map((one) => `${JSON.stringify(one)}\n`).join("");
-const urls = (key: string): string[] => ArtifactLists.entries(key).map((slug) => readRecord(slug)?.url ?? "");
-const files = (key: string): string[] => ArtifactLists.entries(key).map((slug) => Tracked.paths().get(slug) ?? slug);
+const listed = (key: string): string[] =>
+  ArtifactLists.entries(key).map((slug) => readRecord(slug)?.url ?? Tracked.paths().get(slug) ?? slug);
+const offsets = new Map<string, number>();
+const grow = (key: string, path: string): void => {
+  const slice = conversationOf({ key, path, since: offsets.get(key) ?? 0 });
+  offsets.set(key, slice.offset);
+  Links.adopt({ key, path, ...slice, isLive: true });
+};
 const touch = (path: string): string => {
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(path, "");
@@ -69,108 +72,47 @@ test("reads every address in prose, trimming what the sentence or markdown wrapp
   ]);
 });
 
-test("adopts what the user or Claude links once, never what WebFetch or WebSearch brought in, and announces only live ones", () => {
+test("a turn lists what it hands over: the reply once the turn ends and a message's links and pages, never narration, sources or a named rule", () => {
   const key = "abcdef12";
+  const home = realpathSync(root);
+  const rule = touch(join(home, "notes", "CLAUDE.md"));
+  const plan = touch(join(home, "notes", "plan.md"));
+  const page = touch(join(home, "sidecar", "artifacts", "brief.md"));
   const path = join(root, "projects", "-tmp-links", `${key}-1111-2222-3333-444444444444.jsonl`);
   mkdirSync(dirname(path), { recursive: true });
   writeFileSync(
     path,
     lines(
-      user(1, "look at https://github.com/a/b and https://fetched.dev/page"),
-      {
-        type: "user",
-        isMeta: true,
-        timestamp: at(1),
-        message: { role: "user", content: "a skill's https://skill.dev" },
-      },
-      assistant(2, [{ type: "thinking", thinking: "maybe https://thought.dev" }]),
-      called(3, "f1", "WebFetch", { url: "https://fetched.dev/page", prompt: "read it" }),
-      answered(4, "f1", "the page links https://inside.dev/x"),
-      called(5, "s1", "WebSearch", { query: "chrome storage" }),
+      user(1, `read ${rule} first, then https://github.com/a/b and ${page}`),
+      said(2, `reading ${rule}`),
+      said(3, `the plan is at \`${plan}\`, and https://docs.dev/x has the rest`),
     ),
   );
   const events = Events.end();
 
-  Links.adopt({ key, path });
+  grow(key, path);
+  assert.deepEqual(listed(key), ["https://github.com/a/b", "brief"]);
+
+  appendFileSync(path, lines(ended(4)));
+  grow(key, path);
+  assert.deepEqual(listed(key), ["https://github.com/a/b", "brief", "https://docs.dev/x", plan]);
+
+  const [removed = ""] = ArtifactLists.entries(key);
+  removeRecord(removed);
   appendFileSync(
     path,
     lines(
-      answered(
-        6,
-        "s1",
-        'Links: [{"title":"A","url":"https://found.dev/a/?hl=es"},{"title":"B","url":"https://video.dev/watch?v=one"}]',
-      ),
-      said(
-        7,
-        "it links https://docs.dev/x and https://video.dev/watch?v=two, see https://inside.dev/x\n\nSources:\n- [A](https://found.dev/a)\n- [B](https://video.dev/watch?v=one)",
-      ),
+      user(5, "find sources, like https://github.com/a/b"),
+      called(6, "s1", "WebSearch", { query: "chrome storage" }),
+      said(7, "Sources:\n- [A](https://found.dev/a)"),
+      ended(8),
     ),
   );
-  Links.adopt({ key, path });
-  assert.deepEqual(urls(key), [
-    "https://github.com/a/b",
-    "https://fetched.dev/page",
-    "https://docs.dev/x",
-    "https://video.dev/watch?v=two",
-  ]);
-  assert.equal(Events.read(events).events.length, 0);
-
-  const [first = ""] = ArtifactLists.entries(key);
-  removeRecord(first);
-  appendFileSync(
-    path,
-    lines(said(8, "again https://github.com/a/b, new https://new.dev"), user(9, "https://inside.dev/x")),
-  );
-  Links.adopt({ key, path, isLive: true });
-
-  assert.deepEqual(urls(key), [
-    "",
-    "https://fetched.dev/page",
-    "https://docs.dev/x",
-    "https://video.dev/watch?v=two",
-    "https://new.dev/",
-    "https://inside.dev/x",
-  ]);
-  assert.deepEqual(
-    Events.read(events).events.map((event) => [event.key, event.data.title]),
-    [
-      [key, "new.dev"],
-      [key, "inside.dev"],
-    ],
-  );
-});
-
-test("adopts a file the sidecar can draw once it is named in prose or inline code, never in a fence or as source", () => {
-  const key = "a1b2c3d4";
-  const home = realpathSync(root);
-  const plan = touch(join(home, "notes", "plan.md"));
-  const shot = touch(join(home, "repo", "docs", "shot.png"));
-  const deck = touch(join(home, "repo", "deck.pdf"));
-  const later = join(home, "notes", "later.md");
-  const source = touch(join(home, "repo", "src", "app.ts"));
-  const fenced = touch(join(home, "repo", "fenced.pdf"));
-  const path = join(root, "projects", "-tmp-files", `${key}-1111-2222-3333-444444444444.jsonl`);
-  mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(
-    path,
-    lines(user(1, `read ${plan}, then ${later}`), {
-      ...said(2, `see \`docs/shot.png:4\`, [the deck](file://${deck}) and ${source}\n\n\`\`\`\nopen ${fenced}\n\`\`\``),
-      cwd: join(home, "repo"),
-    }),
-  );
-  const events = Events.end();
-
-  Links.adopt({ key, path });
-  assert.deepEqual(files(key), [plan, shot, deck]);
-
-  touch(later);
-  appendFileSync(path, lines(said(3, `${plan} again, and ${later} is written now.`)));
-  Links.adopt({ key, path, isLive: true });
-
-  assert.deepEqual(files(key), [plan, shot, deck, later]);
+  grow(key, path);
+  assert.deepEqual(listed(key), [removed, "brief", "https://docs.dev/x", plan]);
   assert.deepEqual(
     Events.read(events).events.map((event) => event.data.title),
-    ["later.md"],
+    ["github.com", "docs.dev", "plan.md"],
   );
 });
 
@@ -178,16 +120,17 @@ test("a catch-up up to a byte lands quietly, and only what was said after it is 
   const key = "fedcba98";
   const path = join(root, "projects", "-tmp-links", `${key}-1111-2222-3333-444444444444.jsonl`);
   mkdirSync(dirname(path), { recursive: true });
-  writeFileSync(path, lines(said(1, "before https://old.dev")));
-  const upTo = statSync(path).size;
-  appendFileSync(path, lines(said(2, "now https://now.dev")));
+  writeFileSync(path, lines(said(1, "before https://old.dev"), ended(2)));
+  const until = statSync(path).size;
+  appendFileSync(path, lines(said(3, "now https://now.dev"), ended(4)));
   const events = Events.end();
 
-  Links.adopt({ key, path, upTo });
-  Links.adopt({ key, path, upTo });
-  Links.adopt({ key, path, isLive: true });
+  Links.catchUp({ key, path, until });
+  Links.catchUp({ key, path, until });
+  offsets.set(key, until);
+  grow(key, path);
 
-  assert.deepEqual(urls(key), ["https://old.dev/", "https://now.dev/"]);
+  assert.deepEqual(listed(key), ["https://old.dev/", "https://now.dev/"]);
   assert.deepEqual(
     Events.read(events).events.map((event) => event.data.title),
     ["now.dev"],

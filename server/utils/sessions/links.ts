@@ -1,5 +1,5 @@
-import { closeSync, fstatSync, mkdirSync, openSync, readSync, realpathSync, writeFileSync } from "node:fs";
-import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { mkdirSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { ArtifactLists } from "../../../lib/sidecar/lists.ts";
 import { isFile, readTextSafe } from "../../../lib/files.ts";
@@ -9,9 +9,8 @@ import { Tracked } from "../../../lib/sidecar/tracked.ts";
 import { findRecord, openRecord, recordPath } from "../../../lib/web/records.ts";
 import { FileKind } from "../../../shared/utils/file-kind.ts";
 import { artifactsOf } from "./artifact-lists.ts";
+import { conversationOf, type ConversationGrowth } from "./conversation.ts";
 import { isKey } from "./paths.ts";
-import { plain } from "./relay.ts";
-import { readOut } from "./speaker.ts";
 
 const FENCED = /```[\s\S]*?(?:```|$)/g;
 const INLINE = /`[^`\n]*`/g;
@@ -20,27 +19,24 @@ const TRAILING = /[.,;:!?*_]+$/;
 const BREAK = /[\s`*()<>[\]"']+/;
 const AT_LINE = /(?::\d+)+$|#.*$/;
 const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
-// What these bring back came off the web, so Claude citing it afterwards is not Claude linking it.
 const WEB_TOOLS = new Set(["WebFetch", "WebSearch"]);
-const NEWLINE = 0x0a;
 
-type Entry = Record<string, unknown>;
-
-export interface LinkAdoption {
-  key: string;
+export interface LinkAdoption extends ConversationGrowth {
   /** Said just now, so it is announced the way a new page is; a catch-up on older turns lands quietly. */
   isLive?: boolean;
+}
+
+export interface LinkCatchUp {
+  key: string;
   path: string;
-  upTo?: number;
+  until?: number;
 }
 
 interface Ledger {
-  /** What a web tool brought in, which Claude citing never adopts but the user saying it still does. */
-  fetched: string[];
+  isResearch?: boolean;
   links: string[];
   offset: number;
-  /** Web tool calls still waiting on a result, which can land in a later read than the call. */
-  pending: string[];
+  reply?: string;
 }
 
 interface SitePlacing {
@@ -57,7 +53,6 @@ interface FilePlacing {
 }
 
 const count = (text: string, char: string): number => text.split(char).length - 1;
-const str = (value: unknown): string => (typeof value === "string" ? value : "");
 const strings = (value: unknown): string[] =>
   Array.isArray(value) ? value.filter((one): one is string => typeof one === "string") : [];
 
@@ -90,87 +85,15 @@ function pathOf(word: string): string | undefined {
 }
 
 // Unlike an address, a path counts in inline code, since backticks are how a path is usually written.
-function pathsIn(text: string, cwd: string): string[] {
+function pathsIn(text: string): string[] {
   const out = new Set<string>();
   for (const word of text.replace(FENCED, " ").split(BREAK)) {
     const given = pathOf(word);
-    if (!given?.includes("/") || !FileKind.of(given) || (!isAbsolute(given) && !cwd)) continue;
-    const full = resolve(cwd, given);
-    if (!isFile(full)) continue;
-    const real = realpathSync(full);
+    if (!given || !isAbsolute(given) || !FileKind.of(given) || !isFile(given)) continue;
+    const real = realpathSync(given);
     if (Tracked.isTrackable(real)) out.add(real);
   }
   return [...out];
-}
-
-const pageOf = ({ origin, pathname }: URL): string => `${origin}${pathname.replace(/\/+$/, "")}`;
-
-// A search lists a page as ?hl=es and Claude cites it bare, while ?v=two is another video than a fetched ?v=one.
-function isFetched(fetched: Set<string>, href: string): boolean {
-  const cited = new URL(href);
-  return [...fetched].some((one) => {
-    const got = new URL(one);
-    return (
-      pageOf(got) === pageOf(cited) &&
-      [...cited.searchParams].every(([name, value]) => got.searchParams.getAll(name).includes(value))
-    );
-  });
-}
-
-function textOf(value: unknown): string {
-  if (typeof value === "string") return value;
-  if (Array.isArray(value)) return value.map(textOf).join("\n");
-  return typeof value === "object" && value ? Object.values(value).map(textOf).join("\n") : "";
-}
-
-function blocksOf(entry: Entry): Entry[] {
-  const content = (entry.message as Entry | undefined)?.content;
-  if (typeof content === "string") return [{ type: "text", text: content }];
-  return Array.isArray(content) ? content.filter((one): one is Entry => typeof one === "object" && !!one) : [];
-}
-
-const spoken = (text: string): string[] =>
-  readOut(text).flatMap((piece) => (piece.kind === "said" ? [plain(piece.text)] : []));
-
-// The user's own words, read as the chat reads them, so a reminder, hook context or a skill's body never counts.
-function userSaid(entry: Entry): string[] {
-  if (entry.type === "queue-operation") return entry.operation === "enqueue" ? spoken(str(entry.content)) : [];
-  if (entry.type !== "user" || entry.isMeta || entry.isCompactSummary) return [];
-  const blocks = blocksOf(entry);
-  if (blocks[0]?.type === "tool_result") return [];
-  return spoken(
-    blocks
-      .filter((block) => block.type === "text")
-      .map((block) => str(block.text))
-      .join(""),
-  );
-}
-
-// Through the last whole line, so a record still being written is read on the next pass rather than cut in half.
-function readFrom(path: string, offset: number, upTo: number): { entries: Entry[]; offset: number } {
-  const fd = openSync(path, "r");
-  try {
-    const size = Math.min(fstatSync(fd).size, upTo);
-    if (size <= offset) return { entries: [], offset: size };
-    const buffer = Buffer.alloc(size - offset);
-    readSync(fd, buffer, 0, buffer.length, offset);
-    const end = buffer.lastIndexOf(NEWLINE) + 1;
-    const entries = buffer
-      .subarray(0, end)
-      .toString("utf8")
-      .split("\n")
-      .flatMap((line): Entry[] => {
-        try {
-          const parsed: unknown = JSON.parse(line);
-          return typeof parsed === "object" && parsed ? [parsed as Entry] : [];
-        } catch {
-          return [];
-        }
-      });
-    return { entries, offset: offset + end };
-  } finally {
-    closeSync(fd);
-  }
 }
 
 function ledgerPath(key: string): string {
@@ -179,15 +102,15 @@ function ledgerPath(key: string): string {
 
 function ledgerOf(file: string): Ledger {
   try {
-    const { fetched, links, offset, pending } = JSON.parse(readTextSafe(file) ?? "") as Partial<Ledger>;
+    const { isResearch, links, offset, reply } = JSON.parse(readTextSafe(file) ?? "") as Partial<Ledger>;
     return {
-      fetched: strings(fetched),
+      isResearch: isResearch === true || undefined,
       links: strings(links),
       offset: typeof offset === "number" ? offset : 0,
-      pending: strings(pending),
+      reply: typeof reply === "string" ? reply : undefined,
     };
   } catch {
-    return { fetched: [], links: [], offset: 0, pending: [] };
+    return { links: [], offset: 0 };
   }
 }
 
@@ -213,18 +136,15 @@ function placeFile({ isLive, key, path }: FilePlacing): void {
     Events.publish({ topic: "artifact.created", key, data: { slug, title: basename(path), path } });
 }
 
-// Each address or path once per conversation, so an entry someone removed stays gone however often it is said again.
-function adopt({ key, isLive = false, path, upTo = Number.POSITIVE_INFINITY }: LinkAdoption): void {
+// Only what a turn hands over lists: a message's links and pages, and the reply that ends Claude's turn, never its narration.
+function adopt({ key, isLive = false, offset, turns }: LinkAdoption): void {
   if (!isKey(key)) return;
   const file = ledgerPath(key);
   const ledger = ledgerOf(file);
-  if (upTo <= ledger.offset) return;
-  const read = readFrom(path, ledger.offset, upTo);
-  if (read.offset === ledger.offset) return;
+  if (offset <= ledger.offset) return;
   const links = new Set(ledger.links);
-  const fetched = new Set(ledger.fetched);
-  const pending = new Set(ledger.pending);
   const held = ArtifactLists.entries(key);
+  let { isResearch, reply } = ledger;
   const take = (said: string, place: () => void): void => {
     if (links.has(said)) return;
     links.add(said);
@@ -232,37 +152,41 @@ function adopt({ key, isLive = false, path, upTo = Number.POSITIVE_INFINITY }: L
   };
   const takeSite = (href: string): void => take(href, () => placeSite({ held, href, isLive, key }));
   const takeFile = (local: string): void => take(local, () => placeFile({ isLive, key, path: local }));
-  for (const entry of read.entries) {
-    if (entry.isSidechain) continue;
-    const cwd = str(entry.cwd);
-    for (const text of userSaid(entry)) {
-      for (const href of linksOf(text)) takeSite(href);
-      for (const local of pathsIn(text, cwd)) takeFile(local);
-    }
-    for (const block of blocksOf(entry)) {
-      if (block.type === "tool_use" && WEB_TOOLS.has(str(block.name))) {
-        pending.add(str(block.id));
-        for (const href of addressesIn(textOf(block.input))) fetched.add(href);
-      } else if (block.type === "tool_result" && pending.delete(str(block.tool_use_id))) {
-        for (const href of addressesIn(textOf(block.content))) fetched.add(href);
-      } else if (entry.type === "assistant" && block.type === "text") {
-        const text = str(block.text);
-        for (const href of linksOf(text)) if (!isFetched(fetched, href)) takeSite(href);
-        for (const local of pathsIn(text, cwd)) takeFile(local);
-      }
-    }
+  const handOver = (): void => {
+    if (reply && !isResearch) for (const href of linksOf(reply)) takeSite(href);
+    if (reply) for (const local of pathsIn(reply)) takeFile(local);
+    reply = undefined;
+    isResearch = undefined;
+  };
+  for (const turn of turns) {
+    if (turn.role === "user") {
+      if (!turn.queued) handOver();
+      for (const href of linksOf(turn.text)) takeSite(href);
+      for (const local of pathsIn(turn.text)) if (Tracked.isPage(local)) takeFile(local);
+    } else if (turn.kind === "end") handOver();
+    else if (turn.kind === "narration" || turn.kind === "answer") reply = turn.text;
+    else if (turn.kind === "acting" && WEB_TOOLS.has(turn.tool ?? "")) isResearch = true;
   }
   mkdirSync(dirname(file), { recursive: true });
-  const next: Ledger = { fetched: [...fetched], links: [...links], offset: read.offset, pending: [...pending] };
+  const next: Ledger = { isResearch, links: [...links], offset, reply };
   writeFileSync(file, `${JSON.stringify(next)}\n`);
 }
 
+function settled(work: () => void, key: string): void {
+  try {
+    work();
+  } catch (error) {
+    console.error(`[links] could not adopt the links of ${key}`, error);
+  }
+}
+
 export const Links = {
-  adopt(options: LinkAdoption): void {
-    try {
-      adopt(options);
-    } catch {}
-  },
+  adopt: (growth: LinkAdoption): void => settled(() => adopt(growth), growth.key),
+  catchUp: ({ key, path, until }: LinkCatchUp): void =>
+    settled(() => {
+      const since = ledgerOf(ledgerPath(key)).offset;
+      adopt({ key, path, ...conversationOf({ key, path, since, until }) });
+    }, key),
   ledger: ledgerPath,
   of: linksOf,
 };
