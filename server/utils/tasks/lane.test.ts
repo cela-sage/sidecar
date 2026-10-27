@@ -58,6 +58,19 @@ test("an escalation blocks the task, Marco's pick settles it back to running, an
   );
 });
 
+test("a new task is an unassigned .md with the four parts, and Undo after a drop puts it back in the inbox", () => {
+  const made = TaskLane.create("Hook that blocks committing settings.local.json");
+  assert.equal(made.slug, "hook-that-blocks-committing-settings");
+  assert.equal(TaskLane.create("Hook that blocks committing settings.local.json").slug, `${made.slug}-2`);
+  const text = readFileSync(made.path, "utf8");
+  assert.deepEqual(Stamp.task(Stamp.fields(text)), { state: "unassigned" });
+  assert.match(text, /^## Problem\n\n## Pain point\n\n## Solution\n\n## Impact\n$/m);
+
+  assert.equal(TaskLane.assign({ given: made.slug, caller: { who: "YOU" }, project: "Cela" }).task.state, "assigned");
+  TaskLane.state({ given: made.slug, caller: { who: "YOU" }, state: "unassigned" });
+  assert.equal(Stamp.fields(readFileSync(made.path, "utf8")).project, undefined);
+});
+
 test("waiting needs a reason, a task on no project cannot run, and only a Task Lead's turn joins its history", () => {
   task("fattura", "running");
   assert.throws(() => TaskLane.state({ given: "fattura", caller: lead, state: "waiting" }), /--reason/);

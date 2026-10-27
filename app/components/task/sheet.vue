@@ -75,6 +75,16 @@ watch(
 );
 
 watch(
+  () => [meta.slug, route.query.edit],
+  () => {
+    if (!route.query.edit) return;
+    task.isEditing = true;
+    void navigateTo({ query: { ...route.query, edit: undefined } }, { replace: true });
+  },
+  { immediate: true },
+);
+
+watch(
   () => asking.value.length,
   (count, was = 0) => {
     if (count > was) isFolded.value = true;

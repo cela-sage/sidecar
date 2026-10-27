@@ -1,4 +1,4 @@
-import { closeSync, openSync, readdirSync, readFileSync, readSync, writeFileSync } from "node:fs";
+import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { Refusal } from "../../../lib/sidecar/refusal.ts";
 import { Resolve } from "../../../lib/sidecar/resolve.ts";
@@ -16,6 +16,8 @@ export interface TaskFile {
 const HEAD_BYTES = 4000;
 const H1 = /^#[ \t]+(.+?)[ \t#]*$/m;
 const COMMENTS = /<!--[\s\S]*?-->/g;
+const PARTS = ["Problem", "Pain point", "Solution", "Impact"];
+const SLUG_WORDS = 5;
 
 const head = (path: string): string => {
   const fd = openSync(path, "r");
@@ -65,4 +67,30 @@ const restamp = (file: TaskFile, task: ArtifactTask): TaskFile => {
   return { ...file, task: { ...file.task, ...task } };
 };
 
-export const TaskFiles = { all, open, restamp };
+const slugOf = (title: string): string =>
+  title
+    .normalize("NFKD")
+    .replace(/\p{M}/gu, "")
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean)
+    .slice(0, SLUG_WORDS)
+    .join("-") || "task";
+
+const isTaken = (slug: string): boolean =>
+  ["html", "ipynb", "md"].some((format) => existsSync(join(Sidecar.artifacts(), `${slug}.${format}`)));
+
+const create = (title: string): TaskFile => {
+  const base = slugOf(title);
+  let slug = base;
+  for (let n = 2; isTaken(slug); n += 1) slug = `${base}-${n}`;
+  const path = join(Sidecar.artifacts(), `${slug}.md`);
+  const body = `# ${title}\n\n${PARTS.map((part) => `## ${part}\n`).join("\n")}`;
+  mkdirSync(Sidecar.artifacts(), { recursive: true });
+  writeFileSync(path, Stamp.write(body, { slug, title, updated: localDate(new Date()), state: "unassigned" }), {
+    flag: "wx",
+  });
+  return { path, slug, title, task: { state: "unassigned" } };
+};
+
+export const TaskFiles = { all, create, open, restamp };

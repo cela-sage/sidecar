@@ -103,6 +103,12 @@ const state = ({ given, caller, state: now, reason, on }: StateInput): TaskFile 
   return next;
 };
 
+const create = (title: string): TaskFile => {
+  const file = TaskFiles.create(title);
+  changed(file);
+  return file;
+};
+
 const assign = ({ given, caller, project }: { given: string; caller: Caller; project: string }): TaskFile => {
   const file = TaskFiles.open(given);
   const projects = Projects.list();
@@ -289,4 +295,4 @@ const read = ({ given, caller }: { given: string; caller: Caller }): Read => {
   return { file, entries, asks: asksOf(Threads.read(file.path).threads) };
 };
 
-export const TaskLane = { asksOf, assign, decide, edited, escalate, heard, judge, read, state, tell };
+export const TaskLane = { asksOf, assign, create, decide, edited, escalate, heard, judge, read, state, tell };
