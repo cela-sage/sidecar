@@ -3,7 +3,7 @@ import type { MascotState } from "~/components/claude/mascot.vue";
 
 type TurnRole = "assistant" | "user" | "system";
 
-export type TurnKind = "thinking" | "narration" | "answer" | "acting" | "note" | "drop" | "done";
+export type TurnKind = "thinking" | "narration" | "answer" | "acting" | "note" | "drop" | "done" | "end";
 
 export interface ConversationTurn {
   at: number;
@@ -55,7 +55,7 @@ function asTurn(value: unknown): ConversationTurn | undefined {
 }
 
 function isKind(value: unknown): value is TurnKind {
-  return ["thinking", "narration", "answer", "acting", "note", "drop", "done"].includes(String(value));
+  return ["thinking", "narration", "answer", "acting", "note", "drop", "done", "end"].includes(String(value));
 }
 
 function parseTurn(raw: string): ConversationTurn | undefined {
@@ -155,6 +155,10 @@ export function useConversation(): Conversation {
     // A tool result carries no words and is not a note: it only reports that the call it names closed.
     if (turn.kind === "done") {
       finish(turn.ref);
+      return;
+    }
+    if (turn.kind === "end") {
+      settle();
       return;
     }
     // The delivered copy replaces the pending one, which is what clears the queued mark.

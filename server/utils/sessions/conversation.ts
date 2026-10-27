@@ -1,10 +1,10 @@
-import { statSync } from "node:fs";
+import { splitLines } from "../../../lib/text.ts";
 import { plain } from "./relay.ts";
 import { argOf, readOut } from "./speaker.ts";
-import { readWindow, transcriptIndex, usableLines } from "./transcripts.ts";
+import { readRange, transcriptIndex, type TranscriptGrowth } from "./transcripts.ts";
 
 // Narration and answer share the provider's `text` block, told apart only by position.
-export type TurnKind = "thinking" | "narration" | "answer" | "acting" | "note" | "drop" | "done";
+export type TurnKind = "thinking" | "narration" | "answer" | "acting" | "note" | "drop" | "done" | "end";
 
 export type AskOption = { label: string; description?: string };
 export type Ask = { question: string; header?: string; multi?: true; options: AskOption[] };
@@ -31,40 +31,33 @@ export type ConversationSlice = {
   offset: number;
 };
 
+export type ConversationGrowth = TranscriptGrowth & ConversationSlice;
+
 export type ConversationQuery = {
   key: string;
   /** The transcript a caller already found, which spares a read of every transcript on disk. */
   path?: string;
   since?: number;
+  until?: number;
 };
 
 const QUEUE_ECHO_MS = 60_000;
 
-function located({ key, path }: Pick<ConversationQuery, "key" | "path">): { path: string; size: number } | undefined {
-  if (!path) return transcriptIndex().get(key);
-  try {
-    return { path, size: statSync(path).size };
-  } catch {
-    return undefined;
-  }
-}
-
-export function conversationOf({ key, path, since = 0 }: ConversationQuery): ConversationSlice {
-  const ref = located({ key, path });
-  if (!ref) return { turns: [], offset: 0 };
-  const start = since > 0 ? since : 0;
-  if (start >= ref.size) return { turns: [], offset: ref.size };
-  // tail of (size-start) bytes is the file from `start`; head is the same when start is 0
-  const window = readWindow(ref.path, start ? "tail" : "head", ref.size - start);
-  if (!window) return { turns: [], offset: start };
-  const prefix = throughLastNewline(window.text);
-  if (!prefix) return { turns: [], offset: start };
+export function conversationOf({
+  key,
+  path = transcriptIndex().get(key)?.path,
+  since = 0,
+  until = Number.POSITIVE_INFINITY,
+}: ConversationQuery): ConversationSlice {
+  const start = Math.max(0, since);
+  const read = path ? readRange(path, start, until) : undefined;
+  if (!read) return { turns: [], offset: path ? start : 0 };
   const turns: ConversationTurn[] = [];
   // The harness re-queues a mid-turn message, writing it twice with replies in between.
   const echo = new Map<string, number>();
   // A result carries no tool name of its own; only the call it pairs to does.
   const toolByRef = new Map<string, string>();
-  for (const line of usableLines({ text: prefix, whole: true }, "head")) {
+  for (const line of splitLines(read.text)) {
     for (const turn of turnOf(line)) {
       if (turn.role === "user") {
         const said = echo.get(turn.text);
@@ -77,15 +70,7 @@ export function conversationOf({ key, path, since = 0 }: ConversationQuery): Con
     }
   }
   settle(turns);
-  return { turns, offset: start + Buffer.byteLength(prefix, "utf8") };
-}
-
-function throughLastNewline(text: string): string | undefined {
-  const n = text.lastIndexOf("\n");
-  const r = text.lastIndexOf("\r");
-  const at = n > r ? n : r;
-  if (at < 0) return undefined;
-  return text.slice(0, at + 1);
+  return { turns, offset: read.end };
 }
 
 // A mid-turn message lands only here: the copy that reached the model is buried in a
@@ -117,10 +102,12 @@ function turnOf(line: string): ConversationTurn[] {
   const entry = record(line);
   if (!entry) return [];
   if (entry.type === "queue-operation") return queuedOf(entry);
-  if (entry.type !== "user" && entry.type !== "assistant") return [];
   if (entry.isSidechain) return [];
   const at = atOf(entry.timestamp);
   if (!at) return [];
+  if (entry.type === "system")
+    return entry.subtype === "turn_duration" ? [{ role: "system", text: "", at, kind: "end" }] : [];
+  if (entry.type !== "user" && entry.type !== "assistant") return [];
   // The 28KB summary body is never worth carrying into a turn; only its presence is.
   if (entry.isCompactSummary) return [{ role: "system", text: "Compacted", at, kind: "note" }];
   const message = entry.message;
@@ -218,11 +205,11 @@ function saidOf(content: unknown): Said | undefined {
   return tool ? { text: tool, kind: "acting", tool, arg, ref, bg, ask } : undefined;
 }
 
-// Nothing marks an answer at the time it is written; it is the last thing said before the user speaks.
+// Nothing marks an answer at the time it is written; it is the last thing said before the turn ends or the user speaks.
 function settle(turns: ConversationTurn[]): void {
   let latest: ConversationTurn | undefined;
   for (const turn of turns) {
-    if (turn.role === "user") {
+    if ((turn.role === "user" && !turn.queued) || turn.kind === "end") {
       if (latest) latest.kind = "answer";
       latest = undefined;
     } else if (turn.kind === "narration") {

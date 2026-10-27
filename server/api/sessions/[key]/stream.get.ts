@@ -1,25 +1,22 @@
-import { conversationOf } from "~~/server/utils/sessions/conversation";
-import { transcripts, type TranscriptGrowth } from "~~/server/utils/sessions/transcripts";
+import { conversationOf, type ConversationGrowth, type ConversationTurn } from "~~/server/utils/sessions/conversation";
+import { transcripts } from "~~/server/utils/sessions/transcripts";
 
 export default defineEventHandler((event): Promise<void> => {
   const key = getRouterParam(event, "key") || "";
   const stream = createEventStream(event);
-  // Resuming from the client's offset closes the gap between its backfill and this connection opening.
-  const since = Number(getQuery(event).since);
-  let offset = Number.isFinite(since) && since > 0 ? since : conversationOf({ key }).offset;
-
-  const emit = (grown: TranscriptGrowth): void => {
-    if (grown.key !== key) return;
-    const slice = conversationOf({ key, path: grown.path, since: offset });
-    offset = slice.offset;
-    for (const turn of slice.turns) {
-      void stream.push({ event: "turn", data: JSON.stringify(turn) });
-    }
+  const push = (turns: ConversationTurn[]): void => {
+    for (const turn of turns) void stream.push({ event: "turn", data: JSON.stringify(turn) });
   };
+  // Resuming from the client's offset closes the gap between its backfill and this connection, and the client drops a turn it already holds.
+  const since = Number(getQuery(event).since);
+  if (Number.isFinite(since) && since > 0) push(conversationOf({ key, since }).turns);
 
-  transcripts.on("grew", emit);
+  const emit = (grown: ConversationGrowth): void => {
+    if (grown.key === key) push(grown.turns);
+  };
+  transcripts.on("turned", emit);
   stream.onClosed(() => {
-    transcripts.off("grew", emit);
+    transcripts.off("turned", emit);
   });
 
   return stream.send();

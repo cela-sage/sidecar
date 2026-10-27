@@ -2,6 +2,7 @@ import { EventEmitter } from "node:events";
 import { closeSync, fstatSync, openSync, readSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { splitLines } from "../../../lib/text.ts";
+import type { ConversationGrowth } from "./conversation.ts";
 import { isKey, isSessionId, keyOf, projectsHome } from "./paths.ts";
 
 // Identity sits in the first records written; the current name sits in the last.
@@ -19,7 +20,7 @@ export interface TranscriptRef {
 
 export type TranscriptGrowth = Pick<TranscriptRef, "key" | "path">;
 
-export const transcripts = new EventEmitter<{ grew: [TranscriptGrowth] }>();
+export const transcripts = new EventEmitter<{ grew: [TranscriptGrowth]; turned: [ConversationGrowth] }>();
 
 export interface TranscriptIdentity {
   cwd?: string;
@@ -43,6 +44,25 @@ export function readWindow(path: string, from: Window, bytes: number): { text: s
       const buffer = Buffer.allocUnsafe(length);
       readSync(fd, buffer, 0, length, from === "head" ? 0 : size - length);
       return { text: buffer.toString("utf8"), whole: length === size };
+    } finally {
+      closeSync(fd);
+    }
+  } catch {
+    return undefined;
+  }
+}
+
+// Through the last whole line, so a record still being written is read on the next pass rather than cut in half.
+export function readRange(path: string, from: number, to: number): { text: string; end: number } | undefined {
+  try {
+    const fd = openSync(path, "r");
+    try {
+      const size = Math.min(fstatSync(fd).size, to);
+      if (size <= from) return { text: "", end: size };
+      const buffer = Buffer.alloc(size - from);
+      readSync(fd, buffer, 0, buffer.length, from);
+      const whole = buffer.lastIndexOf(0x0a) + 1;
+      return { text: buffer.subarray(0, whole).toString("utf8"), end: from + whole };
     } finally {
       closeSync(fd);
     }
