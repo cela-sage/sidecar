@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { X } from "@lucide/vue";
+import type { TaskFace } from "~/stores/task";
 
 const route = useRoute();
 const chrome = useChrome();
@@ -15,6 +16,16 @@ const onFaces = computed(() => inSession.value && !onArtifact.value);
 const onTask = computed(() => !sc.failure.value && route.path.startsWith("/tasks/"));
 
 const faces = computed(() => chrome.view.faces.value.map((face) => ({ label: LABELS[face], value: face })));
+
+const task = $task();
+const taskFaces = computed(() => [
+  { label: "Document", value: "document" as const },
+  { label: "History", value: "history" as const, count: task.entries.filter((one) => one.kind !== "read").length },
+]);
+const taskFace = computed<TaskFace>({
+  get: () => (route.query.face === "history" ? "history" : "document"),
+  set: (next) => void navigateTo({ query: { ...route.query, face: next === "history" ? "history" : undefined } }),
+});
 
 const face = computed({
   get: () => chrome.view.current.value,
@@ -38,6 +49,10 @@ function closePage(): void {
       variant="glass-liquid"
     >
       <UiSegmented v-model="face" data-region="view-switcher" :options="faces" variant="bare" />
+    </UiSurface>
+
+    <UiSurface v-if="onTask" v-island-pop="'top right'" class="pill" pad="none" shape="pill" variant="glass-liquid">
+      <UiSegmented v-model="taskFace" data-region="task-face" :options="taskFaces" variant="bare" />
     </UiSurface>
 
     <ChromeCommentToggle v-if="onArtifact" shape="island" />

@@ -8,11 +8,13 @@ const CATALOGUE_MS = 5000;
 const route = useRoute();
 const sc = useSidecar();
 const task = $task();
+const events = useEvents();
 
 const slug = computed(() => String(route.params.task ?? ""));
 const meta = computed(() => Tasks.of(sc.catalogue.value).find((one) => one.slug === slug.value));
 const project = computed(() => task.projects.find((one) => one.key === meta.value?.task.project));
 const title = computed(() => meta.value?.title || deslug(slug.value));
+const isHistory = computed(() => route.query.face === "history");
 
 const rail = computed(() =>
   sc.sessions.value
@@ -34,13 +36,25 @@ const conversation = computed(() => {
   return held?.key ?? sc.sessionKey.value;
 });
 
+async function readCatalogue(): Promise<void> {
+  sc.catalogue.value = await $fetch<ArtifactMeta[]>("/api/artifacts").catch(() => sc.catalogue.value);
+}
+
+function heard({ data }: { data: { slug: string } }): void {
+  if (data.slug !== slug.value) return;
+  void task.refresh();
+  void readCatalogue();
+}
+
 loadSidecar();
 void task.loadProjects();
+watch(slug, (next) => void task.open(next), { immediate: true });
+events.on("task.changed", heard);
+events.on("task.escalated", heard);
+events.on("task.decided", heard);
 
-// A stamp changes with no event, so the board reads the catalogue again while it is open.
-useIntervalFn(async () => {
-  sc.catalogue.value = await $fetch<ArtifactMeta[]>("/api/artifacts").catch(() => sc.catalogue.value);
-}, CATALOGUE_MS);
+// A stamp changes with no event when Mode's own CLI writes it, so the board reads the catalogue again while it is open.
+useIntervalFn(readCatalogue, CATALOGUE_MS);
 </script>
 
 <template>
@@ -54,14 +68,20 @@ useIntervalFn(async () => {
     </template>
 
     <main class="stage" data-region="task-stage">
-      <TaskSidebar :current="slug" />
-      <TaskSheet v-if="meta" :conversation="conversation" :meta="meta" :project="project" :rail="rail" />
-      <UiSurface v-else class="missing" pad="none" variant="raised">
-        <UiStateMessage v-if="!sc.ready.value" align="center" kind="loading">Reading the tasks…</UiStateMessage>
-        <UiStateMessage v-else align="center">
-          <b>{{ slug }}</b> is not a task. A task is a .md whose stamp holds a state.
-        </UiStateMessage>
-      </UiSurface>
+      <template v-if="meta && isHistory">
+        <TaskHistory :meta="meta" />
+        <TaskEntry :meta="meta" />
+      </template>
+      <template v-else>
+        <TaskSidebar :current="slug" />
+        <TaskSheet v-if="meta" :conversation="conversation" :meta="meta" :project="project" :rail="rail" />
+        <UiSurface v-else class="missing" pad="none" variant="raised">
+          <UiStateMessage v-if="!sc.ready.value" align="center" kind="loading">Reading the tasks…</UiStateMessage>
+          <UiStateMessage v-else align="center">
+            <b>{{ slug }}</b> is not a task. A task is a .md whose stamp holds a state.
+          </UiStateMessage>
+        </UiSurface>
+      </template>
     </main>
   </NuxtLayout>
 </template>

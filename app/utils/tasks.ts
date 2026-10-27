@@ -1,10 +1,11 @@
 import type { ArtifactMeta } from "~~/shared/types/artifact";
 import type { LiveSession } from "~~/shared/types/session";
 import type { ArtifactTask, TaskState } from "~~/shared/types/task";
+import type { TaskStory } from "./timeline";
 
 // Violet runs on its own, hollow while it waits on someone else, red waits on you, grey is done.
 export type TaskLook = "running" | "waiting" | "needs" | "done";
-export type StepKind = TaskLook | "past" | "future";
+export type StepKind = TaskLook | "past" | "future" | "decided";
 export type StepJoint = "none" | "solid" | "primary" | "dashed";
 export type AgentState = "working" | "needs input" | "completed";
 
@@ -72,7 +73,7 @@ function tintOf(key: string | undefined, keys: string[]): string {
   return at < 0 ? "slate" : (TINTS[at % TINTS.length] ?? "slate");
 }
 
-function stepsOf(state: TaskState): TaskStep[] {
+function stepsOf(state: TaskState, { resumed, settledBy, waiting }: TaskStory = {}): TaskStep[] {
   const at = PATH.indexOf(state);
   const reached = at < 0 ? PATH.length : at;
   const steps: Omit<TaskStep, "joint">[] = PATH.map((one, i) => ({
@@ -80,8 +81,21 @@ function stepsOf(state: TaskState): TaskStep[] {
     kind: i < reached ? "past" : i === reached ? LOOK[one] : "future",
     tip: TIP[one],
   }));
-  if (state === "blocked" || state === "waiting")
-    steps.push({ label: chipOf(state), kind: LOOK[state], tip: TIP[state] });
+  if (resumed)
+    steps.splice(-1, 0, {
+      label: `Waited ${resumed.waited}`,
+      kind: "past",
+      tip: resumed.on ? `Waited on ${resumed.on}` : TIP.waiting,
+    });
+  if (settledBy)
+    steps.push({
+      label: settledBy === "YOU" ? "Blocked, settled by you" : "Blocked, settled by the Project Lead",
+      kind: "decided",
+      tip: "An escalation stopped it, and the decision is in the history",
+    });
+  if (state === "blocked") steps.push({ label: chipOf(state), kind: LOOK[state], tip: TIP[state] });
+  if (state === "waiting")
+    steps.push({ label: waiting?.on ? `Waiting on ${waiting.on}` : chipOf(state), kind: LOOK[state], tip: TIP[state] });
   steps.push({ label: "Done", kind: state === "done" ? "done" : "future", tip: TIP.done });
   return steps.map((step, i) => ({
     ...step,

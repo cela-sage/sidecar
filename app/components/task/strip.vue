@@ -2,12 +2,13 @@
 import { Check } from "@lucide/vue";
 import type { TaskState } from "~~/shared/types/task";
 import type { TaskLook } from "~/utils/tasks";
+import type { TaskStory } from "~/utils/timeline";
 
-const { state } = defineProps<{ state: TaskState }>();
+const { state, story = {} } = defineProps<{ state: TaskState; story?: TaskStory }>();
 
 const LIVE = new Set<string>(["running", "waiting", "needs", "done"]);
 
-const steps = computed(() => Tasks.stepsOf(state));
+const steps = computed(() => Tasks.stepsOf(state, story));
 const isLive = (kind: string): kind is TaskLook => LIVE.has(kind);
 </script>
 
@@ -21,7 +22,7 @@ const isLive = (kind: string): kind is TaskLook => LIVE.has(kind);
         :data-kind="step.kind"
         :data-tip="step.tip"
       >
-        <UiIcon v-if="step.kind === 'past'" class="check" :icon="Check" size="xs" />
+        <UiIcon v-if="step.kind === 'past' || step.kind === 'decided'" class="check" :icon="Check" size="xs" />
         <TaskDot v-else-if="isLive(step.kind)" :look="step.kind" size="sm" />
         {{ step.label }}
       </li>
@@ -75,7 +76,15 @@ const isLive = (kind: string): kind is TaskLook => LIVE.has(kind);
   @apply bg-sunken;
 }
 
+.step[data-kind="decided"] {
+  @apply border-border-strong bg-sunken;
+}
+
 .check {
   @apply size-2.75 text-muted;
+}
+
+.step[data-kind="decided"] .check {
+  @apply text-fg;
 }
 </style>

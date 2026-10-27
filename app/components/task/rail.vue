@@ -1,17 +1,21 @@
 <script lang="ts" setup>
+import type { ReviewThread } from "~~/shared/types/artifact";
 import type { LiveSession } from "~~/shared/types/session";
 import { Titles } from "~~/shared/utils/titles";
 import type { AgentState, TaskLook } from "~/utils/tasks";
 
-const { sessions } = defineProps<{ sessions: LiveSession[] }>();
+const { asking = [], sessions } = defineProps<{ asking?: ReviewThread[]; sessions: LiveSession[] }>();
 
 const LOOK: Record<AgentState, TaskLook> = { working: "running", "needs input": "needs", completed: "done" };
 
+// The lead that escalated has ended its turn, so claude agents calls it completed while it waits on Marco.
 const rows = computed(() =>
   sessions.map((session) => {
     const name = nameOf(session);
     const title = Titles.parse(name);
-    const state = Tasks.agentStateOf(session);
+    const asked = asking.find((thread) => thread.ask?.from === name);
+    const state: AgentState = asked ? "needs input" : Tasks.agentStateOf(session);
+    const at = turnAt(asked ? Date.parse(asked.at) : session.lastActive);
     return {
       key: session.key,
       token: title?.token,
@@ -20,8 +24,8 @@ const rows = computed(() =>
       state,
       look: LOOK[state],
       agents: session.agents ?? [],
-      detail: session.detail,
-      at: turnAt(session.lastActive),
+      detail: asked ? `${asked.body} It's on the task, waiting on you.` : session.detail,
+      when: `${asked ? "asked" : "last turn"}${at ? ` · ${at}` : ""}`,
     };
   }),
 );
@@ -71,7 +75,7 @@ function turnAt(ms?: number): string {
           <span v-for="agent in row.agents" :key="agent.name" class="chip">{{ agent.name }}</span>
         </div>
         <div v-if="row.isLead && row.detail" class="turn">
-          <span class="label mono-meta">last turn{{ row.at ? ` · ${row.at}` : "" }}</span>
+          <span class="label mono-meta">{{ row.when }}</span>
           <span class="said">{{ row.detail }}</span>
         </div>
       </div>

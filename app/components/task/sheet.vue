@@ -2,6 +2,7 @@
 import { Check, Maximize2, Pencil } from "@lucide/vue";
 import { useEventListener } from "@vueuse/core";
 import { isTyping } from "~~/lib/web/page/blocks";
+import type { ReviewThread } from "~~/shared/types/artifact";
 import type { LiveSession } from "~~/shared/types/session";
 import type { Project } from "~~/shared/types/task";
 import type { TaskMeta } from "~/utils/tasks";
@@ -19,8 +20,25 @@ interface EditorHandle {
 
 const task = $task();
 const artifact = $artifact();
+const route = useRoute();
+const { decide, isSending } = useTaskDecide();
 const editor = useTemplateRef<EditorHandle>("editor");
 const savedAt = ref<string>();
+const isFolded = ref(true);
+
+const asking = computed(() => task.asks.filter((thread) => thread.status !== "resolved"));
+const isBlocked = computed(() => asking.value.some((thread) => thread.ask?.kind === "escalation"));
+const story = computed(() => Timeline.story(task.entries, meta.task.state));
+const settled = computed(() => {
+  if (!story.value.settledBy) return undefined;
+  const decided = task.asks.filter((thread) => thread.ask?.kind === "escalation" && !!thread.ask.decision);
+  return decided.sort((a, b) => (a.ask?.decision?.at ?? "").localeCompare(b.ask?.decision?.at ?? "")).at(-1);
+});
+
+function showHistory(thread: ReviewThread): void {
+  task.picked = task.entries.findLastIndex((entry) => entry.kind === "decide" && entry.thread === thread.id);
+  void navigateTo({ query: { ...route.query, face: "history" } });
+}
 
 const title = computed(() => meta.title || deslug(meta.slug));
 const look = computed(() => Tasks.lookOf(meta.task.state));
@@ -52,6 +70,14 @@ watch(
   () => {
     task.isEditing = false;
     savedAt.value = undefined;
+    isFolded.value = true;
+  },
+);
+
+watch(
+  () => asking.value.length,
+  (count, was = 0) => {
+    if (count > was) isFolded.value = true;
   },
 );
 
@@ -123,13 +149,25 @@ onBeforeUnmount(() => (task.isEditing = false));
             <div class="lead">
               <span class="eyebrow mono-meta">{{ eyebrow }}</span>
               <h1 class="title">{{ title }}</h1>
-              <TaskStrip :state="meta.task.state" />
+              <TaskStrip :state="meta.task.state" :story="story" />
             </div>
-            <ArtifactReader v-if="conversation" :conversation="conversation" :slug="meta.slug" />
-            <ArtifactFrame v-else :slug="meta.slug" />
+            <TaskEscalation
+              v-for="thread in asking"
+              :key="thread.id"
+              :is-sending="isSending"
+              :thread="thread"
+              @decide="decide(thread, $event)"
+            />
+            <TaskSettled v-if="settled" :thread="settled" @history="showHistory(settled)" />
+            <TaskNote :story="story" />
+            <TaskFold v-if="isBlocked && isFolded && task.parts.length" :parts="task.parts" @open="isFolded = false" />
+            <template v-else>
+              <ArtifactReader v-if="conversation" :conversation="conversation" :slug="meta.slug" />
+              <ArtifactFrame v-else :slug="meta.slug" />
+            </template>
           </article>
         </div>
-        <TaskRail :sessions="rail" />
+        <TaskRail :asking="asking" :sessions="rail" />
       </div>
     </div>
   </ArtifactSheet>

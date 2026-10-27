@@ -94,6 +94,8 @@ useEvents().on("artifact.created", ({ data, key = sc.sessionKey.value }) => {
   });
 });
 
+useTaskNotices();
+
 onMounted(() => {
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);

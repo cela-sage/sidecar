@@ -45,7 +45,8 @@ const inlineArmed = useState<boolean>("sc:inline-armed", () => false);
 // The last page stays in sc.artifact until the next one lands, and none of it belongs to this slug.
 const held = computed(() => (sc.artifact.value?.slug === slug ? sc.artifact.value : undefined));
 const path = computed(() => held.value?.path);
-const threads = computed(() => held.value?.threads ?? []);
+// An escalation or a hire draws as its own card on the task, so it never pins a note in the margin too.
+const threads = computed(() => (held.value?.threads ?? []).filter((thread) => !thread.ask));
 const format = computed(() => held.value?.format);
 const isPage = computed(() => format.value === "html");
 const markdown = computed(() => format.value === "md");
