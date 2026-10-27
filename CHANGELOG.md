@@ -7,6 +7,24 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.23.0
+
+### Added
+
+- **A `.md` can be a task, with a face of its own.** A stamp holding `project`, `state` and `lead`, which the
+  Mode plugin's `artifact stamp` writes, makes a `.md` a task, and `/tasks/<slug>` shows it: the Desk and each
+  project with its tasks on the left, then the task with where it is in its life, its four parts and the
+  conversations whose titles name it, with the state `claude agents` gives them. The terminal pill says
+  `sidecar terminal` isn't following yet.
+- **A task is edited in place.** Edit puts its markdown in an editor beside the page it renders and saves with
+  the hash check Files uses, a pasted image lands in `~/.claude/sidecar/uploads/<slug>/` as a captioned figure,
+  and ⌘K tunes the paragraph around a selection with the fast model, shown inline until Keep or Discard.
+
+### Changed
+
+- **The inline edit route takes a `.md` paragraph,** which it used to refuse, and writes the proposal between
+  `<del data-sc-edit>` and `<ins data-sc-edit>` the way it does on a page.
+
 ## 0.22.0
 
 ### Changed

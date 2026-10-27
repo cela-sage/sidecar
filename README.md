@@ -60,6 +60,7 @@ brings it up when it is down, so nothing runs it at login.
 | Where artifacts live  | `NOTES_ARTIFACTS`, then `~/.claude/sidecar/artifacts`                   |
 | Who a comment is from | The `user` key in `~/.claude/sidecar/config.json`, defaulting to "User" |
 | What runs a notebook  | `SIDECAR_PYTHON`, then `python3`                                        |
+| What a task's on      | `projects` in `~/.claude/sidecar/config.json`, then the five lanes      |
 
 ## Artifacts and their comments
 
@@ -128,6 +129,30 @@ so an entry you remove stays removed. It
 lands as it is said, whichever conversation is on screen, with the toast a new page gets, and one said
 while the sidecar was stopped lands quietly once it is back. A page a WebFetch or WebSearch brought back
 never does, even when Claude cites it in its sources, unless you write it yourself.
+
+## Tasks
+
+A task is a `.md` in the artifacts folder whose stamp holds a state, which the Mode plugin writes with
+`artifact stamp <slug> --project cela --state running`. The state is one of unassigned, assigned, assessed,
+running, blocked, waiting and done, and a task is unassigned exactly while its project is empty. `/tasks/<slug>`
+opens it on the task face. On the left the Desk comes first with the inbox of unassigned tasks, then each
+project with its tasks. The sheet shows where the task is in its life, its four parts, and the conversations
+on it: a conversation is the task's when its title has a role token and the task's slug, as
+`[Cela] TL sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
+the state `claude agents` gives it and the subagents running inside it. A comment on the document goes to the
+conversation the stamp's `lead` names, else the first Task Lead on it.
+
+Edit, or E, puts the markdown in an editor beside the page it renders, and saves as you type unless the file
+changed on disk since you opened it. A pasted image is saved to `~/.claude/sidecar/uploads/<slug>/` and linked
+as `../uploads/<slug>/<name>`, which resolves from the artifacts folder on disk and from `/uploads/` in the
+sidecar, and shows as a captioned figure. ⌘K tunes the paragraph around the selection with the fast model, and
+the proposal is written into the file between `<del data-sc-edit>` and `<ins data-sc-edit>`, struck and
+highlighted until Keep or Discard, so a reload or the read view still offers it. Outside edit mode ⌘K stays
+Comment, and holding C comments in either.
+
+The projects are the `projects` list in `~/.claude/sidecar/config.json`, each `{ key, name, token, folder }`,
+where `token` is the bracketed prefix its conversations' titles carry. Without one they are Moneyfarm, Cela,
+Nana, madong and meta, under `~/Notes`.
 
 ## Desktop or web
 
