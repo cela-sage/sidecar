@@ -7,6 +7,25 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.26.0
+
+### Added
+
+- **The Desk triages tasks.** Tasks shows what waits on you first in red, then each project with one sentence
+  from the fast model, cached a minute, and its tasks, then the inbox, where a card dropped on a project or
+  routed to the fast model's suggestion is assigned through the lane, with Undo. The project's Project Lead gets
+  the task to assess once Undo's window has passed. New task writes an unassigned `.md` with the four parts and
+  opens it in Edit.
+- **`sidecar terminal` follows the sidecar.** Started once in a terminal, it attaches the conversation you
+  Attach on a task's rail or in the Terminal pill with `claude attach`, detaching the one it held with Ctrl+Z
+  first, and the pill says which one it holds. It adds `node-pty` 1.1.0.
+- **A Task Lead takes a message from its document,** through the field on its selected rail row.
+
+### Changed
+
+- **`/desk` opens on Tasks,** and the conversations it listed before are its Conversations face.
+- **What the sidecar sends a Task Lead lands in the task's history** as your message, the notes tray's included.
+
 ## 0.25.0
 
 ### Added

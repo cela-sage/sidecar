@@ -34,6 +34,7 @@ sidecar open [key]  # start it when down, point it at the conversation, raise an
 sidecar open --artifact <slug|url>  # the same, showing that page or address in Artifacts
 sidecar comments <slug>  # a page's threads; --reply <n> "..." answers one, --resolve <n> "..." closes it
 sidecar task <slug> [verb]  # a task's lane: state, assign, escalate, hire, judge, decide, done; bare prints where it stands
+sidecar terminal    # run once in the terminal you use for Claude Code, so Attach in the sidecar opens a conversation there
 sidecar setup [desktop|web]  # choose how it runs and set it up; prompts on first run
 sidecar publish <topic> <json>  # append an event every open sidecar hears
 sidecar status      # whether it is up and where
@@ -141,7 +142,31 @@ project with its tasks. The sheet shows where the task is in its life, its four 
 on it: a conversation is the task's when its title has a role token and the task's slug, as
 `[Cela] TL sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
 the state `claude agents` gives it and the subagents running inside it. A comment on the document goes to the
-conversation the stamp's `lead` names, else the first Task Lead on it.
+conversation the stamp's `lead` names, else the first Task Lead on it. The selected Task Lead row, that one
+unless you click another, has a message field that sends what you write through `/api/sessions/:key/message`,
+and anything the sidecar sends a Task Lead that way lands in the task's history as your message.
+
+### The Desk
+
+`/desk` opens on Tasks, with Conversations, the list it showed before, one switch away at the top. A task
+waiting on your decision or a hire comes first as a red card with its question. Each project follows with its
+counts, one sentence from the fast model over its tasks and conversations, cached a minute, and its tasks, open
+while any is. The inbox on the right holds the unassigned tasks, each with the fast model's Route to suggestion,
+cached until the task changes. Dropping a card on a project, or pressing Route, assigns it through the lane with
+`PATCH /api/tasks/:slug`, so it lands in the history and on the bus, and the toast's Undo, or ⌘Z, puts it back.
+Eight seconds after the drop, unless undone, the project's Project Lead, its newest live conversation titled
+with PL and the project's token, gets the task to assess. New task, or N, asks for a title, writes an unassigned
+`.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
+
+### Following the terminal
+
+`sidecar terminal`, started once in the terminal you use for Claude Code, owns a pty there and listens on
+`/api/attach/stream`. Attach on a conversation, on the task's rail or in the Terminal pill's menu, posts
+`POST /api/attach {key}`; the follower writes Ctrl+Z to the conversation it holds, which detaches it with the
+session still running, and runs `claude attach <key>` for the next. The pill says which conversation the terminal
+holds and its menu lists the task's conversations, while a switch you make inside Claude Code with the left arrow
+is not seen. With no follower running, the pill explains `sidecar terminal` and Attach copies the
+`claude attach` line instead. q stops the follower while it holds nothing.
 
 Edit, or E, puts the markdown in an editor beside the page it renders, and saves as you type unless the file
 changed on disk since you opened it. A pasted image is saved to `~/.claude/sidecar/uploads/<slug>/` and linked
@@ -183,8 +208,8 @@ it is `osascript display notification`, whose click can only open Script Editor,
 Each task keeps `~/.claude/sidecar/history/<slug>.jsonl`, one entry a line, from four feeds: every turn a Task
 Lead ends with an answer, which the mod hands over off `turn.complete` for a conversation whose title holds TL
 and the task's slug or ticket; status and content changes, from the lane and from Edit mode's saves and Keep;
-escalations, verdicts and your decisions; and what you type at a Task Lead's own prompt, while a relayed message
-stays out, since one from another lead reads the same. `sidecar task <slug>` run from a Project Lead also marks
+escalations, verdicts and your decisions; and what you type at a Task Lead's own prompt or send it from the
+sidecar, while a relayed message stays out, since one from another lead reads the same. `sidecar task <slug>` run from a Project Lead also marks
 the history read.
 
 History, beside Document at the top of the task face, opens on where it stands: the fast model's two or three
@@ -244,6 +269,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `task.changed`     | `slug`, `state`         | the task lane, for every stamp change and every history entry                    | The task face reads the task again          |
 | `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
 | `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the task face             | Settles the escalation on the face          |
+| `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | The Terminal pill and the rail's Attach     |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
 else runs `sidecar publish artifact.created '{"slug":"…","path":"…"}'`. A component consumes with
