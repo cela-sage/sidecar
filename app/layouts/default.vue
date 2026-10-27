@@ -99,6 +99,15 @@ useResizeObserver(boardEl, ([entry]) => {
   @apply pl-20;
 }
 
+/* On the desktop shell the row is the title bar: it drags the window, and a double click does what System Settings says. */
+.shell[data-shell="true"]:not([data-full="true"]) .row {
+  app-region: drag;
+}
+
+.shell[data-shell="true"] .row > :deep(:not(.spacer)) {
+  app-region: no-drag;
+}
+
 .foot {
   @apply pointer-events-none absolute right-(--gutter) bottom-(--gutter) left-(--gutter) z-20 flex items-end gap-2 transition-[opacity,visibility] duration-(--duration-fast) ease-out;
 }
