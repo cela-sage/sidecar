@@ -3,11 +3,13 @@ import { join } from "node:path";
 import { readTextSafe } from "../../../lib/files.ts";
 import { documentSlug } from "../../../lib/sidecar/comments.ts";
 import { splitLines } from "../../../lib/text.ts";
-import { artifactListsHome, isKey } from "./paths.ts";
+import { artifactListsHome, isKey, jobsHome } from "./paths.ts";
 
 function isDocument(entry: string): boolean {
   return entry.startsWith("/") && entry.endsWith(".md");
 }
+
+const isScratch = (entry: string): boolean => entry.startsWith(`${jobsHome()}/`);
 
 // Appended to on each stamp, so newest first is the file read backwards.
 function entriesOf(key: string): string[] {
@@ -23,6 +25,7 @@ function entriesOf(key: string): string[] {
 
 export function artifactsOf(key: string): string[] {
   const slugs = entriesOf(key).flatMap((entry) => {
+    if (isScratch(entry)) return [];
     if (!isDocument(entry)) return [entry];
     return existsSync(entry) ? [documentSlug(entry)] : [];
   });
@@ -47,7 +50,7 @@ export const Documents = {
     const out = new Map<string, string>();
     for (const key of keysWithArtifacts()) {
       for (const entry of entriesOf(key)) {
-        if (isDocument(entry) && existsSync(entry)) out.set(documentSlug(entry), entry);
+        if (isDocument(entry) && !isScratch(entry) && existsSync(entry)) out.set(documentSlug(entry), entry);
       }
     }
     return out;

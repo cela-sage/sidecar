@@ -7,6 +7,7 @@ import { ArtifactLists } from "../../../lib/sidecar/lists.ts";
 import * as Events from "../../../lib/sidecar/events.ts";
 import { Tracked } from "../../../lib/sidecar/tracked.ts";
 import { readRecord, removeRecord } from "../../../lib/web/records.ts";
+import { artifactsOf, Documents } from "./artifact-lists.ts";
 import { Links } from "./links.ts";
 
 let root: string;
@@ -191,4 +192,14 @@ test("a catch-up up to a byte lands quietly, and only what was said after it is 
     Events.read(events).events.map((event) => event.data.title),
     ["now.dev"],
   );
+});
+
+test("a .md recorded under a job's folder is scratch, so it lists neither as a document nor in the conversation", () => {
+  const key = "abcd1234";
+  const scratch = touch(join(root, "jobs", "e2f70a46", "tmp", "scratch", "sidecar-task-board.md"));
+  const real = touch(join(root, "docs", "real-plan.md"));
+  writeFileSync(join(root, "artifacts", `session-${key}`), `${real}\n${scratch}\n`);
+
+  assert.deepEqual([...Documents.paths().values()].sort(), [real]);
+  assert.deepEqual(artifactsOf(key), [Documents.slug(real)]);
 });
