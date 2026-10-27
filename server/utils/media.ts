@@ -4,7 +4,7 @@ import type { H3Event } from "h3";
 import mime from "mime";
 import { readTextSafe } from "../../lib/files.ts";
 import { FileKind } from "../../shared/utils/file-kind.ts";
-import { Markdown } from "./markdown.ts";
+import { Markdown } from "./markdown/index.ts";
 import { NotebookFormat } from "./notebooks/format.ts";
 import { NotebookPage } from "./notebooks/page.ts";
 

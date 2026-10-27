@@ -23,7 +23,7 @@ import {
 } from "../../lib/sidecar/comments.ts";
 import { Tracked } from "../../lib/sidecar/tracked.ts";
 import { listRecords, readRecord, recordPath, type WebRecord, writeRecord } from "../../lib/web/records.ts";
-import { Markdown } from "./markdown.ts";
+import { Markdown } from "./markdown/index.ts";
 import { NotebookFormat } from "./notebooks/format.ts";
 import { Documents } from "./sessions/artifact-lists.ts";
 import { Watched } from "./watched.ts";

@@ -7,7 +7,7 @@ import { readComments } from "../../lib/sidecar/comments.ts";
 import { Tracked } from "../../lib/sidecar/tracked.ts";
 import { openRecord, readRecord } from "../../lib/web/records.ts";
 import { applyReviewChange, applyStoredReview, applyWebReview, getArtifact, listArtifacts } from "./artifacts.ts";
-import { Markdown } from "./markdown.ts";
+import { Markdown } from "./markdown/index.ts";
 import { Documents } from "./sessions/artifact-lists.ts";
 
 const NOTE = "<!-- artifact\ntitle:   The plan\n-->\n# The plan\n\nShip it <b>today</b>.\n\n## Risks\n\n- [ ] a < b\n";

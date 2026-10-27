@@ -3,8 +3,8 @@ import { join } from "node:path";
 import { renderMermaidSVGAsync } from "beautiful-mermaid";
 import { createMarkdownParser } from "comark";
 import type { MarkdownDocument } from "comark";
-import { Syntax } from "../../shared/utils/highlight.ts";
-import { Sidecar } from "../../lib/sidecar/paths.ts";
+import { Syntax } from "../../../shared/utils/highlight.ts";
+import { Sidecar } from "../../../lib/sidecar/paths.ts";
 
 type MdNode = MarkdownDocument["nodes"][number];
 

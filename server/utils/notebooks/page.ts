@@ -1,6 +1,6 @@
 import { AnsiUp } from "ansi_up";
 import { Syntax } from "../../../shared/utils/highlight.ts";
-import { Markdown } from "../markdown.ts";
+import { Markdown } from "../markdown/index.ts";
 import { type KnownOutput, type Notebook, type NotebookCell, NotebookFormat, type NotebookOutput } from "./format.ts";
 
 // Jupyter's own order of preference, richest first, so a DataFrame draws as its table rather than its repr.

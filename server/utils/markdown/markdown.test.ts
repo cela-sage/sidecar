@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { Markdown } from "./markdown.ts";
+import { Markdown } from "./index.ts";
 
 test("a fenced code block is syntax highlighted, by its fence language", async () => {
   const html = await Markdown.body("```python\ndef f(x):\n    return x\n```");
