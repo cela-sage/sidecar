@@ -326,6 +326,14 @@ body {
   @apply max-w-115;
 }
 
+.monaco-tune-dim {
+  @apply opacity-55;
+}
+
+.monaco-tune-old {
+  @apply text-ed-muted line-through;
+}
+
 .monaco-noted-glyph::before {
   @apply mt-1.5 ml-1.5 block size-1.75 rounded-full bg-ed-accent content-[''];
 }

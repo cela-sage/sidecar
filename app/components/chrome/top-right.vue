@@ -12,6 +12,7 @@ const inSession = computed(() => !sc.failure.value && route.path.startsWith("/c/
 // A routed artifact has no faces to switch; a grown one keeps the row as it was, so the row fades out and back unchanged.
 const onArtifact = computed(() => inSession.value && !!route.params.slug);
 const onFaces = computed(() => inSession.value && !onArtifact.value);
+const onTask = computed(() => !sc.failure.value && route.path.startsWith("/tasks/"));
 
 const faces = computed(() => chrome.view.faces.value.map((face) => ({ label: LABELS[face], value: face })));
 
@@ -41,6 +42,7 @@ function closePage(): void {
 
     <ChromeCommentToggle v-if="onArtifact" shape="island" />
     <ChromeFollowToggle v-if="inSession" />
+    <TaskTerminalPill v-if="onTask" />
     <ChromeThemeToggle />
     <ChromeAction
       v-if="onArtifact"

@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 const chrome = useChrome();
 const follow = $follow();
+const task = $task();
 const sc = useSidecar();
 const inlineArmed = useState<boolean>("sc:inline-armed", () => false);
 const inlineAsk = useState<boolean>("sc:inline-ask", () => false);
@@ -49,6 +50,7 @@ function onKeyDown(event: KeyboardEvent): void {
   // ⌘K means comment everywhere: an editor notes its selection itself, so what reaches here arms the picker.
   if (meta && event.key.toLowerCase() === "k") {
     event.preventDefault();
+    if (task.isEditing) return task.askTune();
     if (chrome.comment.openOffer()) return;
     if (inlineArmed.value) {
       inlineAsk.value = true;

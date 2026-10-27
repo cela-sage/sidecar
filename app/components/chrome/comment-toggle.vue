@@ -5,6 +5,7 @@ import type { ActionShape } from "~/components/chrome/action.vue";
 const { shape } = defineProps<{ shape: ActionShape }>();
 
 const chrome = useChrome();
+const task = $task();
 
 function toggle(): void {
   if (chrome.comment.armed.value) chrome.comment.disarm();
@@ -19,7 +20,11 @@ function toggle(): void {
     :is-on="chrome.comment.armed.value"
     :label="shape === 'inset' ? undefined : 'Comment'"
     :shape="shape"
-    tip="Comment on anything · {cmd K} or hold {C}"
+    :tip="
+      task.isEditing
+        ? 'Comment on anything · hold {C}. While you edit, {cmd K} tunes'
+        : 'Comment on anything · {cmd K} or hold {C}'
+    "
     @click="toggle"
   />
 </template>

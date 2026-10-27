@@ -8,9 +8,10 @@ import { isTyping } from "~~/lib/web/page/blocks";
 import { TOP_EDGE } from "~~/lib/web/page/protocol";
 import type { ArtifactKind } from "~~/shared/types/artifact";
 
-const { conversation, kind, path, slug } = defineProps<{
+const { conversation, kind, listName, path, slug } = defineProps<{
   conversation?: string;
   kind?: ArtifactKind;
+  listName?: string;
   path?: string;
   slug?: string;
 }>();
@@ -66,7 +67,7 @@ watch([isOverHead, () => artifact.isNearTop], ([over, near]) => {
 });
 // Glass only when grown, since a raised pill in the sheet's header reads as one more of the app's islands.
 const pill = computed<SurfaceVariant>(() => (isGrown.value ? "glass-liquid" : "sunken"));
-const list = computed(() => LIST[chrome.view.current.value] ?? "Artifacts");
+const list = computed(() => listName ?? LIST[chrome.view.current.value] ?? "Artifacts");
 const meta = computed(() => (slug ? sc.catalogue.value.find((one) => one.slug === slug) : undefined));
 const title = computed(() => meta.value?.title || (slug ? deslug(slug) : path ? basename(path) : ""));
 const format = computed(() => meta.value?.format);
