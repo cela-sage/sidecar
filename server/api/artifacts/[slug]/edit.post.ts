@@ -1,10 +1,5 @@
-import {
-  applyArtifactEdit,
-  readArtifact,
-  resolveArtifactEdit,
-  writeArtifact,
-  type ArtifactEditFail,
-} from "~~/server/utils/artifacts";
+import { readArtifact, writeArtifact } from "~~/server/utils/artifacts";
+import { applyArtifactEdit, resolveArtifactEdit, type ArtifactEditFail } from "~~/server/utils/edits/html";
 import type { ArtifactEditReply, ArtifactEditRequest } from "~~/shared/types/artifact";
 
 function payloadOf(raw: unknown): ArtifactEditRequest | undefined {
