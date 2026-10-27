@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Trash2 } from "@lucide/vue";
 import type { Tint } from "~/utils/tint";
 
 interface JumpRow {
@@ -59,8 +60,23 @@ function go(row?: JumpRow): void {
   void navigateTo(`/c/${row.key}`, { replace: true });
 }
 
+async function remove(row?: JumpRow): Promise<void> {
+  if (!row) return;
+  try {
+    await $fetch(`/api/sessions/${row.key}`, { method: "DELETE" });
+    sc.sessions.value = sc.sessions.value.filter((session) => session.key !== row.key);
+    chrome.toast(`Deleted ${row.name}. Its transcript stays on disk.`, "success");
+  } catch (error) {
+    const reason = error instanceof Error ? error.message : String(error);
+    chrome.toast(`Could not delete ${row.name}. ${reason}`, "destructive");
+  }
+}
+
 function onKey(event: KeyboardEvent): void {
-  if (event.key === "ArrowDown") {
+  if (event.key === "Backspace" && event.metaKey) {
+    event.preventDefault();
+    void remove(rows.value[cursor.value]);
+  } else if (event.key === "ArrowDown") {
     event.preventDefault();
     cursor.value = Math.min(cursor.value + 1, rows.value.length - 1);
   } else if (event.key === "ArrowUp") {
@@ -123,6 +139,15 @@ function onKey(event: KeyboardEvent): void {
             <span class="dot" :data-live="row.live" :data-tint="row.tint" />
             <span class="name">{{ row.name }}</span>
             <span class="where mono-meta">{{ row.where }}</span>
+            <UiIconButton
+              :aria-label="`Delete ${row.name}`"
+              class="remove"
+              data-region="jump-remove"
+              data-tip="Delete it, the transcript stays · {cmd backspace}"
+              :icon="Trash2"
+              size="xs"
+              @click.stop="remove(row)"
+            />
           </UiMenuItem>
 
           <p v-if="!rows.length" class="none">
@@ -178,6 +203,16 @@ function onKey(event: KeyboardEvent): void {
 
 .where {
   @apply max-w-5/12 flex-none truncate text-subtle normal-case;
+}
+
+.remove {
+  @apply flex-none opacity-0 transition-opacity duration-(--duration-fast) ease-out;
+}
+
+.row:hover .remove,
+.row[aria-selected="true"] .remove,
+.remove:focus-visible {
+  @apply opacity-100;
 }
 
 .none {

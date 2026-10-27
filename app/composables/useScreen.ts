@@ -12,6 +12,14 @@ export function nameOf(session: LiveSession): string {
   return session.name || basename(session.cwd) || session.key;
 }
 
+export function ageOf(session: LiveSession): string {
+  return relativeAge(session.lastActive ? new Date(session.lastActive).toISOString() : undefined);
+}
+
+export function placeOf(session: LiveSession): string {
+  return [homePath(session.cwd), session.gitBranch].filter(Boolean).join(" · ");
+}
+
 export function useScreen(): Screen {
   const sc = useSidecar();
 

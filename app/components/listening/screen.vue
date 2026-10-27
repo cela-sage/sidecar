@@ -5,10 +5,10 @@ import type { ListeningState } from "~/components/listening/tag.vue";
 const { state = "listening" } = defineProps<{ state?: ListeningState }>();
 
 const sc = useSidecar();
-const { rows } = useDesk();
+const chrome = useChrome();
 
 const last = computed(() => sc.sessions.value.find((session) => session.key === sc.sessionKey.value));
-const hasOthers = computed(() => rows.value.some((row) => row.key !== last.value?.key));
+const hasOthers = computed(() => sc.sessions.value.some((one) => !one.archived && one.key !== last.value?.key));
 const lastLabel = computed(() => {
   const ago = last.value && ageOf(last.value);
   return ago ? `Last conversation · ${ago}` : "Last conversation";
@@ -71,21 +71,27 @@ function resume(key: string): void {
         </div>
 
         <template v-if="last">
-          <NuxtLink v-if="hasOthers" class="desk-link focusable" data-region="listening-desk" to="/desk">
-            Pick another conversation on the Desk
-          </NuxtLink>
+          <button
+            v-if="hasOthers"
+            class="pick-link plain-button focusable"
+            data-region="listening-pick"
+            type="button"
+            @click="chrome.jump.toggle()"
+          >
+            Pick another conversation
+          </button>
           <span
             v-else
             aria-disabled="true"
-            class="desk-link focusable"
-            data-region="listening-desk"
+            class="pick-link focusable"
+            data-region="listening-pick"
             data-tip="No other conversations yet. Start one in Claude Code and it shows up here."
             data-tip-align="start"
             data-tip-side="top"
-            role="link"
+            role="button"
             tabindex="0"
           >
-            Pick another conversation on the Desk
+            Pick another conversation
           </span>
         </template>
       </template>
@@ -155,15 +161,15 @@ code {
   @apply grid size-7 flex-none place-items-center rounded-full bg-sunken text-muted;
 }
 
-.desk-link {
-  @apply self-start rounded-sm typo-body-strong text-primary-deep no-underline;
+.pick-link {
+  @apply self-start rounded-sm border-0 bg-transparent p-0 typo-body-strong text-primary-deep no-underline;
 }
 
-.desk-link:hover {
+.pick-link:hover {
   @apply text-primary underline;
 }
 
-.desk-link[aria-disabled="true"] {
+.pick-link[aria-disabled="true"] {
   @apply cursor-not-allowed text-subtle no-underline;
 }
 </style>
