@@ -7,6 +7,13 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.27.1
+
+### Fixed
+
+- **Every decide is yours in the history,** whichever conversation ran it, so one typed at a Task Lead's prompt
+  shows under your decisions instead of as the Task Lead's.
+
 ## 0.27.0
 
 ### Added

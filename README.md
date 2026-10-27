@@ -202,7 +202,8 @@ event bus, so an open task face updates as it happens. An escalation is a thread
 holding its options, the Project Lead's verdict and pick, and in the end the decision; it blocks the task, and
 deciding it puts the task back to running and tells the conversation that asked, under the `[[sidecar]]`
 marker. A hire is the same thread with Approve and Refuse, and blocks nothing. Who called is read off the
-conversation's title: a role token makes it that role, and no token makes it you. Waiting needs `--reason`.
+conversation's title: a role token makes it that role, and no token makes it you, except that a decide is always
+yours, whichever conversation runs it, since you are the lane's only decider. Waiting needs `--reason`.
 
 Escalate and hire notify you. When a sidecar page is open, the one holding the `sidecar:task-notices` lock
 raises a notification whose click opens `/tasks/<slug>`; with no page open, or without notification permission,
