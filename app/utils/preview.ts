@@ -16,7 +16,6 @@ export interface PreviewSrcOptions {
 const TEXT = new Set(["htm", "html", "ipynb", "markdown", "md", "svg"]);
 const ZOOMABLE = new Set<FileKind>(["image", "markdown", "notebook", "page", "video"]);
 const RENDERED = new Set<FileKind>(["markdown", "notebook"]);
-const STEPS = [0.25, 0.33, 0.5, 0.67, 0.75, 0.9, 1, 1.1, 1.25, 1.5, 1.75, 2, 2.5, 3, 4, 5];
 
 // Text the editor opens as well, so the face offers the code beside the rendering.
 function isText(path: string): boolean {
@@ -38,18 +37,4 @@ function srcOf({ conversation, path, version, isOriginal = false }: PreviewSrcOp
   return `/api/sessions/${encodeURIComponent(conversation)}/${route}${path.split("/").map(encodeURIComponent).join("/")}?${query}`;
 }
 
-function step(zoom: number, way: 1 | -1): number {
-  const next = way > 0 ? STEPS.find((one) => one > zoom + 0.001) : STEPS.findLast((one) => one < zoom - 0.001);
-  return next ?? zoom;
-}
-
-function clamp(zoom: number): number {
-  return Math.min(STEPS.at(-1) ?? zoom, Math.max(STEPS[0] ?? zoom, zoom));
-}
-
-// A mouse notch arrives as a hundred pixels and a pinch as a few, so one notch is capped near a quarter.
-function pinch(zoom: number, deltaY: number): number {
-  return clamp(zoom * Math.exp(-Math.max(-30, Math.min(30, deltaY)) / 100));
-}
-
-export const Preview = { clamp, isText, isZoomable, kindOf: FileKind.of, pinch, srcOf, step };
+export const Preview = { isText, isZoomable, kindOf: FileKind.of, srcOf };

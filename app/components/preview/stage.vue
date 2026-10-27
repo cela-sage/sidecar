@@ -5,6 +5,7 @@ import { OneDarkVivid } from "~/utils/monaco/one-dark-vivid";
 import type { PreviewScroll } from "~/utils/preview";
 import { framesIn, measure, readAnchors } from "~~/lib/web/page/blocks";
 import type { FileKind } from "~~/shared/utils/file-kind";
+import { Zoom } from "~~/shared/utils/zoom";
 
 const {
   file,
@@ -81,7 +82,7 @@ function onScroll(): void {
 async function zoomAt(event: WheelEvent): Promise<void> {
   const box = content.value?.getBoundingClientRect();
   const was = zoom.value;
-  const next = Preview.pinch(was, event.deltaY);
+  const next = Zoom.pinch(was, event.deltaY);
   if (!box || next === was) return;
   const x = (event.clientX - box.left) / was;
   const y = (event.clientY - box.top) / was;
@@ -144,7 +145,7 @@ function onFrameLoad(): void {
     emit("engage");
     if (!(event.ctrlKey || event.metaKey)) return;
     event.preventDefault();
-    zoom.value = Preview.pinch(zoom.value, event.deltaY);
+    zoom.value = Zoom.pinch(zoom.value, event.deltaY);
   };
   const onEngage = (): void => emit("engage");
   win.addEventListener("wheel", onFrameWheel, { passive: false });

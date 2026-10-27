@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { Minus, Plus } from "@lucide/vue";
+import { Zoom } from "~~/shared/utils/zoom";
 
 const zoom = defineModel<number>({ required: true });
 </script>
@@ -9,11 +10,11 @@ const zoom = defineModel<number>({ required: true });
     <UiIconButton
       aria-label="Zoom out"
       data-tip="Zoom out · pinch zooms too"
-      :disabled="Preview.step(zoom, -1) === zoom"
+      :disabled="Zoom.step(zoom, -1) === zoom"
       :icon="Minus"
       icon-size="xs"
       size="xs"
-      @click="zoom = Preview.step(zoom, -1)"
+      @click="zoom = Zoom.step(zoom, -1)"
     />
     <UiButton class="level" data-tip="Back to fit" size="xs" variant="ghost" @click="zoom = 1">
       {{ Math.round(zoom * 100) }}%
@@ -21,11 +22,11 @@ const zoom = defineModel<number>({ required: true });
     <UiIconButton
       aria-label="Zoom in"
       data-tip="Zoom in · pinch zooms too"
-      :disabled="Preview.step(zoom, 1) === zoom"
+      :disabled="Zoom.step(zoom, 1) === zoom"
       :icon="Plus"
       icon-size="xs"
       size="xs"
-      @click="zoom = Preview.step(zoom, 1)"
+      @click="zoom = Zoom.step(zoom, 1)"
     />
   </span>
 </template>
