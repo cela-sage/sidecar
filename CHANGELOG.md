@@ -7,6 +7,21 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.30.1
+
+### Changed
+
+- **An @ in the door only points the assistant at a conversation,** writing its title and key into the prompt,
+  and the message still goes to the assistant, as the approved design draws it.
+- **Your own conversations list under No project** at the foot of the org tree, with any whose project matches
+  none, and a project starts folded unless something in it waits on you or holds what you are looking at.
+
+### Removed
+
+- **This conversation leaves the door, and with it the `/btw` fork behind it.** The side question a comment
+  opens on a block stays as it was.
+- **The Terminal pill,** since the Tasks face draws none; the pressed Attach on a row says what the terminal holds.
+
 ## 0.30.0
 
 ### Added

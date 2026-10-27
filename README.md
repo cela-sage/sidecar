@@ -168,8 +168,10 @@ task the way `?face=review` picks Review, and the old `/desk` and `/tasks/<slug>
 The rail is the org tree, built from the conversations the sidecar already polls, parsed by their titles. The
 inbox of unassigned tasks heads it, then the assistant's conversations, titled with EA, then each project with
 its Project Lead and Design Lead conversations and its tasks, each task with its Task Leads. A Task Lead whose
-process ended folds under the task as done, and a done task folds under its project. A conversation whose title
-has no role token is yours and stays out. Each row carries its mark: a spinner while it works, red when a task or
+process ended folds under the task as done, and a done task folds under its project. A project starts folded
+unless something in it waits on you or it holds the open task or the conversation in front. Your own
+conversations, whose titles have no role token, and any whose project matches none list under No project at the
+bottom. Each row carries its mark: a spinner while it works, red when a task or
 its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
 else, a check once it is idle. Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead,
 the conversation in front has an ink bar, and clicking a conversation brings it in front on the Tasks face with
@@ -189,12 +191,12 @@ knows, yours included, and deletes one with its trash button or ⌘⌫, the tran
 ### Following the terminal
 
 `sidecar terminal`, started once in the terminal you use for Claude Code, owns a pty there and listens on
-`/api/attach/stream`. Attach on a conversation, on the task's rail or in the Terminal pill's menu, posts
-`POST /api/attach {key}`; the follower writes Ctrl+Z to the conversation it holds, which detaches it with the
-session still running, and runs `claude attach <key>` for the next. The pill says which conversation the terminal
-holds and its menu lists the task's conversations, while a switch you make inside Claude Code with the left arrow
-is not seen. With no follower running, the pill explains `sidecar terminal` and Attach copies the
-`claude attach` line instead. q stops the follower while it holds nothing. The stream opens with a `ready`
+`/api/attach/stream`. Attach on a tree row, on the task's rail or in the door posts `POST /api/attach {key}`;
+the follower writes Ctrl+Z to the conversation it holds, which detaches it with the session still running, and
+runs `claude attach <key>` for the next. The row the terminal holds shows its Attach pressed, while a switch you
+make inside Claude Code with the left arrow is not seen. With no follower running, the task's rail explains
+`sidecar terminal` and Attach copies the `claude attach` line instead. q stops the follower while it holds
+nothing. The stream opens with a `ready`
 event carrying what the sidecar thinks the terminal holds, so the follower says it is following at once and
 corrects the sidecar when the two differ.
 
@@ -234,8 +236,7 @@ Lead ends with an answer, which the mod hands over off `turn.complete` for a con
 and the task's slug or ticket; status and content changes, from the lane and from Edit mode's saves and Keep;
 escalations, verdicts and your decisions; and what you type at a Task Lead's own prompt or send it from the
 sidecar, while a relayed message stays out, since one from another lead reads the same. A message the sidecar
-sends with a task's slug, from the assistant's door while that task is open or to someone you @ who works on it,
-joins that task's history whoever it went to. `sidecar task <slug>` run from a Project Lead also marks
+sends with a task's slug, from the assistant's door while that task is open, joins that task's history whoever it went to. `sidecar task <slug>` run from a Project Lead also marks
 the history read.
 
 History, beside Document in the task sheet's bar, opens on where it stands: the fast model's two or three
@@ -296,7 +297,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `task.changed`     | `slug`, `state`         | the task lane, for every stamp change and every history entry                    | The task face reads the task again          |
 | `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
 | `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the task face             | Settles the escalation on the face          |
-| `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | The Terminal pill and the rail's Attach     |
+| `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | Every Attach, pressed on the one it holds   |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
 else runs `sidecar publish artifact.created '{"slug":"…","path":"…"}'`. A component consumes with
@@ -324,23 +325,12 @@ back in amber, and the header picks another assistant or starts a new one. With 
 says so, and your message starts one through `POST /api/assistant`, which runs
 `claude --bg --agent executive-assistant` in the meta project's folder, both set by `assistant: { agent, project }`
 in `~/.claude/sidecar/config.json`. An @ in the field lists everyone in the tree, and picking one writes their
-title and key into the prompt, which then goes to each one you mentioned, with their task's slug, instead of
-the assistant. When the inbox has tasks and nothing was asked yet, the door opens on it with each task's Route
-to.
+title and key into the prompt, so the assistant knows whom you mean while the message still goes to it. When the
+inbox has tasks and nothing was asked yet, the door opens on it with each task's Route to.
 
-This conversation, the first choice in the header, is `/btw` from the sidecar: it asks a side question
-with the whole conversation as context, and nothing reaches the transcript or interrupts the turn. Its
-exchanges stack in one scrolling thread, which Clear empties, and they live in the page's memory
-only. `POST /api/sessions/<key>/ask` with `kind: "btw"` copies the transcript to the OS temp dir with its
-`last-prompt` record pointed at the newest entry, so the running turn is included, then runs the session's
-own build from `~/.local/share/claude/versions` with `--resume <copy> --fork-session
---no-session-persistence` and hooks off, and sends the undocumented `side_question` control request over
-stream-json. It works on a finished conversation too, and since that request is internal, a Claude Code
-upgrade can break it, which shows as a failed answer.
-
-A comment asks a blank Claude instead: Ask (⌘↵) in the comment popover opens a side question card where
-you picked, under the lines in Review and Files or in an artifact's margin, and posts `kind: "blank"`.
-That is a fresh `claude -p` on Sonnet with no conversation and none of your configuration (no setting
+A comment asks a blank Claude on the side: Ask (⌘↵) in the comment popover opens a side question card where
+you picked, under the lines in Review and Files or in an artifact's margin, and posts to
+`POST /api/sessions/<key>/ask`. That is a fresh `claude -p` on Sonnet with no conversation and none of your configuration (no setting
 sources, hooks, MCP servers or slash commands), whose only tools are Read, Glob and Grep in the session's
 folder, plus the picked file's folder through `--add-dir` when it sits outside. It stops after 8 turns or
 two minutes, and with the session's folder gone it reads nothing. Its first question carries the place
