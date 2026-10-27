@@ -124,14 +124,17 @@ Access draws the line. Each artifact keeps its own back and forward history in i
 step through it after a switch or a reload, and ⌘L edits the address. A link clicked in the sidecar opens
 there too, a web address as a Web entry and a local file the sidecar can draw, a page, a `.md`, a notebook, an
 image, a video, audio or a PDF, as a File entry, which `~/.claude/sidecar/tracked.json` remembers until you
-remove it, so the sidecar serves only files someone opened. A file it cannot draw opens in Files. A web address you or Claude write in the chat, outside code, becomes a Web entry of that
-conversation too, and a path to a file it can draw becomes a File entry as if its link were clicked, written
-bare, in inline code or as a `file://` link, from `/`, `~` or the conversation's folder, while one in a fenced
-block or to a file not there yet is left alone. Each lands once per conversation, read off the transcript,
-so an entry you remove stays removed. It
-lands as it is said, whichever conversation is on screen, with the toast a new page gets, and one said
-while the sidecar was stopped lands quietly once it is back. A page a WebFetch or WebSearch brought back
-never does, even when Claude cites it in its sources, unless you write it yourself.
+remove it, so the sidecar serves only files someone opened. A file it cannot draw opens in Files.
+
+A conversation also lists what its turns hand over. The reply that ends Claude's turn lists every web
+address it writes outside code as a Web entry, and every path to a file the sidecar can draw, written bare,
+in inline code or as a `file://` link from `/` or `~`, as a File entry as if its link were clicked. Narration
+along the way never lists, so a rule or a README Claude only reads or edits stays out, and neither do the web
+addresses of a reply whose turn searched or fetched the web, since those are its sources. A message of yours
+lists its web addresses and the pages in the artifacts folder it names, but no other local file, because a
+handover another session writes reads the same as yours and its "read this first" is not for you. Each lands
+once per conversation, so an entry you remove stays removed, as the turn ends, whichever conversation is on
+screen, with the toast a new page gets, and one said while the sidecar was stopped lands quietly once it is back.
 
 ## Tasks
 
@@ -289,8 +292,11 @@ named after its topic and its id is the offset to resume from, `?topic=` narrows
 `Last-Event-ID` header replays from an offset where a new connection starts at the end.
 
 Inside the server a write to any transcript reaches `transcripts.on("grew", ({ key, path }) => …)` from
-`server/utils/sessions/transcripts.ts`, fed by the one watcher in `server/plugins/transcripts.ts`, so the
-mascot's turn stream and link adoption subscribe to it instead of watching files of their own.
+`server/utils/sessions/transcripts.ts`, fed by the one watcher in `server/plugins/transcripts.ts`. The turn
+bus in `server/plugins/turns.ts` parses each growth into the chat's turns once and publishes them as
+`transcripts.on("turned", ({ key, path, turns, offset }) => …)`, so the chat stream and link adoption read the
+same turns instead of each parsing the transcript, and a `turn_duration` entry arrives as an `end` turn that
+settles the reply.
 
 ## Asking Claude
 

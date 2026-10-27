@@ -7,6 +7,17 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.29.0
+
+### Changed
+
+- **A conversation lists what its turns hand over, not every path it mentions.** The reply that ends Claude's
+  turn lists the web addresses and drawable files it names, while narration, a research turn's sources and a
+  local file named in a message, which may be a session's handover, never do. A rule file Claude reads or a
+  README it edits stays out of Artifacts, and the rule asks for a page's full path in that reply.
+- **One turn bus feeds the chat stream and link adoption,** parsing each transcript growth once instead of once
+  per open window, and the end of a turn settles its answer right away.
+
 ## 0.28.0
 
 ### Added
