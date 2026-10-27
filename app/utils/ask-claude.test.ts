@@ -1,17 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import {
-  askClaudeHistory,
-  askClaudeQuestion,
-  askClaudeState,
-  SideQuestion,
-  type AskClaudeTurn,
-  type SideAnchor,
-  type SideThread,
-} from "./ask-claude.ts";
+import { askClaudeHistory, SideQuestion, type AskClaudeTurn, type SideAnchor, type SideThread } from "./ask-claude.ts";
 import { Mentions } from "./mentions.ts";
 
-test("an @ picked from the tree expands to the title and key, and only a whole one routes the message", () => {
+test("an @ picked from the tree expands to the title and key, and only a whole one reads as a mention", () => {
   const typed = "ask @fol";
   const follower = { title: "[Cela] TL sidecar-task-board follower", key: "1a2b3c4d" };
   assert.deepEqual(Mentions.typing({ text: typed, caret: typed.length }), { query: "fol" });
@@ -41,13 +33,6 @@ function threadOf(turns: AskClaudeTurn[], status: SideThread["status"] = "open")
   return { anchor: IO, draft: "", id: "t", key: "k", status, turns };
 }
 
-test("the side chat's state comes off the turn in view, never off the session", () => {
-  assert.equal(askClaudeState(), "idle");
-  assert.equal(askClaudeState({ id: "1", question: "q" }), "asking");
-  assert.equal(askClaudeState({ id: "1", question: "q", answer: "a" }), "answered");
-  assert.equal(askClaudeState({ id: "1", question: "q", failure: "no" }), "failed");
-});
-
 test("history carries only answered turns, the newest twenty", () => {
   const turns: AskClaudeTurn[] = Array.from({ length: 23 }, (_, at) => ({
     id: `${at}`,
@@ -58,12 +43,6 @@ test("history carries only answered turns, the newest twenty", () => {
   const history = askClaudeHistory(turns);
   assert.equal(history.length, 20);
   assert.deepEqual(history.at(-1), { question: "q22", response: "a22" });
-});
-
-test("a leading /btw is the TUI habit and is dropped, anywhere else it is part of the question", () => {
-  assert.equal(askClaudeQuestion("  /btw why is the cap 1 MB?"), "why is the cap 1 MB?");
-  assert.equal(askClaudeQuestion("what does /btw do?"), "what does /btw do?");
-  assert.equal(askClaudeQuestion("/btw"), "");
 });
 
 test("a side question numbers the picked lines from the span, so a line the answer names is the file's", () => {

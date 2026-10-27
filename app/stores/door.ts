@@ -3,11 +3,10 @@ import type { LiveSession } from "~~/shared/types/session";
 import type { TaskState } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
 import type { Delivery } from "~/stores/notes";
-import type { Mention } from "~/utils/mentions";
 
-export type DoorTarget = { kind: "assistant"; key?: string } | { kind: "new" } | { kind: "side" };
+export type DoorTarget = { kind: "assistant"; key?: string } | { kind: "new" };
 export type DoorMode = DoorTarget["kind"];
-export type DoorStep = "working" | "answered" | "waiting" | "failed" | "sent";
+export type DoorStep = "working" | "answered" | "waiting" | "failed";
 
 export type DoorContext =
   { kind: "task"; slug: string; title: string } | { kind: "conversation"; key: string; title: string };
@@ -20,13 +19,6 @@ export interface DoorReceipt {
   isUndone?: boolean;
 }
 
-export interface DoorDelivery {
-  key: string;
-  title: string;
-  slug?: string;
-  isDelivered: boolean;
-}
-
 export interface DoorExchange {
   id: string;
   to?: string;
@@ -36,7 +28,6 @@ export interface DoorExchange {
   answer?: string;
   failure?: string;
   receipts: DoorReceipt[];
-  deliveries: DoorDelivery[];
 }
 
 export interface DoorSend {
@@ -60,7 +51,6 @@ export const $door = defineStore(() => {
   const sc = useSidecar();
   const task = $task();
   const desk = $desk();
-  const askClaude = $askClaude();
   const isOpen = ref(false);
   const draft = ref("");
   const target = ref<DoorTarget>({ kind: "assistant" });
@@ -88,7 +78,7 @@ export const $door = defineStore(() => {
     return key.value ? "assistant" : "new";
   });
 
-  const thread = computed(() => (mode.value === "side" ? [] : exchanges.value.filter((one) => one.to === key.value)));
+  const thread = computed(() => exchanges.value.filter((one) => one.to === key.value));
 
   const find = (id: string): DoorExchange | undefined => exchanges.value.find((one) => one.id === id);
 
@@ -156,7 +146,6 @@ export const $door = defineStore(() => {
       text,
       step: "working",
       receipts: [],
-      deliveries: [],
       ...(to ? { to } : {}),
     };
     exchanges.value.push(made);
@@ -168,34 +157,6 @@ export const $door = defineStore(() => {
       body: { text, ...(slug ? { slug } : {}) },
       method: "POST",
     }).catch((): Delivery => ({ delivered: false, reason: "refused-by-inbox" }));
-
-  const taskOfLeads = (): Map<string, string> => {
-    const tree = Org.treeOf({
-      sessions: sc.sessions.value,
-      tasks: Tasks.of(sc.catalogue.value),
-      projects: task.projects,
-    });
-    const pairs = tree.projects.flatMap((group) =>
-      [...group.tasks, ...group.done].flatMap((one) =>
-        [...one.leads, ...one.done].map((row): [string, string] => [row.key, one.meta.slug]),
-      ),
-    );
-    return new Map(pairs);
-  };
-
-  const mention = async (sent: DoorSend, mentioned: Mention[]): Promise<void> => {
-    const made = exchange(sent.text, key.value);
-    made.step = "sent";
-    const slugs = taskOfLeads();
-    for (const { key: to, title } of mentioned) {
-      const slug = slugs.get(to) ?? slugOf(sent.context);
-      const reply = await tell({ key: to, text: sent.text, slug });
-      made.deliveries.push({ key: to, title, ...(slug ? { slug } : {}), isDelivered: reply.delivered });
-    }
-    if (made.deliveries.some((one) => one.isDelivered)) return;
-    made.step = "failed";
-    made.failure = "Nobody you mentioned took the message.";
-  };
 
   const ask = async (sent: DoorSend, to: string): Promise<void> => {
     const made = exchange(sent.text, to);
@@ -231,12 +192,6 @@ export const $door = defineStore(() => {
     const text = sent.text.trim();
     if (!text) return;
     draft.value = "";
-    if (mode.value === "side") {
-      if (sc.sessionKey.value) void askClaude.ask(sc.sessionKey.value, askClaudeQuestion(text));
-      return;
-    }
-    const mentioned = Mentions.of(text);
-    if (mentioned.length) return mention({ ...sent, text }, mentioned);
     if (mode.value === "assistant" && key.value) return ask({ ...sent, text }, key.value);
     return start({ ...sent, text });
   };

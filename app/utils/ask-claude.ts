@@ -2,8 +2,6 @@ import type { Node } from "comark";
 import type { AskClaudeExchange } from "~~/shared/types/ask-claude";
 import type { LineSpan } from "./monaco/notes";
 
-export type AskClaudeState = "idle" | "asking" | "answered" | "failed";
-
 export interface AskClaudeTurn {
   id: string;
   question: string;
@@ -15,12 +13,6 @@ export interface AskClaudeTurn {
 
 // The same window /btw replays, so a follow-up can lean on what was asked before.
 const HISTORY_MAX = 20;
-
-export function askClaudeState(turn?: AskClaudeTurn): AskClaudeState {
-  if (!turn) return "idle";
-  if (turn.failure) return "failed";
-  return turn.answer ? "answered" : "asking";
-}
 
 export function askClaudeHistory(turns: AskClaudeTurn[]): AskClaudeExchange[] {
   return turns
@@ -148,8 +140,3 @@ function handoverOf({ anchor, draft, turns }: SideThread): string {
 }
 
 export const SideQuestion = { handoverOf, linesNamed, promptOf, stateOf, withLineRefs };
-
-// The TUI habit carries over: `/btw why…` asks the same as `why…`.
-export function askClaudeQuestion(draft: string): string {
-  return draft.replace(/^\s*\/btw\b/, "").trim();
-}

@@ -1,22 +1,10 @@
 <script lang="ts" setup>
 import type { DoorExchange, DoorReceipt } from "~/stores/door";
 
-const sc = useSidecar();
 const door = $door();
-const terminal = $terminal();
-
-const titleOf = (slug?: string): string =>
-  slug ? Tasks.of(sc.catalogue.value).find((one) => one.slug === slug)?.title || deslug(slug) : "";
 
 const canUndo = (receipt: DoorReceipt): boolean =>
   !receipt.isUndone && receipt.was === "unassigned" && receipt.now !== "unassigned";
-
-const reading = (one: DoorExchange): string | undefined => {
-  const busy = one.deliveries.find(
-    (sent) => sent.isDelivered && sc.sessions.value.find((session) => session.key === sent.key)?.status === "busy",
-  );
-  return busy && `${busy.title} is reading it`;
-};
 
 const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id;
 </script>
@@ -26,23 +14,7 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
     <div v-for="one in door.thread" :key="one.id" class="exchange">
       <p class="you">{{ one.text }}</p>
 
-      <div v-if="one.deliveries.length || one.receipts.length" class="receipts">
-        <div v-for="sent in one.deliveries" :key="sent.key" class="receipt" :data-failed="!sent.isDelivered">
-          <OrgMark :mark="sent.isDelivered ? 'completed' : 'needs'" />
-          <span class="what">
-            <span class="title">{{ sent.isDelivered ? "Sent to" : "Not delivered to" }} {{ sent.title }}</span>
-            <span v-if="sent.slug" class="note mono-meta">in {{ titleOf(sent.slug) }}'s history</span>
-          </span>
-          <button
-            v-if="sent.isDelivered"
-            class="link plain-button focusable"
-            data-tip="Attach in your terminal"
-            type="button"
-            @click="terminal.attach(sent.key)"
-          >
-            Attach
-          </button>
-        </div>
+      <div v-if="one.receipts.length" class="receipts">
         <div v-for="receipt in one.receipts" :key="`${receipt.slug}-${receipt.now}`" class="receipt">
           <OrgMark :mark="receipt.isUndone ? 'queued' : 'completed'" />
           <span class="what">
@@ -64,7 +36,6 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
       </div>
 
       <p v-if="one.step === 'working'" class="busy shimmer">{{ one.doing || "Reading it" }}</p>
-      <p v-else-if="reading(one)" class="busy shimmer">{{ reading(one) }}</p>
 
       <div v-if="one.step === 'waiting'" class="asks">
         <span class="asks-eyebrow mono-meta"><span class="asks-dot dot" />Waiting on your answer</span>

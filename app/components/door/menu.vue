@@ -1,11 +1,10 @@
 <script lang="ts" setup>
-import { MessageCircleQuestion, Plus } from "@lucide/vue";
+import { Plus } from "@lucide/vue";
 import type { LiveSession } from "~~/shared/types/session";
 import { Titles } from "~~/shared/utils/titles";
 import type { DoorTarget } from "~/stores/door";
 import type { Mark } from "~/utils/org";
 
-const { conversation } = defineProps<{ conversation?: string }>();
 const emit = defineEmits<{ pick: [target: DoorTarget] }>();
 
 const door = $door();
@@ -34,21 +33,6 @@ const rows = computed(() =>
 
 <template>
   <div class="menu" role="menu" aria-label="Who to ask" data-region="door-menu">
-    <button
-      v-if="conversation"
-      class="item plain-button focusable"
-      role="menuitemradio"
-      type="button"
-      :aria-checked="door.mode === 'side'"
-      :data-on="door.mode === 'side'"
-      data-tip="A side question to the conversation in front. It reads it whole and writes nothing into it"
-      @click="emit('pick', { kind: 'side' })"
-    >
-      <UiIcon class="glyph" :icon="MessageCircleQuestion" size="xs" />
-      <span class="name">This conversation</span>
-      <span class="id">{{ conversation }}</span>
-    </button>
-    <div v-if="conversation && rows.length" class="rule" aria-hidden="true" />
     <button
       v-for="row in rows"
       :key="row.key"

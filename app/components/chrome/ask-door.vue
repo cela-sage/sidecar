@@ -2,7 +2,7 @@
 import { ArrowRight, ArrowUp, ChevronDown, Terminal, Trash2, X } from "@lucide/vue";
 import { Titles } from "~~/shared/utils/titles";
 import type { MascotState } from "~/components/claude/mascot.vue";
-import type { DoorContext, DoorMode, DoorTarget } from "~/stores/door";
+import type { DoorContext, DoorTarget } from "~/stores/door";
 import type { OrgProject } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
 
@@ -15,7 +15,6 @@ const task = $task();
 const desk = $desk();
 const door = $door();
 const terminal = $terminal();
-const askClaude = $askClaude();
 const field = useTemplateRef<{ focus: () => void }>("field");
 const body = useTemplateRef<HTMLElement>("body");
 const isPicking = ref(false);
@@ -50,28 +49,19 @@ const sending = computed(() => (keepsContext.value ? context.value : undefined))
 
 const inbox = computed(() => tasks.value.filter((one) => one.task.state === "unassigned"));
 const tree = computed(() => Org.treeOf({ sessions: sc.sessions.value, tasks: tasks.value, projects: task.projects }));
-const candidates = computed(() =>
-  door.mode === "side"
-    ? []
-    : [
-        ...tree.value.assistants,
-        ...tree.value.projects.flatMap((group) => [...group.leads, ...group.tasks.flatMap((one) => one.leads)]),
-      ],
-);
+const candidates = computed(() => [
+  ...tree.value.assistants,
+  ...tree.value.projects.flatMap((group) => [...group.leads, ...group.tasks.flatMap((one) => one.leads)]),
+  ...tree.value.unplaced,
+]);
 
-const sideTurns = computed(() => askClaude.view(sc.sessionKey.value).turns);
-const isEmpty = computed(() => (door.mode === "side" ? !sideTurns.value.length : !door.thread.length));
-const showsInbox = computed(() => isEmpty.value && door.mode !== "side" && inbox.value.length > 0);
+const isEmpty = computed(() => !door.thread.length);
+const showsInbox = computed(() => isEmpty.value && inbox.value.length > 0);
 const isBusy = computed(() => door.assistant?.status === "busy");
 const step = computed(() => (isBusy.value ? door.assistant?.detail || "Working" : undefined));
-
-const mascot = computed<MascotState>(() => {
-  if (door.mode === "side") return askClaudeState(sideTurns.value.at(-1)) === "asking" ? "thinking" : "idle";
-  return isBusy.value ? "running" : "idle";
-});
+const mascot = computed<MascotState>(() => (isBusy.value ? "running" : "idle"));
 
 const who = computed(() => {
-  if (door.mode === "side") return { name: "This conversation", id: front.value ? nameOf(front.value) : "" };
   if (door.mode === "new") return { name: "Assistant", id: "new" };
   const title = door.assistant ? nameOf(door.assistant) : "";
   const parsed = Titles.parse(title);
@@ -80,7 +70,6 @@ const who = computed(() => {
 });
 
 const sub = computed<{ text: string; tone: Tone }>(() => {
-  if (door.mode === "side") return { text: `${who.value.id} · read-only · only you`, tone: "live" };
   if (door.mode === "new") {
     const anyLive = door.assistants.some((one) => one.live);
     return anyLive
@@ -94,27 +83,20 @@ const sub = computed<{ text: string; tone: Tone }>(() => {
 });
 
 const greeting = computed(() => {
-  if (door.mode === "side") return "Ask about this conversation. Claude reads it whole and writes nothing into it.";
   if (door.mode === "new") return "What should the new assistant work on?";
   if (sending.value?.kind === "task") return `Ask about ${sending.value.title}, or tell the assistant what to do.`;
   return "What should the assistant do?";
 });
 
-const chips = computed(() =>
-  door.mode === "side" ? [] : CHIPS[sending.value?.kind === "task" ? "task" : "conversation"],
+const chips = computed(() => CHIPS[sending.value?.kind === "task" ? "task" : "conversation"]);
+
+const placeholder = computed(() =>
+  door.thread.length
+    ? "Ask the assistant something else, or @ someone…"
+    : "Ask the assistant, or @ someone in the tree…",
 );
 
-const placeholder = computed(() => {
-  if (door.mode === "side") return sideTurns.value.length ? "Ask a follow-up…" : "Ask about this conversation…";
-  return door.thread.length
-    ? "Ask the assistant something else, or @ someone…"
-    : "Ask the assistant, or @ someone in the tree…";
-});
-
-const attachKey = computed(() => {
-  const keys: Record<DoorMode, string | undefined> = { side: front.value?.key, assistant: door.key, new: undefined };
-  return keys[door.mode];
-});
+const attachKey = computed(() => (door.mode === "assistant" ? door.key : undefined));
 
 const routeOf = (meta: TaskMeta): OrgProject | undefined =>
   tree.value.projects.find((one) => one.project.key === desk.routes[meta.slug]);
@@ -162,11 +144,6 @@ const send = (): void => {
   void door.send({ text: door.draft, ...(sending.value ? { context: sending.value } : {}) });
 };
 
-const clear = (): void => {
-  if (door.mode !== "side") return door.clear();
-  if (sc.sessionKey.value) askClaude.clear(sc.sessionKey.value);
-};
-
 const onKey = (event: KeyboardEvent): void => {
   if (event.key !== "Enter" || !event.altKey || event.metaKey || event.ctrlKey || event.defaultPrevented) return;
   event.preventDefault();
@@ -176,7 +153,7 @@ const onKey = (event: KeyboardEvent): void => {
 
 watch(contextKey, () => (keepsContext.value = true));
 watch(
-  () => [door.thread.length, door.thread.at(-1)?.step, door.thread.at(-1)?.answer, sideTurns.value.length, door.isOpen],
+  () => [door.thread.length, door.thread.at(-1)?.step, door.thread.at(-1)?.answer, door.isOpen],
   () => void nextTick(() => body.value?.scrollTo({ top: body.value.scrollHeight })),
 );
 
@@ -232,7 +209,7 @@ onMounted(() => {
           aria-label="Clear this thread"
           data-tip="Clear this thread"
           size="xs"
-          @click="clear"
+          @click="door.clear()"
         />
         <UiIconButton
           v-if="attachKey"
@@ -247,7 +224,7 @@ onMounted(() => {
       <p class="sub mono-meta">
         <span class="sub-dot dot" :data-tone="sub.tone" /><span class="sub-text">{{ sub.text }}</span>
       </p>
-      <DoorMenu v-if="isPicking" class="menu" :conversation="front && nameOf(front)" @pick="pick" />
+      <DoorMenu v-if="isPicking" class="menu" @pick="pick" />
 
       <div ref="body" class="body">
         <section v-if="showsInbox" class="inbox" aria-label="Inbox">
@@ -281,9 +258,9 @@ onMounted(() => {
         <template v-else-if="isEmpty">
           <div class="greet">
             <span class="greeting">{{ greeting }}</span>
-            <span v-if="door.mode !== 'side'" class="about-it">
+            <span class="about-it">
               It sees every project, routes tasks to their Project Lead, drafts, and does anything on the board you
-              could. An @ sends to anyone in the tree instead, and lands in that task's history.
+              could. An @ points it at anyone in the tree.
             </span>
           </div>
           <div v-if="chips.length" class="chips" role="listbox" aria-label="Fill the prompt">
@@ -300,16 +277,11 @@ onMounted(() => {
             </button>
           </div>
         </template>
-        <DoorSide v-if="door.mode === 'side'" />
-        <DoorThread v-else />
+        <DoorThread />
       </div>
 
       <footer class="foot">
-        <span
-          v-if="sending && door.mode !== 'side'"
-          class="context"
-          data-tip="Goes with your message. Remove it to ask without it"
-        >
+        <span v-if="sending" class="context" data-tip="Goes with your message. Remove it to ask without it">
           <span class="about mono-meta">about</span>
           <span class="context-name">{{ sending.title }}</span>
           <button class="remove plain-button focusable" aria-label="Remove" type="button" @click="keepsContext = false">
