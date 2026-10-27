@@ -7,6 +7,19 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.28.0
+
+### Added
+
+- **`sidecar task new "<title>"`** writes an unassigned task with the four parts, the way the Desk's New task
+  does, and prints its slug, so the Executive Assistant opens tasks through the lane.
+- **New task sits at the foot of a task page's projects rail** too, with the same N and naming field as the inbox.
+
+### Fixed
+
+- **A job's scratch copy of a task no longer lists.** A `.md` a conversation recorded under `~/.claude/jobs` is
+  never a document, so the Desk shows one row per task.
+
 ## 0.27.1
 
 ### Fixed

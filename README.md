@@ -33,6 +33,7 @@ sidecar             # same as open
 sidecar open [key]  # start it when down, point it at the conversation, raise an open sidecar or open one
 sidecar open --artifact <slug|url>  # the same, showing that page or address in Artifacts
 sidecar comments <slug>  # a page's threads; --reply <n> "..." answers one, --resolve <n> "..." closes it
+sidecar task new "<title>"  # a new unassigned task, printing its slug
 sidecar task <slug> [verb]  # a task's lane: state, assign, escalate, hire, judge, decide, done; bare prints where it stands
 sidecar terminal    # run once in the terminal you use for Claude Code, so Attach in the sidecar opens a conversation there
 sidecar setup [desktop|web]  # choose how it runs and set it up; prompts on first run
@@ -68,8 +69,8 @@ brings it up when it is down, so nothing runs it at login.
 
 Every page in the artifacts folder lists in the Artifacts face, a `.html`, a `.md` or a `.ipynb` notebook, and
 each conversation shows the pages it wrote, read off `~/.claude/artifacts/session-<key>`, the list a
-conversation's writes are recorded in. A page that list records for the first time while the sidecar is
-running gets a toast that opens it. A page carries a comment layer, and a `.md` is commented in the sidecar,
+conversation's writes are recorded in. A `.md` that list records under `~/.claude/jobs` is a job's scratch and
+never lists. A page that list records for the first time while the sidecar is running gets a toast that opens it. A page carries a comment layer, and a `.md` is commented in the sidecar,
 which keeps its threads in one trailing `<!-- rv:seed -->` comment, or in `~/.claude/sidecar/comments/` for a
 `.md` outside the folder and for a notebook or an image anywhere. `sidecar comments <slug>` prints the threads
 and answers them, and picks up a page's Save from `~/Downloads` when no sidecar is running.
@@ -166,8 +167,9 @@ while any is. The inbox on the right holds the unassigned tasks, each with the f
 cached until the task changes. Dropping a card on a project, or pressing Route, assigns it through the lane with
 `PATCH /api/tasks/:slug`, so it lands in the history and on the bus, and the toast's Undo, or ⌘Z, puts it back.
 Eight seconds after the drop, unless undone, the project's Project Lead, its newest live conversation titled
-with PL and the project's token, gets the task to assess. New task, or N, asks for a title, writes an unassigned
-`.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
+with PL and the project's token, gets the task to assess. New task, or N, at the foot of the inbox or of a task
+page's projects rail, asks for a title, writes an unassigned `.md` with the four parts as headings through
+`POST /api/tasks`, and opens it in Edit.
 
 ### Following the terminal
 
@@ -187,6 +189,7 @@ A task's life goes through `sidecar task`, which the Task Leads and the Project 
 comments the board and notifies you lives in one place:
 
 ```sh
+sidecar task new "Hook that blocks committing settings.local.json"  # an unassigned task with the four parts; prints its slug
 sidecar task <slug>                                   # its state, what waits on a decision, your decisions, the history
 sidecar task <slug> state waiting --on "Cosmico" --reason "they confirm they have Fattura 1/2026"
 sidecar task <slug> assign cela
