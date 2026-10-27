@@ -2,6 +2,7 @@
 const chrome = useChrome();
 const follow = $follow();
 const task = $task();
+const terminal = $terminal();
 const sc = useSidecar();
 const inlineArmed = useState<boolean>("sc:inline-armed", () => false);
 const inlineAsk = useState<boolean>("sc:inline-ask", () => false);
@@ -95,8 +96,10 @@ useEvents().on("artifact.created", ({ data, key = sc.sessionKey.value }) => {
 });
 
 useTaskNotices();
+useEvents().on("terminal.changed", ({ data }) => terminal.heard(data));
 
 onMounted(() => {
+  void terminal.load();
   window.addEventListener("keydown", onKeyDown);
   window.addEventListener("keyup", onKeyUp);
   // A held key loses its keyup on blur, and would leave the page swallowing every click.

@@ -78,7 +78,6 @@ events.on("task.decided", () => void desk.load());
 
     <ChromeCommentToggle v-if="onArtifact" shape="island" />
     <ChromeFollowToggle v-if="inSession" />
-    <TaskTerminalPill v-if="onTasks" />
     <ChromeThemeToggle />
     <ChromeAction
       v-if="onArtifact"
