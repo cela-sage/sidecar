@@ -1,16 +1,10 @@
 <script lang="ts" setup>
 import { Check, ChevronDown, ChevronRight, Inbox } from "@lucide/vue";
-import type { TaskMeta, TaskSummary } from "~/utils/tasks";
+import type { TaskGroup, TaskSummary } from "~/utils/tasks";
 
 const { current } = defineProps<{ current: string }>();
 
-interface Group {
-  key: string;
-  name: string;
-  tint: string;
-  tasks: TaskMeta[];
-  summary: TaskSummary;
-}
+type Group = TaskGroup & { summary: TaskSummary };
 
 const sc = useSidecar();
 const task = $task();
@@ -21,28 +15,12 @@ const open = computed(() => tasks.value.filter((one) => one.task.state !== "done
 const inbox = computed(() => tasks.value.filter((one) => one.task.state === "unassigned"));
 const needs = computed(() => tasks.value.filter((one) => one.task.state === "blocked").length);
 
-const groups = computed<Group[]>(() => {
-  const keys = task.projects.map((one) => one.key);
-  for (const one of tasks.value) if (one.task.project && !keys.includes(one.task.project)) keys.push(one.task.project);
-  return keys.map((key) => {
-    const mine = tasks.value.filter((one) => one.task.project === key);
-    return {
-      key,
-      name: task.projects.find((one) => one.key === key)?.name ?? key,
-      tint: Tasks.tintOf(key, keys),
-      tasks: mine,
-      summary: Tasks.summaryOf(mine),
-    };
-  });
-});
+const groups = computed<Group[]>(() =>
+  Tasks.groupsOf(tasks.value, task.projects).map((group) => ({ ...group, summary: Tasks.summaryOf(group.tasks) })),
+);
 
-function isOpen(group: Group): boolean {
-  return task.opened[group.key] ?? group.tasks.some((one) => one.slug === current || one.task.state !== "done");
-}
-
-function toggle(group: Group): void {
-  task.opened = { ...task.opened, [group.key]: !isOpen(group) };
-}
+const isOpen = (group: Group): boolean => task.isGroupOpen(group, current);
+const toggle = (group: Group): void => task.toggleGroup(group, current);
 </script>
 
 <template>

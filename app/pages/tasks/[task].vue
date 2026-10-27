@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 import { useIntervalFn } from "@vueuse/core";
-import type { ArtifactMeta } from "~~/shared/types/artifact";
 import { Titles } from "~~/shared/utils/titles";
 
 const CATALOGUE_MS = 5000;
@@ -16,14 +15,7 @@ const project = computed(() => task.projects.find((one) => one.key === meta.valu
 const title = computed(() => meta.value?.title || deslug(slug.value));
 const isHistory = computed(() => route.query.face === "history");
 
-const rail = computed(() =>
-  sc.sessions.value
-    .filter((session) => {
-      const titled = (!session.archived || session.live) && Titles.parse(nameOf(session));
-      return !!titled && Titles.belongsTo(titled, slug.value);
-    })
-    .sort(Tasks.agentOrder),
-);
+const rail = computed(() => Tasks.railOf(sc.sessions.value, slug.value));
 
 // Notes on the document go to whoever runs it, and with nobody on it yet to the conversation already in front.
 const conversation = computed(() => {
@@ -36,14 +28,10 @@ const conversation = computed(() => {
   return held?.key ?? sc.sessionKey.value;
 });
 
-async function readCatalogue(): Promise<void> {
-  sc.catalogue.value = await $fetch<ArtifactMeta[]>("/api/artifacts").catch(() => sc.catalogue.value);
-}
-
 function heard({ data }: { data: { slug: string } }): void {
   if (data.slug !== slug.value) return;
   void task.refresh();
-  void readCatalogue();
+  void task.readTasks();
 }
 
 loadSidecar();
@@ -54,7 +42,7 @@ events.on("task.escalated", heard);
 events.on("task.decided", heard);
 
 // A stamp changes with no event when Mode's own CLI writes it, so the board reads the catalogue again while it is open.
-useIntervalFn(readCatalogue, CATALOGUE_MS);
+useIntervalFn(task.readTasks, CATALOGUE_MS);
 </script>
 
 <template>

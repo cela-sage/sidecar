@@ -1,6 +1,7 @@
 import type { ArtifactMeta } from "~~/shared/types/artifact";
 import type { LiveSession } from "~~/shared/types/session";
-import type { ArtifactTask, TaskState } from "~~/shared/types/task";
+import type { ArtifactTask, Project, TaskState } from "~~/shared/types/task";
+import { Titles } from "../../shared/utils/titles.ts";
 import type { TaskStory } from "./timeline";
 
 // Violet runs on its own, hollow while it waits on someone else, red waits on you, grey is done.
@@ -21,6 +22,14 @@ export interface TaskStep {
 export interface TaskSummary {
   text: string;
   look?: TaskLook;
+}
+
+export interface TaskGroup {
+  key: string;
+  name: string;
+  tint: string;
+  project?: Project;
+  tasks: TaskMeta[];
 }
 
 const LOOK: Record<TaskState, TaskLook> = {
@@ -68,12 +77,12 @@ const chipOf = (state: TaskState): string => capital(LABEL[state]);
 
 const of = (catalogue: ArtifactMeta[]): TaskMeta[] => catalogue.filter(isTask);
 
-function tintOf(key: string | undefined, keys: string[]): string {
+const tintOf = (key: string | undefined, keys: string[]): string => {
   const at = key ? keys.indexOf(key) : -1;
   return at < 0 ? "slate" : (TINTS[at % TINTS.length] ?? "slate");
-}
+};
 
-function stepsOf(state: TaskState, { resumed, settledBy, waiting }: TaskStory = {}): TaskStep[] {
+const stepsOf = (state: TaskState, { resumed, settledBy, waiting }: TaskStory = {}): TaskStep[] => {
   const at = PATH.indexOf(state);
   const reached = at < 0 ? PATH.length : at;
   const steps: Omit<TaskStep, "joint">[] = PATH.map((one, i) => ({
@@ -101,24 +110,42 @@ function stepsOf(state: TaskState, { resumed, settledBy, waiting }: TaskStory = 
     ...step,
     joint: !i ? "none" : step.kind === "future" ? "dashed" : step.label === "Running" ? "primary" : "solid",
   }));
-}
+};
 
-function summaryOf(tasks: TaskMeta[]): TaskSummary {
-  for (const state of PRESSING) {
+const groupsOf = (tasks: TaskMeta[], projects: Project[]): TaskGroup[] => {
+  const keys = projects.map((one) => one.key);
+  for (const one of tasks) if (one.task.project && !keys.includes(one.task.project)) keys.push(one.task.project);
+  return keys.map((key) => {
+    const project = projects.find((one) => one.key === key);
+    return {
+      key,
+      name: project?.name ?? key,
+      tint: tintOf(key, keys),
+      ...(project ? { project } : {}),
+      tasks: tasks.filter((one) => one.task.project === key),
+    };
+  });
+};
+
+const countsOf = (tasks: TaskMeta[]): TaskSummary[] => {
+  return PRESSING.flatMap((state) => {
     const count = tasks.filter((one) => one.task.state === state).length;
-    if (count) return { text: `${count} ${LABEL[state]}`, look: LOOK[state] };
-  }
-  return { text: "nothing open" };
-}
+    return count ? [{ text: `${count} ${LABEL[state]}`, look: LOOK[state] }] : [];
+  });
+};
 
-function agentStateOf(session: LiveSession): AgentState {
+const summaryOf = (tasks: TaskMeta[]): TaskSummary => {
+  return countsOf(tasks)[0] ?? { text: "nothing open" };
+};
+
+const agentStateOf = (session: LiveSession): AgentState => {
   const lane = session.lane?.name;
   if (lane === "review" || lane === "blocked") return "needs input";
   if (lane === "working") return "working";
   if (lane === "done") return "completed";
   if (session.status === "busy") return "working";
   return session.status === "waiting" ? "needs input" : "completed";
-}
+};
 
 const order = (a: TaskMeta, b: TaskMeta): number =>
   PRESSING.indexOf(a.task.state) - PRESSING.indexOf(b.task.state) || a.title.localeCompare(b.title);
@@ -127,14 +154,25 @@ const agentOrder = (a: LiveSession, b: LiveSession): number =>
   AGENT_ORDER.indexOf(agentStateOf(a)) - AGENT_ORDER.indexOf(agentStateOf(b)) ||
   (b.lastActive ?? 0) - (a.lastActive ?? 0);
 
+const railOf = (sessions: LiveSession[], slug: string): LiveSession[] =>
+  sessions
+    .filter((session) => {
+      const title = (!session.archived || session.live) && session.name ? Titles.parse(session.name) : undefined;
+      return !!title && Titles.belongsTo(title, slug);
+    })
+    .sort(agentOrder);
+
 export const Tasks = {
   agentOrder,
   agentStateOf,
   chipOf,
+  countsOf,
+  groupsOf,
   labelOf,
   lookOf,
   of,
   order,
+  railOf,
   stepsOf,
   summaryOf,
   tintOf,

@@ -1,13 +1,15 @@
-import type { ArtifactDetail, ReviewThread } from "~~/shared/types/artifact";
+import type { ArtifactDetail, ArtifactMeta, ReviewThread } from "~~/shared/types/artifact";
 import type { FileContent } from "~~/shared/types/files";
 import type { HistoryEntry, TaskDecided, TaskStands } from "~~/shared/types/history";
 import type { Project } from "~~/shared/types/task";
 import { Parts, type Part } from "~~/shared/utils/parts";
+import type { TaskGroup } from "~/utils/tasks";
 
 export type TaskFace = "document" | "history";
 export type Answer = { option: number } | { text: string };
 
 export const $task = defineStore(() => {
+  const sc = useSidecar();
   const projects = ref<Project[]>([]);
   const isEditing = ref(false);
   const tuneAsks = ref(0);
@@ -21,16 +23,28 @@ export const $task = defineStore(() => {
   const picked = ref(-1);
   const onlyDecisions = ref(false);
 
-  async function loadProjects(): Promise<void> {
+  const loadProjects = async (): Promise<void> => {
     if (projects.value.length) return;
     projects.value = await $fetch<Project[]>("/api/projects").catch(() => []);
-  }
+  };
 
-  function askTune(): void {
+  const isGroupOpen = (group: TaskGroup, current?: string): boolean => {
+    return opened.value[group.key] ?? group.tasks.some((one) => one.slug === current || one.task.state !== "done");
+  };
+
+  const toggleGroup = (group: TaskGroup, current?: string): void => {
+    opened.value = { ...opened.value, [group.key]: !isGroupOpen(group, current) };
+  };
+
+  const readTasks = async (): Promise<void> => {
+    sc.catalogue.value = await $fetch<ArtifactMeta[]>("/api/artifacts").catch(() => sc.catalogue.value);
+  };
+
+  const askTune = (): void => {
     tuneAsks.value += 1;
-  }
+  };
 
-  async function refresh(): Promise<void> {
+  const refresh = async (): Promise<void> => {
     const at = slug.value;
     if (!at) return;
     const path = encodeURIComponent(at);
@@ -43,9 +57,9 @@ export const $task = defineStore(() => {
     entries.value = history.entries;
     asks.value = (detail?.threads ?? []).filter((thread) => !!thread.ask);
     parts.value = source && "text" in source ? Parts.of(source.text) : [];
-  }
+  };
 
-  async function stand(): Promise<void> {
+  const stand = async (): Promise<void> => {
     const at = slug.value;
     if (!at) return;
     isStanding.value = true;
@@ -55,9 +69,9 @@ export const $task = defineStore(() => {
     if (slug.value !== at) return;
     stands.value = reply.stands;
     isStanding.value = false;
-  }
+  };
 
-  async function open(next: string): Promise<void> {
+  const open = async (next: string): Promise<void> => {
     if (slug.value !== next) {
       slug.value = next;
       entries.value = [];
@@ -68,9 +82,9 @@ export const $task = defineStore(() => {
       onlyDecisions.value = false;
     }
     await refresh();
-  }
+  };
 
-  async function decide(thread: string, answer: Answer): Promise<TaskDecided> {
+  const decide = async (thread: string, answer: Answer): Promise<TaskDecided> => {
     const at = slug.value ?? "";
     const decided = await $fetch<TaskDecided>(`/api/tasks/${encodeURIComponent(at)}/decide`, {
       method: "POST",
@@ -78,7 +92,7 @@ export const $task = defineStore(() => {
     });
     await refresh();
     return decided;
-  }
+  };
 
   return {
     askTune,
@@ -86,6 +100,7 @@ export const $task = defineStore(() => {
     decide,
     entries,
     isEditing,
+    isGroupOpen,
     isStanding,
     loadProjects,
     onlyDecisions,
@@ -94,10 +109,12 @@ export const $task = defineStore(() => {
     parts,
     picked,
     projects,
+    readTasks,
     refresh,
     slug,
     stand,
     stands,
+    toggleGroup,
     tuneAsks,
   };
 });
