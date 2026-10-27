@@ -1,9 +1,7 @@
 import { realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
-import { basename, dirname, extname, resolve } from "node:path";
-import { ArtifactLists } from "~~/lib/sidecar/lists";
-import { Sidecar, expandHome, plansHome } from "~~/lib/sidecar/paths";
-import { documentSlug } from "~~/lib/sidecar/comments";
+import { resolve } from "node:path";
+import { expandHome } from "~~/lib/sidecar/paths";
 import { Tracked } from "~~/lib/sidecar/tracked";
 import { isKey } from "~~/server/utils/sessions/paths";
 import type { FileOpenReply } from "~~/shared/types/files";
@@ -11,31 +9,6 @@ import type { FileOpenReply } from "~~/shared/types/files";
 function fieldOf(raw: unknown, name: string): string {
   const value = typeof raw === "object" && raw ? (raw as Record<string, unknown>)[name] : "";
   return typeof value === "string" ? value.trim() : "";
-}
-
-// The opened path is real, so a folder reached through a symlink must be compared real too.
-function isIn(path: string, folder: string): boolean {
-  try {
-    return dirname(path) === realpathSync(folder);
-  } catch {
-    return false;
-  }
-}
-
-// A page or plan already has its entry, so only a file from anywhere else is tracked under a slug of its own.
-function slugOf(path: string, session: string): string {
-  if (isIn(path, Sidecar.artifacts()) && /\.(html|ipynb|md)$/i.test(path)) {
-    const slug = basename(path, extname(path));
-    if (session) ArtifactLists.record(slug, session);
-    return slug;
-  }
-  if (isIn(path, plansHome())) {
-    if (session) ArtifactLists.record(path, session);
-    return documentSlug(path);
-  }
-  const slug = Tracked.track(path);
-  if (session) ArtifactLists.record(slug, session);
-  return slug;
 }
 
 export default defineEventHandler(async (event): Promise<FileOpenReply> => {
@@ -49,5 +22,5 @@ export default defineEventHandler(async (event): Promise<FileOpenReply> => {
   const real = realpathSync(full);
   if (!Tracked.isTrackable(real)) return { at: "files", path: real };
   const session = fieldOf(raw, "session").toLowerCase();
-  return { at: "artifacts", slug: slugOf(real, isKey(session) ? session : "") };
+  return { at: "artifacts", slug: Tracked.enter(real, isKey(session) ? session : undefined) };
 });
