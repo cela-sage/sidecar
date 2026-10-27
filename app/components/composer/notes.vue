@@ -1,41 +1,15 @@
 <script lang="ts" setup>
 import { Send } from "@lucide/vue";
-import type { AskClaudeTurn } from "~/utils/ask-claude";
 
 const sc = useSidecar();
 const tray = useTray();
-const chrome = useChrome();
-const askClaude = $askClaude();
 const notes = $notes();
-const isAsking = ref(false);
-const island = useTemplateRef<{ focus: () => void }>("island");
 
-// The sidecar's version of the f key in /btw: the side exchange becomes a real turn.
-async function sendAnswer(turn: AskClaudeTurn): Promise<void> {
-  const key = sc.sessionKey.value;
-  if (!key || !turn.answer) return;
-  const reply = await notes.deliver({
-    key,
-    text: `I asked you on the side: ${turn.question}\nYou answered: ${turn.answer}`,
-  });
-  if (!reply) return;
-  if (!reply.delivered) return chrome.toast("The conversation did not take it, try again in a moment.", "warning");
-  askClaude.markSent(key, turn.id);
-  chrome.toast("Sent to Claude as your next message", "success");
-}
-
-// A note box saves on its own Enter and prevents it, so only a ⌘↵ or ⌥↵ nobody handled lands here.
+// A note box saves on its own Enter and prevents it, so only a ⌘↵ nobody handled lands here.
 function onKey(event: KeyboardEvent): void {
-  if (event.key !== "Enter" || event.defaultPrevented) return;
-  if (event.metaKey || event.ctrlKey) {
-    event.preventDefault();
-    void notes.send();
-    return;
-  }
-  if (!event.altKey) return;
+  if (event.key !== "Enter" || event.defaultPrevented || !(event.metaKey || event.ctrlKey)) return;
   event.preventDefault();
-  if (isAsking.value) island.value?.focus();
-  else isAsking.value = true;
+  void notes.send();
 }
 
 onMounted(() => {
@@ -53,9 +27,8 @@ onMounted(() => {
 <template>
   <div v-if="sc.sessionKey.value" class="notes" data-region="composer-notes">
     <ComposerTray />
-    <div class="pills">
-      <ComposerAskClaude ref="island" v-model:open="isAsking" @send="sendAnswer" />
-      <UiSurface v-if="tray.count.value" class="pill" pad="none" shape="pill" variant="glass-liquid">
+    <div v-if="tray.count.value" class="pills">
+      <UiSurface class="pill" pad="none" shape="pill" variant="glass-liquid">
         <button
           v-press
           class="send focusable"
@@ -77,7 +50,6 @@ onMounted(() => {
   @apply flex flex-col items-end gap-2;
 }
 
-/* Full width, so the island's percentage width resolves against the dock rather than its own content. */
 .pills {
   @apply flex w-full items-end justify-end gap-2;
 }

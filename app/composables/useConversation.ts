@@ -33,7 +33,7 @@ interface ConversationSnapshot {
   turns: ConversationTurn[];
 }
 
-function asTurn(value: unknown): ConversationTurn | undefined {
+export function asTurn(value: unknown): ConversationTurn | undefined {
   if (typeof value !== "object" || !value) return undefined;
   if (!("at" in value) || !("role" in value) || !("text" in value)) return undefined;
   const { at, role, text } = value;
@@ -58,7 +58,7 @@ function isKind(value: unknown): value is TurnKind {
   return ["thinking", "narration", "answer", "acting", "note", "drop", "done", "end"].includes(String(value));
 }
 
-function parseTurn(raw: string): ConversationTurn | undefined {
+export function parseTurn(raw: string): ConversationTurn | undefined {
   try {
     return asTurn(JSON.parse(raw) as unknown);
   } catch {

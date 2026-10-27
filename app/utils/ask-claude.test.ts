@@ -9,6 +9,24 @@ import {
   type SideAnchor,
   type SideThread,
 } from "./ask-claude.ts";
+import { Mentions } from "./mentions.ts";
+
+test("an @ picked from the tree expands to the title and key, and only a whole one routes the message", () => {
+  const typed = "ask @fol";
+  const follower = { title: "[Cela] TL sidecar-task-board follower", key: "1a2b3c4d" };
+  assert.deepEqual(Mentions.typing({ text: typed, caret: typed.length }), { query: "fol" });
+  assert.deepEqual(Mentions.typing({ text: "ask @", caret: 5 }), { query: "" });
+  assert.equal(Mentions.typing({ text: "mail me@home", caret: 12 }), undefined);
+  const picked = Mentions.insert({ text: typed, caret: typed.length }, follower);
+  assert.equal(picked.text, "ask @[Cela] TL sidecar-task-board follower (1a2b3c4d) ");
+  assert.equal(picked.caret, picked.text.length);
+  const both = `${picked.text}and @[meta] EA daily triage (00ff00aa), hold it`;
+  assert.deepEqual(
+    Mentions.of(both).map((one) => `${one.key} ${one.title}`),
+    ["1a2b3c4d [Cela] TL sidecar-task-board follower", "00ff00aa [meta] EA daily triage"],
+  );
+  assert.deepEqual(Mentions.of("ask @[Cela] TL follower (1a2b3c4) now"), []);
+});
 
 const IO: SideAnchor = {
   label: "io.ts:12-17",

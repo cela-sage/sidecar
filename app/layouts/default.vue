@@ -74,6 +74,8 @@ useResizeObserver(boardEl, ([entry]) => {
       <div ref="dockEl" class="foot-dock" data-region="dock-corner">
         <slot name="dock" />
       </div>
+
+      <ChromeAskDoor v-if="!isDown" />
     </div>
 
     <div class="notices" data-region="notices">
