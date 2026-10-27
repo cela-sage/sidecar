@@ -1,3 +1,4 @@
 allowBuilds:
   esbuild: true
+  node-pty: true
   vite-plugin-vue-tailwind-auto-reference: true

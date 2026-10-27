@@ -17,6 +17,11 @@ const titleOf = (id: string): string | undefined => {
   return entry?.name;
 };
 
+const titleByKey = (key: string): string | undefined =>
+  liveEntries()
+    .filter((one) => keyOf(one.id) === key)
+    .sort(newest)[0]?.name;
+
 const keyByTitle = (title: string): string | undefined => {
   const [entry] = liveEntries()
     .filter((one) => one.name === title)
@@ -31,4 +36,4 @@ const of = (id = process.env.CLAUDE_CODE_SESSION_ID): Caller => {
   return { who: role ?? "YOU", ...(from ? { from } : {}) };
 };
 
-export const TaskCaller = { keyByTitle, of };
+export const TaskCaller = { keyByTitle, of, titleByKey };

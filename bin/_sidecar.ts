@@ -11,11 +11,13 @@ import { Sidecar } from "../lib/sidecar/paths.ts";
 import * as Events from "../lib/sidecar/events.ts";
 import type { Topics } from "../shared/types/events.ts";
 import { TaskCommand } from "./task.ts";
+import { TerminalCommand } from "./terminal.ts";
 
 type Command =
   | "open"
   | "comments"
   | "task"
+  | "terminal"
   | "publish"
   | "status"
   | "start"
@@ -69,6 +71,8 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
   task <slug> [state|assign|escalate|hire|judge|decide|done ...]
               a task's lane: where it stands, its state and project, an escalation or a hire that
               notifies you, a verdict or a decision, every one kept in its history. sidecar task alone lists the verbs
+  terminal    follow the sidecar in this terminal: Attach on a task's conversation opens it here with
+              claude attach, and the next Attach detaches it with Ctrl+Z first, so it keeps running
   setup [desktop|web]
               choose how the sidecar runs and set it up. desktop builds and installs the Electron
               app, so Web artifacts render as real pages signed in with Chrome's cookies; web runs
@@ -540,6 +544,7 @@ const COMMANDS = {
   },
   comments: async () => Commands.comments(process.argv.slice(3)),
   task: () => TaskCommand.run(process.argv.slice(3), ADDRESS),
+  terminal: () => TerminalCommand.run(ADDRESS),
   publish: async () => publish(),
   status,
   start,

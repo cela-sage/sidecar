@@ -5,6 +5,17 @@ export interface Topics {
   "task.changed": { slug: string; state: TaskState };
   "task.escalated": { slug: string; title: string; thread: string; kind: AskKind; question: string };
   "task.decided": { slug: string; thread: string; text: string; who: Who };
+  "terminal.changed": TerminalState;
+}
+
+export interface TerminalHeld {
+  key: string;
+  name?: string;
+}
+
+export interface TerminalState {
+  following: boolean;
+  held?: TerminalHeld;
 }
 
 export type Topic = keyof Topics;

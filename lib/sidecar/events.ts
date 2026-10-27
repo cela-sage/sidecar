@@ -46,6 +46,12 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const who = oneOf(WHO, data.who);
     return slug && thread && said && who ? { slug, thread, text: said, who } : undefined;
   },
+  "terminal.changed": (data) => {
+    if (typeof data.following !== "boolean") return undefined;
+    const held = typeof data.held === "object" && data.held ? (data.held as Fields) : {};
+    const [key, name] = [text(held.key), text(held.name)];
+    return { following: data.following, ...(key ? { held: { key, ...(name ? { name } : {}) } } : {}) };
+  },
 };
 
 export const TOPICS = Object.keys(PARSE) as Topic[];
