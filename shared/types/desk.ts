@@ -11,11 +11,6 @@ export interface DeskAsk {
   at: string;
 }
 
-export interface DeskStanding {
-  at: string;
-  projects: Partial<Record<string, string>>;
-}
-
 export interface DeskTriage {
   asks: DeskAsk[];
   routes: Partial<Record<string, string>>;

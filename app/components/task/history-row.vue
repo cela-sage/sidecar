@@ -79,6 +79,10 @@ const at = computed(() => {
   @apply text-fg;
 }
 
+.row[data-picked="true"] .text {
+  @apply line-clamp-none whitespace-pre-line;
+}
+
 .chips {
   @apply flex flex-wrap gap-1.25;
 }

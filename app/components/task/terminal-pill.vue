@@ -16,7 +16,6 @@ interface Line {
 const COMMAND = "sidecar terminal";
 const LOOK: Record<AgentState, TaskLook> = { working: "running", "needs input": "needs", completed: "done" };
 
-const route = useRoute();
 const sc = useSidecar();
 const chrome = useChrome();
 const task = $task();
@@ -24,7 +23,7 @@ const terminal = $terminal();
 const root = useTemplateRef<HTMLElement>("root");
 const isOpen = ref(false);
 
-const slug = computed(() => String(route.params.task ?? ""));
+const slug = computed(() => task.slug ?? "");
 const title = computed(
   () => Tasks.of(sc.catalogue.value).find((one) => one.slug === slug.value)?.title || deslug(slug.value),
 );
@@ -134,11 +133,13 @@ useEvents().on("terminal.changed", ({ data }) => terminal.heard(data));
       variant="raised"
     >
       <div class="menu-head">
-        <span class="menu-title">{{ title }}</span>
+        <span class="menu-title">{{ slug ? title : "No task open" }}</span>
         <span class="meta mono-meta">{{ rows.length }} conversations · claude agents</span>
       </div>
       <div class="menu-rows">
-        <p v-if="!rows.length" class="empty">No conversation runs this task yet.</p>
+        <p v-if="!rows.length" class="empty">
+          {{ slug ? "No conversation runs this task yet." : "Open a task to list its conversations here." }}
+        </p>
         <div
           v-for="row in rows"
           :key="row.key"

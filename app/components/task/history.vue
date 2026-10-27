@@ -6,6 +6,7 @@ const { meta } = defineProps<{ meta: TaskMeta }>();
 
 const task = $task();
 const sc = useSidecar();
+const shown = useFaceShown();
 const listEl = useTemplateRef<HTMLElement>("listEl");
 
 const rows = computed(() => Timeline.rows(task.entries, { decisionsOnly: task.onlyDecisions }));
@@ -13,9 +14,6 @@ const readAt = computed(() => Timeline.readAt(task.entries));
 const dividerAt = computed(() => (task.onlyDecisions ? undefined : Timeline.dividerAt(rows.value, readAt.value)));
 const picked = computed(() => rows.value.find((row) => row.folded.includes(task.picked)));
 const at = computed(() => rows.value.findIndex((row) => row === picked.value));
-const count = computed(() =>
-  task.onlyDecisions ? plural(rows.value.length, "decision") : plural(rows.value.length, "entry"),
-);
 
 const clock = (stamp: string): string =>
   new Date(stamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -65,15 +63,15 @@ useShortcuts(
     J: { repeat: true, run: () => step(1) },
     K: { repeat: true, run: () => step(-1) },
   },
-  { when: () => !sc.failure.value },
+  { when: () => shown.value && !sc.failure.value },
 );
 </script>
 
 <template>
-  <UiSurface class="history" aria-label="Task history" data-region="task-history" pad="none" variant="raised">
+  <section class="history" aria-label="Task history" data-region="task-history">
     <header class="bar">
-      <span class="title">History</span>
-      <span class="meta mono-meta">{{ count }}</span>
+      <span class="title">{{ task.onlyDecisions ? "Your decisions" : "Every entry" }}</span>
+      <span class="meta mono-meta">newest first</span>
       <span class="spacer" />
       <UiChip
         :data-tip="task.onlyDecisions ? 'Show every entry' : 'Show only what you decided'"
@@ -112,16 +110,16 @@ useShortcuts(
         <TaskHistoryRow :is-picked="row === picked" :row="row" @pick="pick(index)" />
       </template>
     </div>
-  </UiSurface>
+  </section>
 </template>
 
 <style scoped>
 .history {
-  @apply flex min-h-0 flex-col overflow-hidden;
+  @apply flex min-h-0 min-w-0 flex-col overflow-hidden;
 }
 
 .bar {
-  @apply flex flex-none items-center gap-2 border-b border-b-border py-2.5 pr-2.5 pl-3.5;
+  @apply flex flex-none items-center gap-2 px-7 pt-5 pb-2;
 }
 
 .title {
@@ -137,7 +135,7 @@ useShortcuts(
 }
 
 .scroll {
-  @apply flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-2 pt-2 pb-(--float-clear);
+  @apply flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-5 pt-1 pb-(--float-clear);
 }
 
 .scroll > * {

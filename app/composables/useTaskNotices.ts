@@ -3,6 +3,7 @@ import type { SidecarEvent } from "~~/shared/types/events";
 const LOCK = "sidecar:task-notices";
 
 export const useTaskNotices = (): void => {
+  const task = $task();
   const isLeading = ref(false);
 
   function raise({ data }: SidecarEvent<"task.escalated">): void {
@@ -13,7 +14,7 @@ export const useTaskNotices = (): void => {
       notice.onclick = () => {
         window.focus();
         notice.close();
-        void navigateTo(`/tasks/${data.slug}`);
+        task.show({ slug: data.slug });
       };
       return;
     }

@@ -5,10 +5,11 @@ const route = useRoute();
 const sc = useSidecar();
 const chrome = useChrome();
 const follow = $follow();
+const task = $task();
 
 // Read off disk at build: an unbuilt face is unreachable, with no list kept by hand.
 const parts = import.meta.glob<Component>(
-  "../../../components/{artifacts/view,files/view,history/view,review/view}.vue",
+  "../../../components/{artifacts/view,files/view,history/view,review/view,tasks/view}.vue",
   { import: "default" },
 );
 
@@ -22,17 +23,19 @@ const built: Record<Face, Component | undefined> = {
   files: part("files/view"),
   history: part("history/view"),
   review: part("review/view"),
+  tasks: part("tasks/view"),
 };
 
 chrome.view.faces.value = FACES.filter((face) => built[face]);
 
-// A link such as `?face=review` or `?artifact=<slug>` picks once, then the switcher owns it.
+// A link such as `?face=review`, `?artifact=<slug>` or `?task=<slug>` picks once, then the switcher owns it.
 const asked = FACES.find((face) => face === route.query.face);
 if (asked) chrome.view.set(asked);
 if (typeof route.query.artifact === "string") {
   chrome.view.set("artifacts");
   follow.opening = route.query.artifact;
 }
+if (typeof route.query.task === "string") task.show({ slug: route.query.task });
 
 const key = computed(() => String(route.params.key ?? ""));
 const session = computed(() => sc.sessions.value.find((s) => s.key === key.value));

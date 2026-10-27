@@ -5,7 +5,7 @@ import type { FrameHit, ViewBox } from "~/types/frame";
 import type { SideAnchor } from "~/utils/ask-claude";
 import type { ArtifactReviewReply } from "~~/shared/types/artifact";
 
-export const FACES = ["artifacts", "review", "files", "history"] as const;
+export const FACES = ["artifacts", "review", "files", "history", "tasks"] as const;
 export type Face = (typeof FACES)[number];
 
 export type ToastTone = "destructive" | "neutral" | "success" | "warning";

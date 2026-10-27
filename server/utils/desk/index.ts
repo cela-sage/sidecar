@@ -4,7 +4,6 @@ import type { TaskFile } from "../tasks/file.ts";
 import { TaskLane } from "../tasks/lane.ts";
 import { DeskHandoff } from "./handoff.ts";
 import { DeskRoutes } from "./routes.ts";
-import { DeskStandings } from "./standing.ts";
 
 const asks = (files: TaskFile[]): DeskAsk[] =>
   files.flatMap((file) =>
@@ -27,5 +26,4 @@ export const Desk = {
   cancelHandoff: DeskHandoff.cancel,
   handOff: DeskHandoff.schedule,
   routes: DeskRoutes.of,
-  standing: DeskStandings.of,
 };

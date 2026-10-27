@@ -3,18 +3,26 @@ import type { FileContent } from "~~/shared/types/files";
 import type { HistoryEntry, TaskDecided, TaskStands } from "~~/shared/types/history";
 import type { Project } from "~~/shared/types/task";
 import { Parts, type Part } from "~~/shared/utils/parts";
-import type { TaskGroup } from "~/utils/tasks";
 
 export type TaskFace = "document" | "history";
 export type Answer = { option: number } | { text: string };
 
+export interface ShowOptions {
+  slug?: string;
+  edit?: boolean;
+  replace?: boolean;
+}
+
 export const $task = defineStore(() => {
   const sc = useSidecar();
+  const chrome = useChrome();
+  const route = useRoute();
   const projects = ref<Project[]>([]);
   const isEditing = ref(false);
   const tuneAsks = ref(0);
-  const opened = ref<Partial<Record<string, boolean>>>({});
   const slug = ref<string>();
+  const face = ref<TaskFace>("document");
+  const editsNext = ref<string>();
   const entries = ref<HistoryEntry[]>([]);
   const asks = ref<ReviewThread[]>([]);
   const parts = ref<Part[]>([]);
@@ -26,14 +34,6 @@ export const $task = defineStore(() => {
   const loadProjects = async (): Promise<void> => {
     if (projects.value.length) return;
     projects.value = await $fetch<Project[]>("/api/projects").catch(() => []);
-  };
-
-  const isGroupOpen = (group: TaskGroup, current?: string): boolean => {
-    return opened.value[group.key] ?? group.tasks.some((one) => one.slug === current || one.task.state !== "done");
-  };
-
-  const toggleGroup = (group: TaskGroup, current?: string): void => {
-    opened.value = { ...opened.value, [group.key]: !isGroupOpen(group, current) };
   };
 
   const readTasks = async (): Promise<void> => {
@@ -74,6 +74,7 @@ export const $task = defineStore(() => {
   const open = async (next: string): Promise<void> => {
     if (slug.value !== next) {
       slug.value = next;
+      face.value = "document";
       entries.value = [];
       asks.value = [];
       parts.value = [];
@@ -82,6 +83,29 @@ export const $task = defineStore(() => {
       onlyDecisions.value = false;
     }
     await refresh();
+  };
+
+  const close = (): void => {
+    slug.value = undefined;
+    isEditing.value = false;
+  };
+
+  const takeEdit = (at: string): boolean => {
+    const wanted = editsNext.value === at;
+    if (wanted) editsNext.value = undefined;
+    return wanted;
+  };
+
+  const show = ({ slug: next, edit = false, replace = false }: ShowOptions = {}): void => {
+    if (next) {
+      if (edit) editsNext.value = next;
+      void open(next);
+    }
+    chrome.view.set("tasks");
+    const onFaces = route.path.startsWith("/c/") && !route.params.slug;
+    if (onFaces) return;
+    const key = sc.sessionKey.value;
+    void navigateTo(key ? `/c/${key}` : "/", { replace });
   };
 
   const decide = async (thread: string, answer: Answer): Promise<TaskDecided> => {
@@ -97,24 +121,25 @@ export const $task = defineStore(() => {
   return {
     askTune,
     asks,
+    close,
     decide,
     entries,
+    face,
     isEditing,
-    isGroupOpen,
     isStanding,
     loadProjects,
     onlyDecisions,
     open,
-    opened,
     parts,
     picked,
     projects,
     readTasks,
     refresh,
+    show,
     slug,
     stand,
     stands,
-    toggleGroup,
+    takeEdit,
     tuneAsks,
   };
 });

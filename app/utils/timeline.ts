@@ -1,4 +1,4 @@
-import type { Feed, HistoryEntry, HistoryKind } from "../../shared/types/history.ts";
+import type { HistoryEntry, HistoryKind } from "../../shared/types/history.ts";
 import type { TaskState, Who } from "../../shared/types/task.ts";
 import { HistoryLines } from "../../shared/utils/history.ts";
 
@@ -81,15 +81,6 @@ const dividerAt = (list: TimelineRow[], read?: string): number | undefined => {
   return list.find((row) => row.at <= read)?.key;
 };
 
-const feeds = (entries: HistoryEntry[]): Record<Feed, number> => {
-  const counts: Record<Feed, number> = { turn: 0, change: 0, ask: 0, message: 0 };
-  for (const entry of entries) {
-    const feed = HistoryLines.feedOf(entry.kind);
-    if (feed) counts[feed] += 1;
-  }
-  return counts;
-};
-
 const span = (from: string, to: string): string => {
   const minutes = Math.max(1, Math.round((Date.parse(to) - Date.parse(from)) / 60_000));
   if (minutes < 60) return `${minutes} min`;
@@ -117,4 +108,4 @@ const story = (entries: HistoryEntry[], state: TaskState): TaskStory => {
   return {};
 };
 
-export const Timeline = { dividerAt, feeds, readAt, rows, span, story };
+export const Timeline = { dividerAt, readAt, rows, span, story };

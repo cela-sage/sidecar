@@ -1,6 +1,6 @@
 import type { ArtifactMeta } from "~~/shared/types/artifact";
 import type { LiveSession } from "~~/shared/types/session";
-import type { ArtifactTask, Project, TaskState } from "~~/shared/types/task";
+import type { ArtifactTask, TaskState } from "~~/shared/types/task";
 import { Titles } from "../../shared/utils/titles.ts";
 import type { TaskStory } from "./timeline";
 
@@ -17,19 +17,6 @@ export interface TaskStep {
   kind: StepKind;
   joint: StepJoint;
   tip: string;
-}
-
-export interface TaskSummary {
-  text: string;
-  look?: TaskLook;
-}
-
-export interface TaskGroup {
-  key: string;
-  name: string;
-  tint: string;
-  project?: Project;
-  tasks: TaskMeta[];
 }
 
 const LOOK: Record<TaskState, TaskLook> = {
@@ -112,32 +99,6 @@ const stepsOf = (state: TaskState, { resumed, settledBy, waiting }: TaskStory = 
   }));
 };
 
-const groupsOf = (tasks: TaskMeta[], projects: Project[]): TaskGroup[] => {
-  const keys = projects.map((one) => one.key);
-  for (const one of tasks) if (one.task.project && !keys.includes(one.task.project)) keys.push(one.task.project);
-  return keys.map((key) => {
-    const project = projects.find((one) => one.key === key);
-    return {
-      key,
-      name: project?.name ?? key,
-      tint: tintOf(key, keys),
-      ...(project ? { project } : {}),
-      tasks: tasks.filter((one) => one.task.project === key),
-    };
-  });
-};
-
-const countsOf = (tasks: TaskMeta[]): TaskSummary[] => {
-  return PRESSING.flatMap((state) => {
-    const count = tasks.filter((one) => one.task.state === state).length;
-    return count ? [{ text: `${count} ${LABEL[state]}`, look: LOOK[state] }] : [];
-  });
-};
-
-const summaryOf = (tasks: TaskMeta[]): TaskSummary => {
-  return countsOf(tasks)[0] ?? { text: "nothing open" };
-};
-
 const agentStateOf = (session: LiveSession): AgentState => {
   const lane = session.lane?.name;
   if (lane === "review" || lane === "blocked") return "needs input";
@@ -166,14 +127,11 @@ export const Tasks = {
   agentOrder,
   agentStateOf,
   chipOf,
-  countsOf,
-  groupsOf,
   labelOf,
   lookOf,
   of,
   order,
   railOf,
   stepsOf,
-  summaryOf,
   tintOf,
 };

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Check, Maximize2, Pencil } from "@lucide/vue";
+import { Check, ChevronLeft, Maximize2, Pencil } from "@lucide/vue";
 import { useEventListener } from "@vueuse/core";
 import { isTyping } from "~~/lib/web/page/blocks";
 import type { ReviewThread } from "~~/shared/types/artifact";
@@ -20,7 +20,7 @@ interface EditorHandle {
 
 const task = $task();
 const artifact = $artifact();
-const route = useRoute();
+const shown = useFaceShown();
 const { decide, isSending } = useTaskDecide();
 const editor = useTemplateRef<EditorHandle>("editor");
 const savedAt = ref<string>();
@@ -37,8 +37,13 @@ const settled = computed(() => {
 
 function showHistory(thread: ReviewThread): void {
   task.picked = task.entries.findLastIndex((entry) => entry.kind === "decide" && entry.thread === thread.id);
-  void navigateTo({ query: { ...route.query, face: "history" } });
+  task.face = "history";
 }
+
+const faces = computed(() => [
+  { label: "Document", value: "document" as const },
+  { label: "History", value: "history" as const, count: task.entries.filter((one) => one.kind !== "read").length },
+]);
 
 const title = computed(() => meta.title || deslug(meta.slug));
 const look = computed(() => Tasks.lookOf(meta.task.state));
@@ -67,19 +72,10 @@ async function done(): Promise<void> {
 
 watch(
   () => meta.slug,
-  () => {
-    task.isEditing = false;
+  (slug) => {
+    task.isEditing = task.takeEdit(slug);
     savedAt.value = undefined;
     isFolded.value = true;
-  },
-);
-
-watch(
-  () => [meta.slug, route.query.edit],
-  () => {
-    if (!route.query.edit) return;
-    task.isEditing = true;
-    void navigateTo({ query: { ...route.query, edit: undefined } }, { replace: true });
   },
   { immediate: true },
 );
@@ -93,10 +89,12 @@ watch(
 
 // Esc is read once the press is done, since the app's handler claims one that closes something first.
 useEventListener(window, "keydown", (event: KeyboardEvent) => {
-  if (event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
-  if (event.key === "Escape" && task.isEditing)
+  if (!shown.value || event.metaKey || event.ctrlKey || event.altKey || event.repeat) return;
+  if (event.key === "Escape" && !artifact.isFull)
     setTimeout(() => {
-      if (!event.defaultPrevented) void done();
+      if (event.defaultPrevented) return;
+      if (task.isEditing) void done();
+      else if (!isTyping(event.target)) task.close();
     });
   if (event.key.toLowerCase() === "e" && !task.isEditing && !isTyping(event.target)) {
     event.preventDefault();
@@ -111,6 +109,15 @@ onBeforeUnmount(() => (task.isEditing = false));
   <ArtifactSheet list-name="Tasks" :slug="meta.slug">
     <div class="task" data-region="task-sheet" :data-editing="task.isEditing">
       <header class="bar">
+        <button
+          class="crumb plain-button focusable"
+          data-region="task-back"
+          data-tip="Back to the conversation · {esc}"
+          type="button"
+          @click="task.close()"
+        >
+          <UiIcon :icon="ChevronLeft" size="xs" />Back
+        </button>
         <span class="square" :data-tint="tint" />
         <span class="project">{{ project?.name ?? "Inbox" }}</span>
         <span class="slash">/</span>
@@ -118,6 +125,14 @@ onBeforeUnmount(() => (task.isEditing = false));
         <span class="chip" :data-look="look"
           ><TaskDot :look="look" size="sm" />{{ Tasks.chipOf(meta.task.state) }}</span
         >
+        <UiSegmented
+          v-if="!task.isEditing"
+          v-model="task.face"
+          class="faces"
+          data-region="task-face"
+          :options="faces"
+          variant="track"
+        />
         <span class="spacer" />
         <span class="saved mono-meta">{{ saved }}</span>
         <UiButton
@@ -154,7 +169,8 @@ onBeforeUnmount(() => (task.isEditing = false));
 
       <TaskEditor v-if="task.isEditing" :key="meta.slug" ref="editor" :slug="meta.slug" @saved="savedAt = $event" />
       <div v-else class="body">
-        <div class="doc">
+        <TaskHistory v-if="task.face === 'history'" :meta="meta" />
+        <div v-else class="doc">
           <article class="column">
             <div class="lead">
               <span class="eyebrow mono-meta">{{ eyebrow }}</span>
@@ -189,7 +205,21 @@ onBeforeUnmount(() => (task.isEditing = false));
 }
 
 .bar {
-  @apply flex flex-none items-center gap-2 border-b border-b-border py-2 pr-3 pl-3.5 whitespace-nowrap;
+  @apply flex flex-none items-center gap-2 border-b border-b-border py-2 pr-3 pl-2 whitespace-nowrap;
+}
+
+.crumb {
+  @apply inline-flex h-6.5 flex-none items-center gap-1 rounded-lg border-0 bg-transparent px-1.5 typo-caption font-semibold text-muted transition-colors duration-(--duration-fast) ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .crumb:hover {
+    @apply bg-sunken text-fg;
+  }
+}
+
+.faces {
+  @apply ml-1.5 flex-none;
 }
 
 .square {

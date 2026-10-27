@@ -1,8 +1,5 @@
 import type { AskKind, TaskState, Who } from "./task.ts";
 
-export const Feed = ["turn", "change", "ask", "message"] as const;
-export type Feed = (typeof Feed)[number];
-
 export interface Said {
   at: string;
   who: Who;

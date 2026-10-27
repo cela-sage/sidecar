@@ -1,4 +1,4 @@
-import type { DeskAsk, DeskStanding, DeskTriage, TaskAssigned } from "~~/shared/types/desk";
+import type { DeskAsk, DeskTriage, TaskAssigned } from "~~/shared/types/desk";
 import type { Project } from "~~/shared/types/task";
 import type { TaskMeta } from "~/utils/tasks";
 
@@ -8,7 +8,6 @@ export const $desk = defineStore(() => {
   const task = $task();
   const asks = ref<DeskAsk[]>([]);
   const routes = ref<DeskTriage["routes"]>({});
-  const standing = ref<DeskStanding>();
   const dragging = ref<string>();
   const isNaming = ref(false);
   let placed: { meta: TaskMeta; until: number } | undefined;
@@ -18,11 +17,6 @@ export const $desk = defineStore(() => {
     if (!triage) return;
     asks.value = triage.asks;
     routes.value = triage.routes;
-  };
-
-  const stand = async (): Promise<void> => {
-    standing.value =
-      (await $fetch<DeskStanding | undefined>("/api/desk/standing").catch(() => undefined)) ?? standing.value;
   };
 
   const move = (slug: string, project?: string): Promise<TaskAssigned> =>
@@ -78,5 +72,5 @@ export const $desk = defineStore(() => {
     return made.slug;
   };
 
-  return { asks, create, dragging, isNaming, load, place, routes, stand, standing, undoLast };
+  return { asks, create, dragging, isNaming, load, move, place, routes, undoLast };
 });

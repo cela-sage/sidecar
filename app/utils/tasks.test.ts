@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { HistoryEntry } from "../../shared/types/history.ts";
 import type { LiveSession } from "../../shared/types/session.ts";
-import { Tasks } from "./tasks.ts";
+import { Org, type OrgConversation } from "./org.ts";
+import { Tasks, type TaskMeta } from "./tasks.ts";
 import { Timeline } from "./timeline.ts";
 
 const session = (patch: Partial<LiveSession>): LiveSession => ({
@@ -76,6 +77,65 @@ test("the history folds runs, puts the divider under what the Project Lead read,
   ];
   assert.equal(steps("waiting", Timeline.story(waited.slice(0, 1), "waiting")), "Running:past Waiting on Cosmico:waiting Done:future");
   assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past Running:running Done:future");
+});
+
+test("the org tree puts each role where it works, folds what is done and leaves your own conversations out", () => {
+  const meta = (slug: string, state: TaskMeta["task"]["state"], project?: string, lead?: string): TaskMeta => ({
+    slug,
+    title: slug,
+    kind: "page",
+    format: "md",
+    path: `/tmp/${slug}.md`,
+    task: { state, ...(project ? { project } : {}), ...(lead ? { lead } : {}) },
+  });
+  const projects = [
+    { key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" },
+    { key: "meta", name: "meta", token: "meta", folder: "/tmp" },
+  ];
+  const sessions = [
+    session({ key: "ea", name: "[meta] EA daily triage", status: "busy" }),
+    session({ key: "pl", name: "[Cela] PL sidecar-task-board plan", status: "waiting" }),
+    session({ key: "dl", name: "[Cela] DL sidecar-task-board design" }),
+    session({ key: "fol", name: "[Cela] TL sidecar-task-board follower", status: "busy" }),
+    session({ key: "lane", name: "[Cela] TL sidecar-task-board lane" }),
+    session({ key: "loop", name: "[Cela] TL sidecar-task-board loop", live: false }),
+    session({ key: "gone", name: "[Cela] TL sidecar-task-board titles", live: false, archived: true }),
+    session({ key: "own", name: "contracts guide", status: "busy" }),
+  ];
+  const tree = Org.treeOf({
+    sessions,
+    projects,
+    asking: ["[Cela] TL sidecar-task-board lane"],
+    tasks: [
+      meta("sidecar-task-board", "running", "cela", "[Cela] TL sidecar-task-board lane"),
+      meta("session-title-rule", "done", "cela"),
+      meta("settings-hook", "unassigned"),
+    ],
+  });
+  const row = (one: OrgConversation): string => `${one.role} ${one.name} ${one.mark}`;
+  assert.deepEqual(tree.assistants.map(row), ["EA daily triage working"]);
+  assert.deepEqual(
+    tree.inbox.map((one) => one.slug),
+    ["settings-hook"],
+  );
+  const [cela, metaProject] = tree.projects;
+  assert.deepEqual(cela?.leads.map(row), [
+    "PL sidecar-task-board plan waits",
+    "DL sidecar-task-board design completed",
+  ]);
+  const [board] = cela?.tasks ?? [];
+  assert.equal(board?.mark, "needs");
+  assert.equal(board?.lead, "lane");
+  assert.deepEqual(board?.leads.map(row), ["TL lane needs", "TL follower working"]);
+  assert.deepEqual(board?.done.map(row), ["TL loop completed"]);
+  assert.deepEqual(
+    cela?.done.map((one) => one.meta.slug),
+    ["session-title-rule"],
+  );
+  assert.equal(cela?.mark, "needs");
+  assert.equal(metaProject?.mark, undefined);
+  assert.equal(tree.open, 2);
+  assert.equal(tree.conversations, 6);
 });
 
 test("a conversation reads the claude agents state off its lane, and off its status without one", () => {

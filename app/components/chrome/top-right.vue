@@ -1,57 +1,52 @@
 <script lang="ts" setup>
-import { ListChecks, X } from "@lucide/vue";
-import type { TaskFace } from "~/stores/task";
+import { ListTree, X } from "@lucide/vue";
 
-const BOARD = "tasks" as const;
-
-type Board = typeof BOARD;
+type ConversationFace = Exclude<Face, "tasks">;
 
 const route = useRoute();
 const chrome = useChrome();
 const sc = useSidecar();
+const task = $task();
+const desk = $desk();
+const events = useEvents();
 
-const LABELS: Record<Face, string> = { artifacts: "Artifacts", files: "Files", history: "History", review: "Review" };
+const LABELS: Record<ConversationFace, string> = {
+  artifacts: "Artifacts",
+  files: "Files",
+  history: "History",
+  review: "Review",
+};
 
 // With the server down every route shows the reconnecting screen, which has nothing to switch.
 const inSession = computed(() => !sc.failure.value && route.path.startsWith("/c/"));
 // A routed artifact has no faces to switch; a grown one keeps the row as it was, so the row fades out and back unchanged.
 const onArtifact = computed(() => inSession.value && !!route.params.slug);
 const onFaces = computed(() => inSession.value && !onArtifact.value && chrome.view.faces.value.length > 0);
-const onTask = computed(() => !sc.failure.value && route.path.startsWith("/tasks/"));
-const elsewhere = computed(() => !sc.failure.value && !onFaces.value && !onTask.value && route.path !== "/desk");
+const onTasks = computed(() => onFaces.value && chrome.view.current.value === "tasks");
 
-const open = computed(() => Tasks.of(sc.catalogue.value).filter((one) => one.task.state !== "done").length);
-const board = computed(() => ({ label: "Tasks", value: BOARD, count: open.value }));
-const toBoard = (): void => void navigateTo("/desk");
+const tasks = computed(() => Tasks.of(sc.catalogue.value));
+const open = computed(() => tasks.value.filter((one) => one.task.state !== "done").length);
+const needsYou = computed(() => desk.asks.length > 0 || tasks.value.some((one) => one.task.state === "blocked"));
 
-const faces = computed(() => [
-  ...chrome.view.faces.value.map((face) => ({ label: LABELS[face], value: face })),
-  board.value,
-]);
+const faces = computed(() =>
+  chrome.view.faces.value
+    .filter((face): face is ConversationFace => face !== "tasks")
+    .map((face): { label: string; value: Face } => ({ label: LABELS[face], value: face })),
+);
 
-const task = $task();
-const taskFaces = computed(() => [
-  { label: "Document", value: "document" as const },
-  { label: "History", value: "history" as const, count: task.entries.filter((one) => one.kind !== "read").length },
-  board.value,
-]);
-const taskFace = computed<TaskFace | Board>({
-  get: () => (route.query.face === "history" ? "history" : "document"),
-  set: (next) => {
-    if (next === BOARD) return toBoard();
-    void navigateTo({ query: { ...route.query, face: next === "history" ? "history" : undefined } });
-  },
-});
-
-const face = computed<Face | Board>({
+const face = computed<Face>({
   get: () => chrome.view.current.value,
-  set: (next) => (next === BOARD ? toBoard() : chrome.view.set(next)),
+  set: (next) => chrome.view.set(next),
 });
 
 // Replaced on close so Back never walks through it.
 const closePage = (): void => {
   void navigateTo(`/c/${String(route.params.key ?? "")}`, { replace: true });
 };
+
+onMounted(() => void desk.load());
+events.on("task.escalated", () => void desk.load());
+events.on("task.decided", () => void desk.load());
 </script>
 
 <template>
@@ -60,22 +55,30 @@ const closePage = (): void => {
       <UiSegmented v-model="face" data-region="view-switcher" :options="faces" variant="bare" />
     </UiSurface>
 
-    <UiSurface v-if="onTask" v-island-pop="'top right'" class="pill" pad="none" shape="pill" variant="glass-liquid">
-      <UiSegmented v-model="taskFace" data-region="task-face" :options="taskFaces" variant="bare" />
+    <UiSurface
+      v-if="!sc.failure.value && !onArtifact"
+      v-island-pop="'top right'"
+      class="pill"
+      pad="none"
+      shape="pill"
+      variant="glass-liquid"
+    >
+      <button
+        class="tasks plain-button focusable"
+        data-region="tasks-tab"
+        type="button"
+        :aria-pressed="onTasks"
+        :data-tip="needsYou ? 'Every task and who is on it · a task needs you' : 'Every task and who is on it'"
+        @click="task.show()"
+      >
+        <UiIcon :icon="ListTree" size="xs" />Tasks<span class="count">{{ open }}</span>
+        <OrgMark v-if="needsYou" mark="needs" />
+      </button>
     </UiSurface>
 
-    <ChromeAction
-      v-if="elsewhere"
-      data-region="tasks-tab"
-      :icon="ListChecks"
-      label="Tasks"
-      shape="island"
-      tip="The Desk, on Tasks"
-      @click="toBoard"
-    />
     <ChromeCommentToggle v-if="onArtifact" shape="island" />
     <ChromeFollowToggle v-if="inSession" />
-    <TaskTerminalPill v-if="onTask" />
+    <TaskTerminalPill v-if="onTasks" />
     <ChromeThemeToggle />
     <ChromeAction
       v-if="onArtifact"
@@ -95,5 +98,23 @@ const closePage = (): void => {
 
 .pill {
   @apply island-row px-1.5;
+}
+
+.tasks {
+  @apply inline-flex h-8 items-center gap-1.75 rounded-full border-0 bg-transparent px-2.5 typo-caption font-semibold text-muted transition-[background-color,color,box-shadow] duration-(--duration-fast) ease-out;
+}
+
+.tasks[aria-pressed="true"] {
+  @apply bg-raised text-fg shadow-sm;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tasks:not([aria-pressed="true"]):hover {
+    @apply text-fg;
+  }
+}
+
+.count {
+  @apply typo-mono-micro font-medium text-muted;
 }
 </style>
