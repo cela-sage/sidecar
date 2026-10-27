@@ -7,6 +7,13 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.22.0
+
+### Changed
+
+- **The rule asks a plan or brief to draw its roles, structure and flows in a mermaid fence,** since a plan is
+  first an alignment check, and to keep prose for what a diagram cannot carry.
+
 ## 0.21.0
 
 ### Added
