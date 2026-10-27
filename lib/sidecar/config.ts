@@ -1,9 +1,11 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
+import type { Project } from "../../shared/types/task.ts";
 import { readTextSafe } from "../files.ts";
 import { Sidecar } from "./paths.ts";
 
 export interface Settings {
+  projects?: Project[];
   surface?: "desktop" | "web";
   user?: string;
 }

@@ -172,6 +172,32 @@ test("a web entry lists under its host, and a thread left on one of its pages la
   }
 });
 
+test("a .md whose stamp carries a task state lists its task, unassigned while it has no project, and nothing else does", async () => {
+  const dir = realpathSync(mkdtempSync(join(tmpdir(), "tasks-")));
+  process.env.CLAUDE_CONFIG_DIR = dir;
+  try {
+    const folder = join(dir, "sidecar", "artifacts");
+    mkdirSync(folder, { recursive: true });
+    const stamp = (fields: string) => `<!-- artifact\ntitle: Fix login\n${fields}\n-->\n# Fix login\n`;
+    writeFileSync(join(folder, "run.md"), stamp("project: cela\nstate: running\nlead: [Cela] Fix: login"));
+    writeFileSync(join(folder, "idle.md"), stamp("project:\nstate: assigned\nlead:"));
+    writeFileSync(join(folder, "odd.md"), stamp("project: cela\nstate: nope"));
+    writeFileSync(join(folder, "plain.md"), "# Plain\n");
+    writeFileSync(join(folder, "page.html"), `<!doctype html>\n${stamp("project: cela\nstate: running")}`);
+    const tasks = Object.fromEntries((await listArtifacts()).map((one) => [one.slug, one.task]));
+    assert.deepEqual(tasks, {
+      run: { project: "cela", state: "running", lead: "[Cela] Fix: login" },
+      idle: { state: "unassigned" },
+      odd: undefined,
+      plain: undefined,
+      page: undefined,
+    });
+  } finally {
+    delete process.env.CLAUDE_CONFIG_DIR;
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
 test("a document's slug is its stem made url-safe plus six hex of its path, exactly as bin/artifact names it", () => {
   assert.equal(Documents.slug("/tmp/notes/analysis/My Plan.md"), "My-Plan--5471ce");
 });

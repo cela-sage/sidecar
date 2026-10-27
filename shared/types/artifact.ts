@@ -1,3 +1,4 @@
+import type { ArtifactTask } from "./task.ts";
 import type { WebTrail } from "./web.ts";
 
 export type ArtifactFormat = "html" | "ipynb" | "md" | "media";
@@ -17,6 +18,7 @@ export interface ArtifactMeta {
   // Not `threads`: ArtifactDetail already owns that name for the array itself.
   threadCount?: number;
   preview?: string;
+  task?: ArtifactTask;
 }
 
 export interface ThreadAnchor {
@@ -54,16 +56,22 @@ export interface ArtifactDetail extends ArtifactMeta {
 
 export type ArtifactEditAction = "accept" | "apply" | "revert";
 
+// A page's edit names its element by `path` and guards it with `selection`; a .md's names its paragraph by `selection` alone.
 export interface ArtifactEditRequest {
   action?: ArtifactEditAction;
   id?: string;
-  path: string;
+  path?: string;
   replacement?: string;
   selection?: string;
 }
 
 export interface ArtifactEditReply {
   id?: string;
+}
+
+export interface ArtifactUpload {
+  name: string;
+  link: string;
 }
 
 export type ArtifactReviewAction = "create" | "reply" | "resolve";

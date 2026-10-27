@@ -24,4 +24,5 @@ export const Sidecar = {
   home: (): string => join(configRoot(), "sidecar"),
   resolveRoot,
   root: (): string => process.env.SIDECAR_ROOT || resolveRoot(dirname(fileURLToPath(import.meta.url))),
+  uploads: (): string => join(Sidecar.home(), "uploads"),
 };

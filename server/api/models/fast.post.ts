@@ -2,7 +2,7 @@ import { Models } from "../../utils/models";
 import type { FastChatMessage, FastModelReply, FastModelRequest, FastTask } from "../../../shared/types/models";
 
 function isTask(value: unknown): value is FastTask {
-  return value === "edit" || value === "answer" || value === "chat";
+  return value === "edit" || value === "tune" || value === "answer" || value === "chat";
 }
 
 function isChatMessage(value: unknown): value is FastChatMessage {
@@ -21,6 +21,7 @@ function parseRequest(raw: unknown): FastModelRequest | undefined {
 
   const context = typeof record.context === "string" ? record.context : undefined;
   if (record.context && !context) return undefined;
+  if (record.task === "tune" && !context?.trim()) return undefined;
 
   let history: FastChatMessage[] | undefined;
   if (record.history) {

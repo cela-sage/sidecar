@@ -54,7 +54,7 @@ export function isReachable({ key, path }: { key: string; path: string }): boole
   return (!!root && isInside(root, path)) || filesOf({ key }).files.some((file) => file.path === path);
 }
 
-function read(path: string): FileContent {
+export function readDisk(path: string): FileContent {
   let size: number;
   try {
     size = statSync(path).size;
@@ -67,14 +67,25 @@ function read(path: string): FileContent {
 }
 
 export function contentOf({ key, path }: { key: string; path: string }): FileContent {
-  return isReachable({ key, path }) ? read(path) : { path, reason: "not-touched" };
+  return isReachable({ key, path }) ? readDisk(path) : { path, reason: "not-touched" };
 }
 
 // Only over the text the editor opened, so a turn that changed the file in the meantime is never clobbered.
-export function writeOver({ path, text, base }: { path: string; text: string; base: string }): FileSave {
-  const now = read(path);
+export function refusalOf({
+  path,
+  base,
+}: {
+  path: string;
+  base: string;
+}): Extract<FileSave, { saved: false }> | undefined {
+  const now = readDisk(path);
   if (!("text" in now)) return { saved: false, reason: now.reason };
-  if (now.hash !== base) return { saved: false, reason: "changed-on-disk" };
+  return now.hash === base ? undefined : { saved: false, reason: "changed-on-disk" };
+}
+
+export function writeOver({ path, text, base }: { path: string; text: string; base: string }): FileSave {
+  const refusal = refusalOf({ path, base });
+  if (refusal) return refusal;
   writeFileSync(path, text);
   return { saved: true, hash: hashOf(text) };
 }

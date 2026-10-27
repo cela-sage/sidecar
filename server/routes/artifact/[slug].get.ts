@@ -1,4 +1,5 @@
 import type { ArtifactFormat } from "../../../shared/types/artifact";
+import type { ArtifactTask } from "../../../shared/types/task";
 import { readArtifact, stripReviewLayer } from "../../utils/artifacts";
 import { Markdown } from "../../utils/markdown";
 import { Notebooks } from "../../utils/notebooks";
@@ -6,13 +7,14 @@ import { Versions } from "../../utils/sessions/versions";
 
 interface Render {
   ds?: string;
+  task?: ArtifactTask;
   text: string;
   title: string;
 }
 
 const RENDER: Record<Exclude<ArtifactFormat, "media">, (input: Render) => Promise<string> | string> = {
   html: ({ text }) => stripReviewLayer(text),
-  md: ({ ds, text, title }) => Markdown.page({ ds, markdown: text, title }),
+  md: ({ ds, task, text, title }) => Markdown.page({ ds, markdown: text, task, title }),
   ipynb: ({ ds, text, title }) => {
     const notebook = Notebooks.parse(text);
     if (!notebook)
@@ -37,8 +39,8 @@ export default defineEventHandler(async (event): Promise<string> => {
   const { session, turn } = getQuery(event);
   const at = Number(turn) || 0;
   if (source.format === "html" || typeof session !== "string" || !session || !at)
-    return RENDER[source.format]({ ds: source.ds, text: source.text, title });
+    return RENDER[source.format]({ ds: source.ds, task: source.task, text: source.text, title });
   const stored = await Versions.content({ key: session, path: source.path, turn: at });
   if (!stored.found) throw createError({ statusCode: 404, statusMessage: `no version t${at} of '${slug}'` });
-  return RENDER[source.format]({ ds: source.ds, text: stored.content, title });
+  return RENDER[source.format]({ ds: source.ds, task: source.task, text: stored.content, title });
 });

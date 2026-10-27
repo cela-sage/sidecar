@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { open, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import { basename, dirname, extname, join } from "node:path";
+import z from "zod";
 import type {
   ArtifactDetail,
   ArtifactFormat,
@@ -10,6 +11,7 @@ import type {
   ThreadAnchor,
   ThreadReply,
 } from "../../shared/types/artifact";
+import { TaskState, type ArtifactTask } from "../../shared/types/task.ts";
 import { FileKind } from "../../shared/utils/file-kind.ts";
 import { Sidecar, plansHome } from "../../lib/sidecar/paths.ts";
 import {
@@ -37,8 +39,9 @@ const FENCE = /^(```|~~~)[\s\S]*?^\1/gm;
 const H1 = /^#[ \t]+(.+?)[ \t#]*$/m;
 const RV_LAYER = /<!-- rv:start -->[\s\S]*?<!-- rv:end -->\n?/;
 export const RV_LAYER_START = /<!-- rv:start -->/;
-type MetaField = "slug" | "title" | "url" | "target" | "ds" | "updated";
-const META_FIELDS = new Set<MetaField>(["slug", "title", "url", "target", "ds", "updated"]);
+type MetaField = "slug" | "title" | "url" | "target" | "ds" | "updated" | "project" | "state" | "lead";
+const META_FIELDS = new Set<MetaField>(["slug", "title", "url", "target", "ds", "updated", "project", "state", "lead"]);
+const TASK_STATE = z.enum(TaskState);
 const HEAD_BYTES = 4000;
 // Slug becomes a filename on disk; reject anything that could climb out of the artifacts dir.
 const SAFE_SLUG = /^[a-zA-Z0-9._-]+$/;
@@ -85,6 +88,20 @@ function titleOf(head: string, format: ArtifactFormat): string {
   return H1.exec(head.replace(COMMENT, "").replace(FENCE, ""))?.[1] || "";
 }
 
+// Mirrors the stamp writer in Mode: a task with no project is unassigned whatever its state line says.
+function taskOf({
+  fields,
+  format,
+}: {
+  fields: Partial<Record<MetaField, string>>;
+  format: ArtifactFormat;
+}): ArtifactTask | undefined {
+  const state = format === "md" ? TASK_STATE.safeParse(fields.state) : undefined;
+  if (!state?.success) return undefined;
+  const { lead, project } = fields;
+  return { state: project ? state.data : "unassigned", ...(project ? { project } : {}), ...(lead ? { lead } : {}) };
+}
+
 function parseMeta({ format, head, fallbackSlug, path }: ParseMetaInput): ArtifactMeta {
   const fields: Partial<Record<MetaField, string>> = {};
   const block = META_BLOCK.exec(head)?.[1];
@@ -110,6 +127,7 @@ function parseMeta({ format, head, fallbackSlug, path }: ParseMetaInput): Artifa
     path,
     format,
     kind: kindOf(path),
+    task: taskOf({ fields, format }),
   };
 }
 
@@ -415,6 +433,10 @@ export async function readArtifact(slug: string): Promise<ArtifactSource | undef
   const head = file.format === "ipynb" ? text : text.slice(0, HEAD_BYTES);
   const meta = DESCRIBE[file.format]({ file: { ...file, slug }, path: file.path, text: head });
   return { ...meta, kind: Tracked.paths().has(slug) ? "file" : meta.kind, text };
+}
+
+export function describeDraft({ path, slug, text }: { path: string; slug: string; text: string }): ArtifactMeta {
+  return DESCRIBE.md({ file: { format: "md", name: basename(path), slug }, path, text: text.slice(0, HEAD_BYTES) });
 }
 
 /** The sidecar draws the notes in its own gutter, so the page's own comment surface would be a second one. */

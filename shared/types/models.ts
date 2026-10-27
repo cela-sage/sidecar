@@ -1,4 +1,4 @@
-export type FastTask = "edit" | "answer" | "chat";
+export type FastTask = "edit" | "tune" | "answer" | "chat";
 
 export type FastModelProvider = "haiku" | "sonnet";
 

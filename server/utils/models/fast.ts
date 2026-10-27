@@ -2,7 +2,7 @@ import type { FastModelProvider, FastModelReply, FastModelRequest, FastTask } fr
 import { bare } from "./bare";
 
 const SYSTEM_INSTRUCTION =
-  "You are a fast editor for a document. For an edit task, return the replacement text for the selection only, keeping the document's register and format, and nothing else. For answer and chat, reply in two or three short sentences.";
+  "You are a fast editor for a document. For an edit task, return the replacement text for the selection only, keeping the document's register and format, and nothing else. For a tune task, rewrite the whole paragraph following the instruction and focusing on the selection, keep its markdown and register, and return only the new paragraph with no blank line inside it. For answer and chat, reply in two or three short sentences.";
 
 const DELEGATE_RULE =
   "When the instruction needs a decision rather than a rewording (the instruction asks you to choose, restructure, add content whose facts you do not have, or the selection is longer than about 1200 characters), answer with exactly the single line DELEGATE and nothing else.";
@@ -15,8 +15,15 @@ export interface FormatReplyOptions {
   by: FastModelProvider;
 }
 
+const REPLIES: Record<FastTask, FastModelReply["kind"]> = {
+  answer: "answer",
+  chat: "answer",
+  edit: "edit",
+  tune: "edit",
+};
+
 function formatReply({ task, text, by }: FormatReplyOptions): FastModelReply {
-  if (task === "edit") {
+  if (REPLIES[task] === "edit") {
     return { kind: "edit", replacement: text, by };
   }
   return { kind: "answer", text, by };
@@ -33,7 +40,8 @@ function isDelegateReply(reply: string): boolean {
 function buildUserMessage(request: FastModelRequest): string {
   const parts: string[] = [`Task: ${request.task}`];
   if (request.context) {
-    parts.push(`Surrounding passage:\n"""\n${request.context}\n"""`);
+    const label = request.task === "tune" ? "Paragraph" : "Surrounding passage";
+    parts.push(`${label}:\n"""\n${request.context}\n"""`);
   }
   if (request.selection) {
     parts.push(`Selection:\n"""\n${request.selection}\n"""`);
