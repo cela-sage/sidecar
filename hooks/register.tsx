@@ -11,6 +11,7 @@ const reviewLedger = atom({ plugin: 'sidecar', key: 'review' } as const, EMPTY_L
 type Sidecar = {
   point: (id: string) => Promise<void>
   run: (args: string, id: string) => Promise<string>
+  hear: (kind: 'turn' | 'message', text: string, id: string) => Promise<unknown>
 }
 
 // A burst of keys points once, and a keystroke never waits on the network.
@@ -25,7 +26,7 @@ export const register: Register = (on, options) => {
   const url = String(options.url ?? 'http://sidecar.localhost:4747').replace(/\/$/, '')
   // Chrome reads the named *.localhost; the mod's own calls take bare localhost, the loopback host it is known to reach.
   const api = url.replace(/^(https?:\/\/)[^/:]+\.localhost\b/, '$1localhost')
-  registerReview(on)
+  registerReview(on, { answered: async (id, answer) => sidecar?.hear('turn', answer, id) })
 
   on('session.start', async ($, e, next) => {
     const id = await $.session.id()
@@ -48,11 +49,18 @@ export const register: Register = (on, options) => {
         if (!ran) return `The sidecar CLI did not run: ${cli}`
         return [ran.stdout, ran.stderr].map(text => text.trim()).filter(Boolean).join('\n')
       },
+      hear: (kind, text, id) =>
+        $.process
+          .run(['env', `SIDECAR_URL=${url}`, `CLAUDE_CODE_SESSION_ID=${id}`, cli, 'task', '--heard', kind], {
+            stdin: text,
+            timeoutMs: 20_000,
+          })
+          .catch(() => undefined),
     }
     await $.command.register({
       name: 'sidecar',
       description: 'The sidecar CLI: bare opens the sidecar on this conversation, starting it when it is down',
-      argumentHint: '[open|comments|status|start|stop|restart|setup|uninstall|import|help]',
+      argumentHint: '[open|comments|task|status|start|stop|restart|setup|uninstall|import|help]',
     })
     await startReview({
       cwd: e.cwd,
@@ -90,6 +98,16 @@ export const register: Register = (on, options) => {
     if (!body || at < 0) return next(e)
     relayed.splice(at, 1)
     return next({ ...e, message: { ...e.message, content: [{ type: 'text', text: body }] } })
+  })
+
+  // Only what Marco typed at this prompt, since a relayed message reads the same and may be another lead's.
+  on('prompt.submit', async ($, e, next) => {
+    const own = e.origin.kind === 'composer' || e.origin.kind === 'bridge'
+    if (sidecar && own && !e.command && !e.isMeta && e.text.trim()) {
+      const { hear } = sidecar
+      void $.session.id().then(id => hear('message', e.text, id))
+    }
+    return next(e)
   })
 
   on('prompt.compose', async ($, e, next) => {
