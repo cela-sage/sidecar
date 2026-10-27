@@ -7,6 +7,16 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.25.0
+
+### Added
+
+- **The desktop app zooms the way a Chrome tab does.** ⌘+, ⌘− and ⌘0, or a trackpad pinch, zoom the whole
+  app with the page inside it, and the zoom is kept across launches. A file preview keeps its own pinch and
+  zoom pill, and a site that handles the pinch itself keeps it.
+- **The top edge of the desktop app is its title bar,** so it drags the window and a double click there zooms
+  or minimises it as System Settings says.
+
 ## 0.24.0
 
 ### Added

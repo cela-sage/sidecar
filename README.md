@@ -213,7 +213,10 @@ page on Chromium rather than a framed one, so Gmail, Reddit and anything that re
 and the comment layer, the pins and Ask Claude draw over it as before. Since Electron has no find bar of its
 own, ⌘F there turns the title island into one for any artifact, searching the page and its frames, with ↵ or
 ⌘G for the next match and ⇧↵ or ⇧⌘G for the previous; a site with its own ⌘F, such as Docs, keeps it, and the
-web surface leaves ⌘F to Chrome. On first launch the shell copies
+web surface leaves ⌘F to Chrome. ⌘+, ⌘− and ⌘0, or a trackpad pinch, zoom the whole app the way a Chrome tab
+zooms, the page inside it included, and the zoom is kept across launches, while a file preview keeps its own
+pinch and zoom pill. The top edge of the app is its title bar, so it drags the window and a double click there
+zooms or minimises it as System Settings says. On first launch the shell copies
 your Chrome cookies into its own session, decrypting them with a key it reads from the login Keychain once
 (the one macOS prompt you will see), so you arrive signed in to the same accounts as in Chrome.
 `sidecar import` re-reads them later, with the app closed. The cookies are a copy rather than shared live,
