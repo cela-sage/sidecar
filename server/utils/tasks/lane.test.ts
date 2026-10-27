@@ -95,7 +95,7 @@ test("sidecar task new writes an unassigned task through the lane and prints onl
   assert.equal(await TaskCommand.run(["new"], "http://localhost:0"), 2);
 });
 
-test("waiting needs a reason, a task on no project cannot run, and only a Task Lead's turn joins its history", () => {
+test("waiting needs a reason, a task on no project cannot run, and a Task Lead's turn or a message sent from the task joins its history", () => {
   task("fattura", "running");
   assert.throws(() => TaskLane.state({ given: "fattura", caller: lead, state: "waiting" }), /--reason/);
   TaskLane.state({ given: "fattura", caller: lead, state: "waiting", reason: "they confirm receipt", on: "Cosmico" });
@@ -109,8 +109,14 @@ test("waiting needs a reason, a task on no project cannot run, and only a Task L
     ["fattura"],
   );
   assert.deepEqual(TaskLane.heard({ caller: { who: "YOU", from: "[madong] fattura" }, kind: "turn", text: "x" }), []);
+  const toAssistant = { caller: { who: "YOU" as const, from: "[meta] EA daily triage" }, kind: "message" as const };
+  assert.deepEqual(TaskLane.heard({ ...toAssistant, text: "Where does it stand?" }), []);
   assert.deepEqual(
-    TaskHistory.read("fattura").map((entry) => entry.kind),
-    ["state", "state", "turn"],
+    TaskLane.heard({ ...toAssistant, text: "Where does it stand?", slug: "fattura" }).map((one) => one.slug),
+    ["fattura"],
+  );
+  assert.deepEqual(
+    TaskHistory.read("fattura").map((entry) => (entry.kind === "message" ? `message to ${entry.to}` : entry.kind)),
+    ["state", "state", "turn", "message to [meta] EA daily triage"],
   );
 });

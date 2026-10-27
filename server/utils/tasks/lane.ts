@@ -262,10 +262,24 @@ const tell = async ({ file, question, ask, text }: Decided): Promise<boolean> =>
   return sent.delivered;
 };
 
-const heard = ({ caller, kind, text }: { caller: Caller; kind: "turn" | "message"; text: string }): TaskFile[] => {
+export interface Heard {
+  caller: Caller;
+  kind: "turn" | "message";
+  text: string;
+  slug?: string;
+}
+
+const hearersOf = ({ caller, kind, slug }: Heard): TaskFile[] => {
+  if (slug && kind === "message") return TaskFiles.all().filter((one) => one.slug === slug);
   const title = caller.from ? Titles.parse(caller.from) : undefined;
-  if (!caller.from || !title || title.role !== "TL" || !text.trim()) return [];
-  const tasks = TaskFiles.all().filter((one) => Titles.belongsTo(title, one.slug));
+  if (title?.role !== "TL") return [];
+  return TaskFiles.all().filter((one) => Titles.belongsTo(title, one.slug));
+};
+
+const heard = (given: Heard): TaskFile[] => {
+  const { caller, kind, text } = given;
+  if (!caller.from || !text.trim()) return [];
+  const tasks = hearersOf(given);
   for (const file of tasks) {
     const at = now();
     const said = text.trim();

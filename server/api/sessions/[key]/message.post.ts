@@ -11,6 +11,6 @@ export default defineEventHandler(async (event): Promise<DeliverResult> => {
   if (!key || !body.success) return { delivered: false, reason: "refused-by-inbox" };
   const sent = await deliver({ key, ...body.data });
   const from = TaskCaller.titleByKey(key);
-  if (sent.delivered && from) TaskLane.heard({ caller: { who: "YOU", from }, kind: "message", text: body.data.text });
+  if (sent.delivered && from) TaskLane.heard({ caller: { who: "YOU", from }, kind: "message", ...body.data });
   return sent;
 });
