@@ -56,6 +56,8 @@ export const Tracked = {
     return slug;
   },
 
+  isPage,
+
   isTrackable: (path: string): boolean => !!FileKind.of(path),
 
   paths(): Map<string, string> {

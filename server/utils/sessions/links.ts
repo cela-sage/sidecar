@@ -1,17 +1,25 @@
-import { closeSync, fstatSync, mkdirSync, openSync, readSync, writeFileSync } from "node:fs";
-import { dirname, join } from "node:path";
+import { closeSync, fstatSync, mkdirSync, openSync, readSync, realpathSync, writeFileSync } from "node:fs";
+import { basename, dirname, isAbsolute, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { ArtifactLists } from "../../../lib/sidecar/lists.ts";
-import { readTextSafe } from "../../../lib/files.ts";
-import { Sidecar } from "../../../lib/sidecar/paths.ts";
+import { isFile, readTextSafe } from "../../../lib/files.ts";
+import { Sidecar, expandHome } from "../../../lib/sidecar/paths.ts";
 import * as Events from "../../../lib/sidecar/events.ts";
+import { Tracked } from "../../../lib/sidecar/tracked.ts";
 import { findRecord, openRecord, recordPath } from "../../../lib/web/records.ts";
+import { FileKind } from "../../../shared/utils/file-kind.ts";
+import { artifactsOf } from "./artifact-lists.ts";
 import { isKey } from "./paths.ts";
 import { plain } from "./relay.ts";
 import { readOut } from "./speaker.ts";
 
-const CODE = /```[\s\S]*?(?:```|$)|`[^`\n]*`/g;
+const FENCED = /```[\s\S]*?(?:```|$)/g;
+const INLINE = /`[^`\n]*`/g;
 const WEB = /https?:\/\/[^\s<>"'`\]]+/gi;
 const TRAILING = /[.,;:!?*_]+$/;
+const BREAK = /[\s`*()<>[\]"']+/;
+const AT_LINE = /(?::\d+)+$|#.*$/;
+const SCHEME = /^[a-z][a-z0-9+.-]*:/i;
 // What these bring back came off the web, so Claude citing it afterwards is not Claude linking it.
 const WEB_TOOLS = new Set(["WebFetch", "WebSearch"]);
 const NEWLINE = 0x0a;
@@ -35,11 +43,17 @@ interface Ledger {
   pending: string[];
 }
 
-interface Placing {
+interface SitePlacing {
   held: string[];
   href: string;
   isLive: boolean;
   key: string;
+}
+
+interface FilePlacing {
+  isLive: boolean;
+  key: string;
+  path: string;
 }
 
 const count = (text: string, char: string): number => text.split(char).length - 1;
@@ -63,7 +77,31 @@ function addressesIn(text: string): string[] {
   return [...out];
 }
 
-const linksOf = (text: string): string[] => addressesIn(text.replace(CODE, " "));
+const linksOf = (text: string): string[] => addressesIn(text.replace(FENCED, " ").replace(INLINE, " "));
+
+function pathOf(word: string): string | undefined {
+  const given = word.replace(TRAILING, "").replace(AT_LINE, "").replace(TRAILING, "");
+  if (!/^file:/i.test(given)) return SCHEME.test(given) ? undefined : expandHome(given);
+  try {
+    return fileURLToPath(given);
+  } catch {
+    return undefined;
+  }
+}
+
+// Unlike an address, a path counts in inline code, since backticks are how a path is usually written.
+function pathsIn(text: string, cwd: string): string[] {
+  const out = new Set<string>();
+  for (const word of text.replace(FENCED, " ").split(BREAK)) {
+    const given = pathOf(word);
+    if (!given?.includes("/") || !FileKind.of(given) || (!isAbsolute(given) && !cwd)) continue;
+    const full = resolve(cwd, given);
+    if (!isFile(full)) continue;
+    const real = realpathSync(full);
+    if (Tracked.isTrackable(real)) out.add(real);
+  }
+  return [...out];
+}
 
 const pageOf = ({ origin, pathname }: URL): string => `${origin}${pathname.replace(/\/+$/, "")}`;
 
@@ -153,7 +191,7 @@ function ledgerOf(file: string): Ledger {
   }
 }
 
-function place({ held, href, isLive, key }: Placing): void {
+function placeSite({ held, href, isLive, key }: SitePlacing): void {
   const url = new URL(href);
   if (findRecord({ among: held, url })) return;
   const { record: made } = openRecord({ url });
@@ -167,7 +205,15 @@ function place({ held, href, isLive, key }: Placing): void {
     });
 }
 
-// Each address once per conversation, so a link artifact someone removed stays gone however often it is said again.
+// A new page in the folder is announced by the artifacts plugin, so announcing it here too would toast it twice.
+function placeFile({ isLive, key, path }: FilePlacing): void {
+  const showing = artifactsOf(key);
+  const slug = Tracked.enter(path, key);
+  if (isLive && !showing.includes(slug) && !Tracked.isPage(path))
+    Events.publish({ topic: "artifact.created", key, data: { slug, title: basename(path), path } });
+}
+
+// Each address or path once per conversation, so an entry someone removed stays gone however often it is said again.
 function adopt({ key, isLive = false, path, upTo = Number.POSITIVE_INFINITY }: LinkAdoption): void {
   if (!isKey(key)) return;
   const file = ledgerPath(key);
@@ -179,14 +225,20 @@ function adopt({ key, isLive = false, path, upTo = Number.POSITIVE_INFINITY }: L
   const fetched = new Set(ledger.fetched);
   const pending = new Set(ledger.pending);
   const held = ArtifactLists.entries(key);
-  const take = (href: string): void => {
-    if (links.has(href)) return;
-    links.add(href);
-    place({ held, href, isLive, key });
+  const take = (said: string, place: () => void): void => {
+    if (links.has(said)) return;
+    links.add(said);
+    place();
   };
+  const takeSite = (href: string): void => take(href, () => placeSite({ held, href, isLive, key }));
+  const takeFile = (local: string): void => take(local, () => placeFile({ isLive, key, path: local }));
   for (const entry of read.entries) {
     if (entry.isSidechain) continue;
-    for (const text of userSaid(entry)) for (const href of linksOf(text)) take(href);
+    const cwd = str(entry.cwd);
+    for (const text of userSaid(entry)) {
+      for (const href of linksOf(text)) takeSite(href);
+      for (const local of pathsIn(text, cwd)) takeFile(local);
+    }
     for (const block of blocksOf(entry)) {
       if (block.type === "tool_use" && WEB_TOOLS.has(str(block.name))) {
         pending.add(str(block.id));
@@ -194,7 +246,9 @@ function adopt({ key, isLive = false, path, upTo = Number.POSITIVE_INFINITY }: L
       } else if (block.type === "tool_result" && pending.delete(str(block.tool_use_id))) {
         for (const href of addressesIn(textOf(block.content))) fetched.add(href);
       } else if (entry.type === "assistant" && block.type === "text") {
-        for (const href of linksOf(str(block.text))) if (!isFetched(fetched, href)) take(href);
+        const text = str(block.text);
+        for (const href of linksOf(text)) if (!isFetched(fetched, href)) takeSite(href);
+        for (const local of pathsIn(text, cwd)) takeFile(local);
       }
     }
   }

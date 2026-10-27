@@ -121,7 +121,10 @@ step through it after a switch or a reload, and ⌘L edits the address. A link c
 there too, a web address as a Web entry and a local file the sidecar can draw, a page, a `.md`, a notebook, an
 image, a video, audio or a PDF, as a File entry, which `~/.claude/sidecar/tracked.json` remembers until you
 remove it, so the sidecar serves only files someone opened. A file it cannot draw opens in Files. A web address you or Claude write in the chat, outside code, becomes a Web entry of that
-conversation too, once per address and read off the transcript, so a link you remove stays removed. It
+conversation too, and a path to a file it can draw becomes a File entry as if its link were clicked, written
+bare, in inline code or as a `file://` link, from `/`, `~` or the conversation's folder, while one in a fenced
+block or to a file not there yet is left alone. Each lands once per conversation, read off the transcript,
+so an entry you remove stays removed. It
 lands as it is said, whichever conversation is on screen, with the toast a new page gets, and one said
 while the sidecar was stopped lands quietly once it is back. A page a WebFetch or WebSearch brought back
 never does, even when Claude cites it in its sources, unless you write it yourself.

@@ -7,6 +7,14 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.21.0
+
+### Added
+
+- **A file path said in the chat lists as a File entry,** the way a web address already did. A path to a page,
+  a `.md`, a notebook, an image, a video, audio or a PDF that you or Claude write, bare, in inline code or as a
+  `file://` link, lands in that conversation once, as if its link were clicked.
+
 ## 0.20.0
 
 ### Added

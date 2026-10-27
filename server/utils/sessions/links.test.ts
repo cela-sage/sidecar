@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { appendFileSync, mkdirSync, mkdtempSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, realpathSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { ArtifactLists } from "../../../lib/sidecar/lists.ts";
 import * as Events from "../../../lib/sidecar/events.ts";
+import { Tracked } from "../../../lib/sidecar/tracked.ts";
 import { readRecord, removeRecord } from "../../../lib/web/records.ts";
 import { Links } from "./links.ts";
 
@@ -42,6 +43,12 @@ const answered = (s: number, id: string, content: string) => ({
 const lines = (...entries: Record<string, unknown>[]): string =>
   entries.map((one) => `${JSON.stringify(one)}\n`).join("");
 const urls = (key: string): string[] => ArtifactLists.entries(key).map((slug) => readRecord(slug)?.url ?? "");
+const files = (key: string): string[] => ArtifactLists.entries(key).map((slug) => Tracked.paths().get(slug) ?? slug);
+const touch = (path: string): string => {
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(path, "");
+  return path;
+};
 
 test("reads every address in prose, trimming what the sentence or markdown wrapped around it, and none in code", () => {
   const text = [
@@ -129,6 +136,40 @@ test("adopts what the user or Claude links once, never what WebFetch or WebSearc
       [key, "new.dev"],
       [key, "inside.dev"],
     ],
+  );
+});
+
+test("adopts a file the sidecar can draw once it is named in prose or inline code, never in a fence or as source", () => {
+  const key = "a1b2c3d4";
+  const home = realpathSync(root);
+  const plan = touch(join(home, "notes", "plan.md"));
+  const shot = touch(join(home, "repo", "docs", "shot.png"));
+  const deck = touch(join(home, "repo", "deck.pdf"));
+  const later = join(home, "notes", "later.md");
+  const source = touch(join(home, "repo", "src", "app.ts"));
+  const fenced = touch(join(home, "repo", "fenced.pdf"));
+  const path = join(root, "projects", "-tmp-files", `${key}-1111-2222-3333-444444444444.jsonl`);
+  mkdirSync(dirname(path), { recursive: true });
+  writeFileSync(
+    path,
+    lines(user(1, `read ${plan}, then ${later}`), {
+      ...said(2, `see \`docs/shot.png:4\`, [the deck](file://${deck}) and ${source}\n\n\`\`\`\nopen ${fenced}\n\`\`\``),
+      cwd: join(home, "repo"),
+    }),
+  );
+  const events = Events.end();
+
+  Links.adopt({ key, path });
+  assert.deepEqual(files(key), [plan, shot, deck]);
+
+  touch(later);
+  appendFileSync(path, lines(said(3, `${plan} again, and ${later} is written now.`)));
+  Links.adopt({ key, path, isLive: true });
+
+  assert.deepEqual(files(key), [plan, shot, deck, later]);
+  assert.deepEqual(
+    Events.read(events).events.map((event) => event.data.title),
+    ["later.md"],
   );
 });
 
