@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
 import { ArrowRight, ChevronDown, ChevronRight, Plus } from "@lucide/vue";
-import type { OrgConversation, OrgProject, OrgTask } from "~/utils/org";
+import type { Mark, OrgConversation, OrgProject, OrgTask } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
 
 const sc = useSidecar();
@@ -32,8 +32,16 @@ const route = (meta: TaskMeta): void => {
   if (to) void desk.place(meta, to.project);
 };
 
+const FOR_YOU: Mark[] = ["needs", "waits"];
+
+const holdsInView = (group: OrgProject): boolean =>
+  group.leads.some(front) ||
+  [...group.tasks, ...group.done].some(
+    (one) => one.meta.slug === task.slug || one.leads.some(front) || one.done.some(front),
+  );
+
 const isOpen = (group: OrgProject): boolean =>
-  toggled.value[group.project.key] ?? (group.leads.length > 0 || group.tasks.length > 0);
+  toggled.value[group.project.key] ?? ((!!group.mark && FOR_YOU.includes(group.mark)) || holdsInView(group));
 const isUnfolded = (key: string): boolean => toggled.value[key] ?? false;
 const toggle = (key: string, now: boolean): void => {
   toggled.value = { ...toggled.value, [key]: !now };
@@ -257,6 +265,21 @@ useShortcuts(
           </button>
         </template>
       </div>
+
+      <template v-if="tree.unplaced.length">
+        <span class="section mono-meta" data-gap="true">No project</span>
+        <OrgRow
+          v-for="row in tree.unplaced"
+          :key="row.key"
+          :attach="row.key"
+          :is-front="front(row)"
+          :mark="row.mark"
+          :name="row.name"
+          :role="row.role"
+          :tip="row.title"
+          @open="openConversation(row)"
+        />
+      </template>
     </nav>
   </UiSurface>
 </template>

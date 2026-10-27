@@ -79,7 +79,7 @@ test("the history folds runs, puts the divider under what the Project Lead read,
   assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past Running:running Done:future");
 });
 
-test("the org tree puts each role where it works, folds what is done and leaves your own conversations out", () => {
+test("the org tree puts each role where it works, folds what is done and keeps your own conversations under No project", () => {
   const meta = (slug: string, state: TaskMeta["task"]["state"], project?: string, lead?: string): TaskMeta => ({
     slug,
     title: slug,
@@ -135,7 +135,11 @@ test("the org tree puts each role where it works, folds what is done and leaves 
   assert.equal(cela?.mark, "needs");
   assert.equal(metaProject?.mark, undefined);
   assert.equal(tree.open, 2);
-  assert.equal(tree.conversations, 6);
+  assert.deepEqual(
+    tree.unplaced.map((one) => `${one.role ?? "-"} ${one.name} ${one.mark}`),
+    ["- contracts guide working"],
+  );
+  assert.equal(tree.conversations, 7);
 });
 
 test("a conversation reads the claude agents state off its lane, and off its status without one", () => {
