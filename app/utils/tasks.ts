@@ -7,7 +7,6 @@ export type TaskLook = "running" | "waiting" | "needs" | "done";
 export type StepKind = TaskLook | "past" | "future";
 export type StepJoint = "none" | "solid" | "primary" | "dashed";
 export type AgentState = "working" | "needs input" | "completed";
-export type Role = "EA" | "PL" | "DL" | "TL";
 
 export type TaskMeta = ArtifactMeta & { task: ArtifactTask };
 
@@ -16,13 +15,6 @@ export interface TaskStep {
   kind: StepKind;
   joint: StepJoint;
   tip: string;
-}
-
-export interface RoleTitle {
-  token: string;
-  rest: string;
-  role?: Role;
-  words: string[];
 }
 
 export interface TaskSummary {
@@ -64,7 +56,6 @@ const TIP: Record<TaskState, string> = {
 const TINTS = ["blue", "violet", "cyan", "green", "slate"];
 const PATH: TaskState[] = ["unassigned", "assigned", "assessed", "running"];
 const PRESSING: TaskState[] = ["blocked", "running", "waiting", "assessed", "assigned", "unassigned", "done"];
-const ROLES: Role[] = ["EA", "PL", "DL", "TL"];
 const AGENT_ORDER: AgentState[] = ["needs input", "working", "completed"];
 
 const isTask = (meta: ArtifactMeta): meta is TaskMeta => !!meta.task;
@@ -106,20 +97,6 @@ function summaryOf(tasks: TaskMeta[]): TaskSummary {
   return { text: "nothing open" };
 }
 
-function parseTitle(name: string): RoleTitle | undefined {
-  const hit = /^\[([^\]]+)\]\s+(.+)$/.exec(name.trim());
-  if (!hit?.[1] || !hit[2]) return undefined;
-  const words = hit[2].split(/\s+/);
-  return { token: hit[1], rest: hit[2], role: ROLES.find((role) => words.includes(role)), words };
-}
-
-// The ticket before the role token, or the slug after it, names the task, the way the title rule writes it.
-function belongsTo(title: RoleTitle, slug: string): boolean {
-  if (!title.role) return false;
-  const at = title.words.indexOf(title.role);
-  return title.words.slice(0, at + 2).some((word) => word.toLowerCase() === slug.toLowerCase());
-}
-
 function agentStateOf(session: LiveSession): AgentState {
   const lane = session.lane?.name;
   if (lane === "review" || lane === "blocked") return "needs input";
@@ -139,13 +116,11 @@ const agentOrder = (a: LiveSession, b: LiveSession): number =>
 export const Tasks = {
   agentOrder,
   agentStateOf,
-  belongsTo,
   chipOf,
   labelOf,
   lookOf,
   of,
   order,
-  parseTitle,
   stepsOf,
   summaryOf,
   tintOf,

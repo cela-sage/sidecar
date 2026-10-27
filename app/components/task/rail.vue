@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import type { LiveSession } from "~~/shared/types/session";
+import { Titles } from "~~/shared/utils/titles";
 import type { AgentState, TaskLook } from "~/utils/tasks";
 
 const { sessions } = defineProps<{ sessions: LiveSession[] }>();
@@ -9,7 +10,7 @@ const LOOK: Record<AgentState, TaskLook> = { working: "running", "needs input": 
 const rows = computed(() =>
   sessions.map((session) => {
     const name = nameOf(session);
-    const title = Tasks.parseTitle(name);
+    const title = Titles.parse(name);
     const state = Tasks.agentStateOf(session);
     return {
       key: session.key,

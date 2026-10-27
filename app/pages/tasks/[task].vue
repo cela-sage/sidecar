@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useIntervalFn } from "@vueuse/core";
 import type { ArtifactMeta } from "~~/shared/types/artifact";
+import { Titles } from "~~/shared/utils/titles";
 
 const CATALOGUE_MS = 5000;
 
@@ -16,8 +17,8 @@ const title = computed(() => meta.value?.title || deslug(slug.value));
 const rail = computed(() =>
   sc.sessions.value
     .filter((session) => {
-      const titled = (!session.archived || session.live) && Tasks.parseTitle(nameOf(session));
-      return !!titled && Tasks.belongsTo(titled, slug.value);
+      const titled = (!session.archived || session.live) && Titles.parse(nameOf(session));
+      return !!titled && Titles.belongsTo(titled, slug.value);
     })
     .sort(Tasks.agentOrder),
 );
@@ -28,7 +29,7 @@ const conversation = computed(() => {
   const oldest = [...rail.value].sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0));
   const held =
     oldest.find((session) => nameOf(session) === lead) ??
-    oldest.find((session) => Tasks.parseTitle(nameOf(session))?.role === "TL") ??
+    oldest.find((session) => Titles.parse(nameOf(session))?.role === "TL") ??
     oldest[0];
   return held?.key ?? sc.sessionKey.value;
 });

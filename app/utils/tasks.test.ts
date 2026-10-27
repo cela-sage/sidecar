@@ -12,19 +12,6 @@ const session = (patch: Partial<LiveSession>): LiveSession => ({
   ...patch,
 });
 
-test("a role title belongs to the task its slug or its ticket names, and an own title belongs to none", () => {
-  const owns = (name: string, slug: string): boolean => {
-    const title = Tasks.parseTitle(name);
-    return !!title && Tasks.belongsTo(title, slug);
-  };
-  assert.equal(owns("[Cela] TL sidecar-task-board follower", "sidecar-task-board"), true);
-  assert.equal(owns("[Cela] PL sidecar-task-board plan", "sidecar-task-board"), true);
-  assert.equal(owns("[MF] AI-222 TL rebase", "ai-222"), true);
-  assert.equal(owns("[Cela] TL sidecar-task-board follower", "follower"), false);
-  assert.equal(owns("[MF] AI-506 MongoDB migration", "ai-506"), false);
-  assert.equal(Tasks.parseTitle("no brackets here"), undefined);
-});
-
 test("the strip passes what is behind, marks where it is, and dashes what is ahead", () => {
   const strip = (state: Parameters<typeof Tasks.stepsOf>[0]): string =>
     Tasks.stepsOf(state)
