@@ -22,11 +22,11 @@ const DETACH_MS = 3000;
 const RETRY_MS = 2000;
 const QUIT = ["q", "\x03"];
 const Attach = z.object({ key: z.string().min(1) });
+const Ready = z.object({ following: z.boolean(), held: z.object({ key: z.string() }).optional() });
 
-const keyOf = ({ event, data }: Message): string | undefined => {
-  if (event !== "attach") return undefined;
+const parsed = (data: string): unknown => {
   try {
-    return Attach.safeParse(JSON.parse(data)).data?.key;
+    return JSON.parse(data);
   } catch {
     return undefined;
   }
@@ -70,9 +70,12 @@ const run = (address: string): Promise<number> => {
   executableHelper();
   let held: Held | undefined;
   let queue = Promise.resolve();
+  let said = "";
 
   const say = (line: string): void => {
-    if (!held) stdout.write(`\r\n${line}\r\n`);
+    if (held || line === said) return;
+    said = line;
+    stdout.write(`\r\n${line}\r\n`);
   };
 
   const report = (key?: string): Promise<unknown> =>
@@ -105,6 +108,7 @@ const run = (address: string): Promise<number> => {
     });
     const mine: Held = { key, pty };
     held = mine;
+    said = "";
     pty.onData((data) => stdout.write(data));
     pty.onExit(() => {
       if (held !== mine || mine.isLeaving) return;
@@ -115,23 +119,26 @@ const run = (address: string): Promise<number> => {
     await report(key);
   };
 
+  const greet = (data: string): void => {
+    say(`Following the sidecar at ${address}. Attach a conversation from a task, q stops following.`);
+    if (Ready.safeParse(parsed(data)).data?.held?.key !== held?.key) void report(held?.key);
+  };
+
   const follow = async (body: ReadableStream<Uint8Array>): Promise<void> => {
-    for await (const message of messagesOf(body)) {
-      const key = keyOf(message);
+    for await (const { event, data } of messagesOf(body)) {
+      if (event === "ready") greet(data);
+      const key = event === "attach" ? Attach.safeParse(parsed(data)).data?.key : undefined;
       if (key) queue = queue.then(() => attach(key));
     }
   };
 
   const listen = async (): Promise<void> => {
+    say(`Connecting to the sidecar at ${address}.`);
     for (;;) {
       const reply = await fetch(`${address}/api/attach/stream`, { headers: { accept: "text/event-stream" } }).catch(
         () => undefined,
       );
-      if (reply?.ok && reply.body) {
-        say(`Following the sidecar at ${address}. Attach a conversation from a task, q stops following.`);
-        void report(held?.key);
-        await follow(reply.body).catch(() => undefined);
-      }
+      if (reply?.ok && reply.body) await follow(reply.body).catch(() => undefined);
       say(`Waiting for the sidecar at ${address}. sidecar start brings it up.`);
       await sleep(RETRY_MS);
     }
