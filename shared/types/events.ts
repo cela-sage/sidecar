@@ -6,6 +6,7 @@ export interface Topics {
   "task.escalated": { slug: string; title: string; thread: string; kind: AskKind; question: string };
   "task.decided": { slug: string; thread: string; text: string; who: Who };
   "terminal.changed": TerminalState;
+  "conversation.changed": { key: string; doing: boolean; asking: boolean };
 }
 
 export interface TerminalHeld {

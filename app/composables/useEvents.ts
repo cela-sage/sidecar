@@ -4,6 +4,7 @@ export interface Events {
   on: <T extends Topic>(topic: T, handler: (event: SidecarEvent<T>) => void) => void;
   /** Runs each time the stream drops, which is the first sign of the server going away. */
   onLost: (handler: () => void) => void;
+  onReady: (handler: () => void) => void;
 }
 
 type Handler = (event: SidecarEvent) => void;
@@ -13,6 +14,7 @@ const RETRY_MS = 2000;
 // One stream for the whole app, open while any handler listens.
 const handlers = new Map<Topic, Set<Handler>>();
 const lost = new Set<() => void>();
+const ready = new Set<() => void>();
 let source: EventSource | undefined;
 let since: string | undefined;
 let retry = 0;
@@ -25,7 +27,10 @@ function deliver(message: MessageEvent<string>): void {
 
 function connect(): void {
   source = new EventSource(since ? `/api/events/stream?since=${since}` : "/api/events/stream");
-  source.addEventListener("ready", (message: MessageEvent<string>) => (since = message.lastEventId || since));
+  source.addEventListener("ready", (message: MessageEvent<string>) => {
+    since = message.lastEventId || since;
+    for (const handler of ready) handler();
+  });
   for (const topic of handlers.keys()) source.addEventListener(topic, deliver);
   // A restarting server can answer with its loading page, which closes an EventSource for good.
   source.addEventListener("error", () => {
@@ -60,6 +65,10 @@ export function useEvents(): Events {
     onLost: (handler) => {
       lost.add(handler);
       onScopeDispose(() => lost.delete(handler));
+    },
+    onReady: (handler) => {
+      ready.add(handler);
+      onScopeDispose(() => ready.delete(handler));
     },
   };
 }

@@ -1,5 +1,6 @@
 import type { LiveSession, SessionAgent } from "~~/shared/types/session";
 import type { Project, Role, TaskState } from "~~/shared/types/task";
+import type { Busy } from "../../shared/utils/busy.ts";
 import { Titles, type RoleTitle } from "../../shared/utils/titles.ts";
 import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
 
@@ -48,6 +49,7 @@ export interface OrgInput {
   tasks: TaskMeta[];
   projects: Project[];
   asking?: string[];
+  busy?: Record<string, Busy>;
   now?: number;
 }
 
@@ -61,8 +63,12 @@ interface Owned {
   title: RoleTitle;
 }
 
-interface Placing {
+interface Heard {
   asking: Set<string>;
+  busy: Record<string, Busy>;
+}
+
+interface Placing extends Heard {
   slug?: string;
   waiting?: boolean;
 }
@@ -72,7 +78,7 @@ const TASK_MARK: Record<TaskState, Mark> = {
   unassigned: "queued",
   assigned: "queued",
   assessed: "queued",
-  running: "working",
+  running: "completed",
   blocked: "needs",
   waiting: "third",
   done: "done",
@@ -100,9 +106,18 @@ const ownedOf = (sessions: LiveSession[]): Owned[] =>
     return title && !title.role ? [{ session, title }] : [];
   });
 
-const looseOf = (session: LiveSession, asking: Set<string>, name?: string): OrgConversation => {
+// Only the turn bus knows a turn is open, so a polled "working" says nothing and reads as completed.
+const stateOf = (session: LiveSession, { asking, busy }: Heard): AgentState => {
+  const bus = busy[session.key];
+  if (bus?.asking || asking.has(session.name ?? "")) return "needs input";
+  if (bus?.doing) return "working";
+  const polled = Tasks.agentStateOf(session);
+  return polled === "working" ? "completed" : polled;
+};
+
+const looseOf = (session: LiveSession, heard: Heard, name?: string): OrgConversation => {
   const title = session.name || session.cwd.split("/").filter(Boolean).at(-1) || session.key;
-  const state = asking.has(session.name ?? "") ? "needs input" : Tasks.agentStateOf(session);
+  const state = stateOf(session, heard);
   const marks: Record<AgentState, Mark> = { working: "working", "needs input": "waits", completed: "completed" };
   return { key: session.key, title, name: name ?? title, mark: marks[state] };
 };
@@ -113,10 +128,10 @@ const nameOf = ({ title }: Placed, slug?: string): string => {
   return words.join(" ") || title.rest;
 };
 
-const conversationOf = (placed: Placed, { asking, slug, waiting = false }: Placing): OrgConversation => {
+const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Placing): OrgConversation => {
   const { session, title } = placed;
   const isLead = title.role === "TL";
-  const state = asking.has(session.name ?? "") ? "needs input" : Tasks.agentStateOf(session);
+  const state = stateOf(session, heard);
   const marks: Record<AgentState, Mark> = {
     working: "working",
     "needs input": isLead ? "needs" : "waits",
@@ -136,9 +151,9 @@ const conversationOf = (placed: Placed, { asking, slug, waiting = false }: Placi
 const byLead = (a: Placed, b: Placed): number =>
   LEAD_ORDER.indexOf(a.title.role) - LEAD_ORDER.indexOf(b.title.role) || Tasks.agentOrder(a.session, b.session);
 
-const taskOf = (meta: TaskMeta, placed: Placed[], asking: Set<string>): OrgTask => {
+const taskOf = (meta: TaskMeta, placed: Placed[], heard: Heard): OrgTask => {
   const mine = placed.filter((one) => one.title.role === "TL" && Titles.belongsTo(one.title, meta.slug)).sort(byLead);
-  const placing = { asking, slug: meta.slug, waiting: meta.task.state === "waiting" };
+  const placing = { ...heard, slug: meta.slug, waiting: meta.task.state === "waiting" };
   const leads = mine
     .filter((one) => one.session.live)
     .map((one) => conversationOf(one, placing))
@@ -155,8 +170,8 @@ const projectsOf = (tasks: TaskMeta[], projects: Project[]): Project[] => {
   return [...projects, ...[...strays].map((key) => ({ key, name: key, token: key, folder: "" }))];
 };
 
-const treeOf = ({ sessions, tasks, projects, asking = [], now = Date.now() }: OrgInput): OrgTree => {
-  const asked = new Set(asking);
+const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, now = Date.now() }: OrgInput): OrgTree => {
+  const heard: Heard = { asking: new Set(asking), busy };
   const inView = sessions.some((session) => typeof session.inView === "boolean");
   const listed = sessions.filter((session) => (inView ? session.inView : !session.archived || session.live));
   const placed = placedOf(listed);
@@ -167,17 +182,17 @@ const treeOf = ({ sessions, tasks, projects, asking = [], now = Date.now() }: Or
 
   const groups = all.map((project): OrgProject => {
     const theirs = placed.filter((one) => one.title.role !== "EA" && sameWord(one.title.token, project.token));
-    const built = ordered.filter((one) => one.task.project === project.key).map((one) => taskOf(one, theirs, asked));
+    const built = ordered.filter((one) => one.task.project === project.key).map((one) => taskOf(one, theirs, heard));
     const claimed = new Set(built.flatMap((one) => [...one.leads, ...one.done].map((row) => row.key)));
     const leads = theirs
       .filter((one) => one.title.role !== "TL" || !claimed.has(one.session.key))
       .sort(byLead)
-      .map((one) => conversationOf(one, { asking: asked }));
+      .map((one) => conversationOf(one, heard));
     const open = built.filter((one) => one.meta.task.state !== "done");
     const conversations = owned
       .filter((one) => sameWord(one.title.token, project.token))
       .sort((a, b) => Tasks.agentOrder(a.session, b.session))
-      .map((one) => looseOf(one.session, asked, one.title.rest));
+      .map((one) => looseOf(one.session, heard, one.title.rest));
     return {
       project,
       tint: Tasks.tintOf(project.key, keys),
@@ -192,7 +207,7 @@ const treeOf = ({ sessions, tasks, projects, asking = [], now = Date.now() }: Or
   const assistants = placed
     .filter((one) => one.title.role === "EA")
     .sort((a, b) => Tasks.agentOrder(a.session, b.session))
-    .map((one) => conversationOf(one, { asking: asked }));
+    .map((one) => conversationOf(one, heard));
   const placedRows = groups.flatMap((group) => [
     ...group.leads,
     ...[...group.tasks, ...group.done].flatMap((one) => [...one.leads, ...one.done]),
@@ -204,7 +219,7 @@ const treeOf = ({ sessions, tasks, projects, asking = [], now = Date.now() }: Or
     .sort(Tasks.agentOrder)
     .map((session) => {
       const role = placed.find((one) => one.session.key === session.key);
-      return role ? conversationOf(role, { asking: asked }) : looseOf(session, asked);
+      return role ? conversationOf(role, heard) : looseOf(session, heard);
     });
   return {
     assistants,

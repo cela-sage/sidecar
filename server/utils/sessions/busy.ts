@@ -1,0 +1,29 @@
+import * as Events from "../../../lib/sidecar/events.ts";
+import { BusyRules, type Busy, type BusyTurn } from "../../../shared/utils/busy.ts";
+
+const states = new Map<string, Busy>();
+const quiet = new Map<string, ReturnType<typeof setTimeout>>();
+
+const set = (key: string, now: Busy): void => {
+  if (BusyRules.same(states.get(key) ?? BusyRules.IDLE, now)) return;
+  if (now.doing || now.asking) states.set(key, now);
+  else states.delete(key);
+  Events.publish({ topic: "conversation.changed", key, data: { key, ...now } });
+};
+
+const heard = (key: string, turns: BusyTurn[]): void => {
+  clearTimeout(quiet.get(key));
+  let now = states.get(key) ?? BusyRules.IDLE;
+  let arm = false;
+  for (const turn of turns) ({ now, quiet: arm } = BusyRules.next(now, turn));
+  set(key, now);
+  if (arm)
+    quiet.set(
+      key,
+      setTimeout(() => set(key, BusyRules.IDLE), BusyRules.QUIET_MS),
+    );
+};
+
+const snapshot = (): Record<string, Busy> => Object.fromEntries(states);
+
+export const TurnBus = { heard, snapshot };

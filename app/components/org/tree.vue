@@ -8,6 +8,7 @@ const sc = useSidecar();
 const chrome = useChrome();
 const task = $task();
 const desk = $desk();
+const busy = $busy();
 const artifact = $artifact();
 const shown = useFaceShown();
 const folds = useOrgFolds();
@@ -21,6 +22,7 @@ const tree = computed(() =>
     tasks: Tasks.of(sc.catalogue.value),
     projects: task.projects,
     asking: desk.asks.flatMap((ask) => (ask.kind === "escalation" && ask.from ? [ask.from] : [])),
+    busy: busy.keys,
   }),
 );
 

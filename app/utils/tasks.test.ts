@@ -116,6 +116,26 @@ test("the tree drops a Done task you removed or that went Done a day ago, and li
   assert.equal(tree.conversations, 1);
 });
 
+test("a running task whose Task Leads are idle does not spin, and one spins only while the bus says a lead is doing", () => {
+  const running: TaskMeta = {
+    slug: "board",
+    title: "Board",
+    kind: "page",
+    format: "md",
+    path: "/tmp/board.md",
+    task: { state: "running", project: "cela" },
+  };
+  const input = {
+    projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
+    sessions: [session({ key: "lead", name: "[Cela] TL board build", status: "busy" })],
+    tasks: [running],
+  };
+  const markOf = (tree: ReturnType<typeof Org.treeOf>): string | undefined => tree.projects[0]?.tasks[0]?.mark;
+  assert.equal(markOf(Org.treeOf(input)), "completed");
+  assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: false } } })), "working");
+  assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: true } } })), "needs");
+});
+
 test("the org tree puts each role where it works, folds what is done and files your own conversations by their prefix", () => {
   const meta = (slug: string, state: TaskMeta["task"]["state"], project?: string, lead?: string): TaskMeta => ({
     slug,
@@ -150,6 +170,7 @@ test("the org tree puts each role where it works, folds what is done and files y
     sessions,
     projects,
     asking: ["[Cela] TL sidecar-task-board lane"],
+    busy: Object.fromEntries(["ea", "fol", "own"].map((key) => [key, { doing: true, asking: false }])),
     tasks: [
       meta("sidecar-task-board", "running", "cela", "[Cela] TL sidecar-task-board lane"),
       meta("session-title-rule", "done", "cela"),

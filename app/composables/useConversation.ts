@@ -1,6 +1,7 @@
 import type { ComputedRef } from "vue";
 import type { MascotState } from "~/components/claude/mascot.vue";
 import type { MaybeComputed } from "~/composables/useSidecar";
+import { BusyRules, type Busy } from "~~/shared/utils/busy";
 
 type TurnRole = "assistant" | "user" | "system";
 
@@ -22,8 +23,6 @@ export interface ConversationTurn {
 
 const ECHO_MS = 60_000;
 const LONG_MS = 10_000;
-// Tool calls follow a narration in well under this; a longer silence means the turn ended.
-const QUIET_MS = 2_500;
 
 export interface Conversation {
   /** What the mascot acts out: the newest tool call, or thinking while nothing has come back yet. */
@@ -91,7 +90,8 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     }),
   );
   const step = computed(() => stepOf({ turn: doing.value, awaiting: awaiting.value }));
-  const isBusy = computed(() => awaiting.value || !!doing.value);
+  const busy = ref<Busy>(BusyRules.IDLE);
+  const isBusy = computed(() => busy.value.doing);
   let ageing: ReturnType<typeof setTimeout> | undefined;
   let quiet: ReturnType<typeof setTimeout> | undefined;
   const open = new Map<string, number>();
@@ -111,7 +111,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
         Math.max(0, since + LONG_MS - Date.now()),
       );
     }
-    if (turn.kind !== "acting") quiet = setTimeout(settle, QUIET_MS);
+    if (turn.kind !== "acting") quiet = setTimeout(settle, BusyRules.QUIET_MS);
   }
 
   // `long` is deliberately left standing: a call that ran two minutes was long-running.
@@ -142,6 +142,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
 
   // Nothing marks a text block final as it is written, so the newest one stands in until the turn ends.
   function settle(): void {
+    busy.value = BusyRules.IDLE;
     doing.value = undefined;
     awaiting.value = false;
     wrote.value = false;
@@ -175,6 +176,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
       if (pending >= 0) turns.splice(pending, 1);
     }
     if (held(turn)) return;
+    busy.value = BusyRules.next(busy.value, turn).now;
     if (turn.role === "user") {
       // Queued means the turn it belongs to has not started, so the one in flight must not be settled.
       if (!turn.queued) {
