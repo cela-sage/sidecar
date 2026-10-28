@@ -7,6 +7,27 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.33.0
+
+### Added
+
+- **Four statuses on every task, Backlog, In progress, Blocked and Done,** over the lane's states, set by hand from
+  the chip or by agents through the lane's verbs, and the inbox reads Backlog.
+- **A Done task leaves the list** when you remove it, or a day after it went Done, with its file and history kept.
+- **A backlog item deletes** into `~/.claude/sidecar/trash/`, with Undo.
+- **A conversation dropped on a task is told it leads it**, with the task-lead agent's file to read as its role, and
+  a project with no Project Lead starts one with `--agent project-lead` when a task lands on it.
+- **The specialists a Task Lead hired show under it** in the tree.
+- **`sidecar terminal` opens on agent view,** comes back to it when a conversation ends, and stops when you quit it.
+
+### Changed
+
+- **The tree lists only the conversations agent view lists.**
+- **A fold of done tasks or done Task Leads opens below its toggle,** not above it.
+- **The rule names every task verb,** and the title shape the sidecar reads a role and a task from.
+- **One `Agent` domain runs every blank Claude,** `Agent.haiku` and `Agent.sonnet` in safe mode with no tools unless
+  given, and Route to asks Haiku at low effort with the assistant's home `CLAUDE.md` as its map.
+
 ## 0.32.0
 
 ### Added

@@ -165,10 +165,13 @@ them, with the count of open tasks and a red mark while a task or a hire waits o
 faces, such as Listening, it opens the Tasks face of the conversation in front. `?face=tasks&task=<slug>` opens a
 task the way `?face=review` picks Review, and the old `/desk` and `/tasks/<slug>` links redirect there.
 
-The rail is the org tree, built from the conversations the sidecar already polls, parsed by their titles. The
-inbox of unassigned tasks heads it, then the assistant's conversations, titled with EA, then each project with
-its Project Lead and Design Lead conversations and its tasks, each task with its Task Leads. A Task Lead whose
-process ended folds under the task as done, and a done task folds under its project. A project starts folded
+The rail is the org tree, built from the conversations agent view lists, which the server reads with
+`claude agents --json` beside its `--all` call, parsed by their titles. The backlog of tasks on no project heads
+it, then the assistant's conversations, titled with EA, then each project with its Project Lead and Design Lead
+conversations and its tasks, each task with its Task Leads and, under each one, the specialists it hired. A Task
+Lead whose process ended folds under the task as done. A task in Done folds under its project, and it leaves the
+list when you remove it with its ✕ or a day after it went Done, kept in `~/.claude/sidecar/tasks-hidden.json`
+with its file and history untouched, and it comes back when it moves out of Done. A project starts folded
 unless something in it waits on you or it holds the open task or the conversation in front, and a fold you
 open or close stays that way across conversations and reloads, kept in the browser as `sc:org-folds`. Your own
 conversations, whose titles have no role token, list under the project their `[token]` names, after its tasks,
@@ -180,22 +183,32 @@ the conversation in front has an ink bar, and clicking a conversation brings it 
 its task open.
 
 With no task open the centre stays on the conversation in front, its page from Artifacts, and a task opens the
-sheet with Document and History in its bar and Back, or esc, closing it. The state chip beside the title moves
-the task by hand to running, needs you, waiting with what it waits for, done or back to the inbox, through the
-same lane and its rules. Dropping an inbox row on a project, or pressing its Route to, Haiku's suggestion through
-`claude -p` on your Claude Code login, cached until the task changes and left out when the task says too little
-to tell, assigns it through the lane
+sheet with Document and History in its bar and Back, or esc, closing it. A task shows one of four statuses,
+Backlog for unassigned, assigned or assessed, In progress for running or waiting, Blocked and Done, and its chip
+beside the title sets one by hand through the same lane: Backlog keeps it on its project, In progress runs it.
+Agents move the same statuses through the lane's verbs. Dropping a backlog row on a project, or pressing its Route to, Haiku's suggestion through
+`Agent.haiku`, a `claude -p` in safe mode at low effort with no tools on your Claude Code login, given the
+assistant's home `CLAUDE.md` as the map of what goes where, cached until the task changes and left out when the
+task says too little to tell, assigns it through the lane
 with `PATCH /api/tasks/:slug`, so it lands in the history and on the bus, and the toast's Undo, or ⌘Z, puts it
 back. Eight seconds after the drop, unless undone, the project's Project Lead, its newest live conversation
-titled with PL and the project's token, gets the task to assess. New task, or N, drafts a row in the inbox,
+titled with PL and the project's token, gets the task to assess, told it is that project's Project Lead. With no
+Project Lead running, the sidecar starts one, `claude --bg --agent project-lead --name "[<token>] PL <slug>"` in
+the project's folder, with the same message, and `agents` in `~/.claude/sidecar/config.json` renames the agent
+for any role. A backlog row's trash deletes the task through `DELETE /api/tasks/:slug`, which moves its `.md`
+and its history into `~/.claude/sidecar/trash/` and only takes a task still in Backlog, and Undo, or ⌘Z, moves
+them back through `POST /api/tasks/:slug/restore`. New task, or N, drafts a row in the backlog,
 writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
 
 Your own conversations drag. Dropped on another project it is renamed `[<project token>] <subject>`, and on an
 open task it becomes one of the task's Task Leads, renamed `[<project token>] TL <slug> <subject>`, while a
 folded project opens as the row passes over it. Either keeps a leading deadline, and its tickets while the
 project stays the same, through `PATCH /api/sessions/<key>`. That appends a title record to the transcript and writes the name, marked as yours,
-into the job's state file, which is where the job list and the running process read it. Undo, or ⌘Z, puts the old
-title back when it had one.
+into the job's state file, which is where the job list and the running process read it. A drop on a task goes
+through `POST /api/tasks/:slug/lead`, and eight seconds later the conversation is told it now leads that task,
+with the path of the task-lead agent's file to read as its role, since it was never started as that agent, and
+the message lands in the task's history. Undo, or ⌘Z, cancels that message with `DELETE` on the same route and
+puts the old title back when it had one.
 
 Moving to another conversation keeps the page, so the tree, its folds and every face already opened stay put
 while they follow the new key. Clicking the conversation's title opens the conversation picker, which lists every
@@ -203,15 +216,16 @@ conversation the sidecar knows, yours included, and deletes one with its trash b
 
 ### Following the terminal
 
-`sidecar terminal`, started once in the terminal you use for Claude Code, owns a pty there and listens on
-`/api/attach/stream`. Attach on a tree row, on the task's rail or in the door posts `POST /api/attach {key}`;
-the follower writes Ctrl+Z to the conversation it holds, which detaches it with the session still running, and
-runs `claude attach <key>` for the next. The row the terminal holds shows its Attach pressed, while a switch you
-make inside Claude Code with the left arrow is not seen. With no follower running, the task's rail explains
-`sidecar terminal` and Attach copies the `claude attach` line instead. q stops the follower while it holds
-nothing. The stream opens with a `ready`
-event carrying what the sidecar thinks the terminal holds, so the follower says it is following at once and
-corrects the sidecar when the two differ.
+`sidecar terminal`, started once in the terminal you use for Claude Code, owns a pty there that opens on agent
+view, `claude agents`, and listens on `/api/attach/stream`. Attach on a tree row, on the task's rail or in the
+door posts `POST /api/attach {key}`; the follower closes agent view, or writes Ctrl+Z to the conversation it
+holds, which detaches it with the session still running, and runs `claude attach <key>` for the next. When an
+attached conversation ends or you detach it, agent view comes back, and quitting agent view stops the follower.
+The row the terminal holds shows its Attach pressed, while a switch you make inside Claude Code with the left
+arrow is not seen. With no follower running, the task's rail explains `sidecar terminal` and Attach copies the
+`claude attach` line instead. The stream opens with a `ready`
+event carrying what the sidecar thinks the terminal holds, so the follower corrects the sidecar when the two
+differ.
 
 ### The task lane
 
