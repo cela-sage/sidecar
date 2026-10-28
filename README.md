@@ -263,7 +263,7 @@ sidecar task <slug>                                   # its state, what waits on
 sidecar task <slug> state waiting --on "Cosmico" --reason "they confirm they have Fattura 1/2026"
 sidecar task <slug> assign cela
 sidecar task <slug> rename "Right-click menu on the Tasks tree"  # a new title, the same slug
-sidecar task <slug> escalate "Which model runs a Task Lead?" --options "Sonnet xhigh" --options "Opus" --quote "the text it is about"
+sidecar task <slug> escalate "Which model runs a Task Lead?" --options "Sonnet xhigh" --options "Opus" --quote "the text it is about"  # --options a,b splits one-word options only
 sidecar task <slug> hire "a tester, to drive the CLI, Sonnet xhigh"
 sidecar task <slug> judge "Yours, it sets the budget of every task" --pick 1
 sidecar task <slug> judge "The transcripts settle it" --pick 1 --settle  # within the Project Lead's reach

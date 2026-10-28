@@ -7,6 +7,13 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.39.2
+
+### Fixed
+
+- **An escalation option keeps the commas inside it.** Each `--options` is one option, and the `--options a,b`
+  shorthand splits only when every option is one word, so a sentence stays whole.
+
 ## 0.39.1
 
 ### Added
