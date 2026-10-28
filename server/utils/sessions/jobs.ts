@@ -108,18 +108,6 @@ async function fromCli(): Promise<JobEntry[] | undefined> {
   return out;
 }
 
-// Without --all the CLI lists what agent view shows, which is the set the tree mirrors.
-async function viewOfCli(): Promise<Set<string> | undefined> {
-  try {
-    const { stdout } = await run(claudeBinary(), ["agents", "--json"], { encoding: "utf8", timeout: CLI_TIMEOUT_MS });
-    const parsed: unknown = JSON.parse(stdout);
-    if (!Array.isArray(parsed)) return undefined;
-    return new Set(parsed.flatMap((row: { id?: unknown }) => (typeof row?.id === "string" ? [row.id] : [])));
-  } catch {
-    return undefined;
-  }
-}
-
 function liveBySession(): Map<string, Record<string, unknown>> {
   const out = new Map<string, Record<string, unknown>>();
   let names: string[];
@@ -181,10 +169,10 @@ function fromDisk(): JobEntry[] {
 
 export function refreshJobs(): Promise<JobEntry[]> {
   const root = configRoot();
-  reading ??= Promise.all([fromCli(), viewOfCli()])
-    .then(([found, view]) => {
+  reading ??= fromCli()
+    .then((found) => {
       const list = found ?? fromDisk();
-      cache = { at: Date.now(), root, jobs: list, ...(found && view ? { view } : {}) };
+      cache = { at: Date.now(), root, jobs: list, ...(found ? { view: new Set(found.map((one) => one.key)) } : {}) };
       return list;
     })
     .finally(() => (reading = undefined));

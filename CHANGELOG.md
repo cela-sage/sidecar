@@ -7,6 +7,13 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.34.1
+
+### Fixed
+
+- **The tree lists every conversation agent view lists again,** done ones included, because agent view is
+  `claude agents --json --all` and the plain call returns only the running ones.
+
 ## 0.34.0
 
 ### Added

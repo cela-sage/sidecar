@@ -166,7 +166,7 @@ faces, such as Listening, it opens the Tasks face of the conversation in front. 
 task the way `?face=review` picks Review, and the old `/desk` and `/tasks/<slug>` links redirect there.
 
 The rail is the org tree, built from the conversations agent view lists, which the server reads with
-`claude agents --json` beside its `--all` call, parsed by their titles. The backlog of tasks on no project heads
+`claude agents --json --all`, since without `--all` the CLI returns only the running ones, parsed by their titles. The backlog of tasks on no project heads
 it, then the assistant's conversations, titled with EA, then each project with its Project Lead and Design Lead
 conversations and its tasks, each task with its Task Leads and, under each one, the specialists it hired. A Task
 Lead whose process ended folds under the task as done. A task in Done folds under its project, and it leaves the
