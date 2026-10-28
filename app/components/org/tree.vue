@@ -2,6 +2,7 @@
 import { useShortcuts } from "@cela/design";
 import { ChevronDown, ChevronRight, Plus } from "@lucide/vue";
 import type { Mark, OrgConversation, OrgProject, OrgTask } from "~/utils/org";
+import type { TaskMeta } from "~/utils/tasks";
 
 const sc = useSidecar();
 const chrome = useChrome();
@@ -12,6 +13,7 @@ const shown = useFaceShown();
 const folds = useOrgFolds();
 const hot = ref<string>();
 const hotTask = ref<string>();
+const menu = useTemplateRef<{ openFor: (event: MouseEvent, meta: TaskMeta, lead?: string) => void }>("menu");
 
 const tree = computed(() =>
   Org.treeOf({
@@ -146,7 +148,7 @@ useShortcuts(
     </header>
 
     <nav class="scroll" role="tree" aria-label="Who is where">
-      <OrgBacklog :inbox="tree.inbox" :projects="tree.projects" />
+      <OrgBacklog :inbox="tree.inbox" :projects="tree.projects" @menu="(event, meta) => menu?.openFor(event, meta)" />
 
       <span class="section mono-meta" data-gap="true">Assistant</span>
       <OrgRow
@@ -223,6 +225,7 @@ useShortcuts(
               :one="line.item"
               @drop="dropOnTask($event, line.item)"
               @leave="hotTask = undefined"
+              @menu="(event, lead) => menu?.openFor(event, line.item.meta, lead)"
               @open="openConversation"
               @over="overTask($event, line.item)"
             />
@@ -267,6 +270,7 @@ useShortcuts(
         />
       </template>
     </nav>
+    <OrgTaskMenu ref="menu" />
   </UiSurface>
 </template>
 

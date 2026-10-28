@@ -4,9 +4,17 @@ import type { OrgProject } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
 
 const { inbox, projects } = defineProps<{ inbox: TaskMeta[]; projects: OrgProject[] }>();
+const emit = defineEmits<{ menu: [event: MouseEvent, meta: TaskMeta] }>();
 
 const task = $task();
 const desk = $desk();
+
+const create = async (title: string): Promise<void> => {
+  const slug = await desk.create(title);
+  if (!slug) return;
+  desk.isNaming = false;
+  task.show({ slug, edit: true });
+};
 
 const rows = computed(() =>
   inbox.map((meta) => ({ meta, to: projects.find((one) => one.project.key === desk.routes[meta.slug]) })),
@@ -22,47 +30,66 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
 <template>
   <template v-if="inbox.length || desk.isNaming">
     <span class="section mono-meta">Backlog</span>
-    <OrgDraft v-if="desk.isNaming" />
-    <div
-      v-for="{ meta, to } in rows"
-      :key="meta.slug"
-      class="inbox"
-      draggable="true"
-      role="treeitem"
-      :aria-selected="meta.slug === task.slug"
-      :data-ghost="desk.dragging === meta.slug"
-      :data-selected="meta.slug === task.slug"
-      @dragend="desk.dragging = undefined"
-      @dragstart="start($event, meta)"
-    >
-      <button
-        class="inbox-open plain-button focusable"
-        type="button"
-        :data-tip="meta.title"
-        @click="task.show({ slug: meta.slug })"
-      >
-        <OrgMark mark="queued" />
-        <span class="inbox-name">{{ meta.title || deslug(meta.slug) }}</span>
-      </button>
-      <UiButton
-        v-if="to"
-        class="route"
-        :data-tip="`Route to ${to.project.name}'s Project Lead`"
-        :icon="ArrowRight"
-        size="xs"
-        variant="outline"
-        @click="desk.place(meta, to.project)"
-        ><OrgAvatar :project="to.project" :tint="to.tint" />{{ to.project.name }}</UiButton
-      >
-      <UiIconButton
-        class="delete"
-        :icon="Trash2"
-        aria-label="Delete"
-        data-tip="Delete it. Undo, or ⌘Z, brings it back"
-        size="xs"
-        @click="desk.remove(meta)"
+    <OrgDraft
+      v-if="desk.isNaming"
+      label="Name the new task"
+      placeholder="Name the task, then write it in Edit"
+      tip="Add to the backlog · {enter}"
+      @cancel="desk.isNaming = false"
+      @name="create"
+    />
+    <template v-for="{ meta, to } in rows" :key="meta.slug">
+      <OrgDraft
+        v-if="desk.renaming === meta.slug"
+        action="Rename"
+        :initial="meta.title || deslug(meta.slug)"
+        label="Rename the task"
+        placeholder="The task's new title"
+        tip="Rename, keeping its slug · {enter}"
+        @cancel="desk.renaming = undefined"
+        @name="desk.renameTask(meta, $event)"
       />
-    </div>
+      <div
+        v-else
+        class="inbox"
+        draggable="true"
+        role="treeitem"
+        :aria-selected="meta.slug === task.slug"
+        :data-ghost="desk.dragging === meta.slug"
+        :data-selected="meta.slug === task.slug"
+        @contextmenu.prevent="emit('menu', $event, meta)"
+        @dragend="desk.dragging = undefined"
+        @dragstart="start($event, meta)"
+      >
+        <button
+          class="inbox-open plain-button focusable"
+          type="button"
+          :data-tip="meta.title"
+          @click="task.show({ slug: meta.slug })"
+        >
+          <OrgMark mark="queued" />
+          <span class="inbox-name">{{ meta.title || deslug(meta.slug) }}</span>
+        </button>
+        <UiButton
+          v-if="to"
+          class="route"
+          :data-tip="`Route to ${to.project.name}'s Project Lead`"
+          :icon="ArrowRight"
+          size="xs"
+          variant="outline"
+          @click="desk.place(meta, to.project)"
+          ><OrgAvatar :project="to.project" :tint="to.tint" />{{ to.project.name }}</UiButton
+        >
+        <UiIconButton
+          class="delete"
+          :icon="Trash2"
+          aria-label="Remove"
+          data-tip="Remove it. Undo, or ⌘Z, brings it back"
+          size="xs"
+          @click="desk.remove(meta)"
+        />
+      </div>
+    </template>
   </template>
 </template>
 

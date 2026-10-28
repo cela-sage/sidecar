@@ -1,4 +1,4 @@
-import type { DeskAsk, DeskTriage, LeadJoined, TaskAssigned } from "~~/shared/types/desk";
+import type { DeskAsk, DeskTriage, LeadJoined, TaskAssigned, TaskRemoved } from "~~/shared/types/desk";
 import type { Retitled } from "~~/shared/types/session";
 import type { Project } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
@@ -22,6 +22,7 @@ export const $desk = defineStore(() => {
   const dragging = ref<string>();
   const carrying = ref<string>();
   const isNaming = ref(false);
+  const renaming = ref<string>();
   let last: { undo: () => Promise<void>; until: number } | undefined;
 
   const load = async (): Promise<void> => {
@@ -125,15 +126,32 @@ export const $desk = defineStore(() => {
 
   const remove = async (meta: TaskMeta): Promise<void> => {
     const at = `/api/tasks/${encodeURIComponent(meta.slug)}`;
-    const gone = await $fetch(at, { method: "DELETE" }).catch(() => undefined);
+    const gone = await $fetch<TaskRemoved>(at, { method: "DELETE" }).catch((error: unknown) => {
+      chrome.toast(failReason(error) ?? `Could not remove ${titleOf(meta)}`, "destructive");
+      return undefined;
+    });
+    if (!gone) return;
     if (task.slug === meta.slug) task.close();
     await task.readTasks();
-    if (!gone) return chrome.toast(`Could not delete ${titleOf(meta)}`, "destructive");
-    offer(`${titleOf(meta)} is deleted.`, async () => {
+    const stopped = gone.stopped.length
+      ? ` ${plural(gone.stopped.length, "Task Lead")} stopped and stay stopped if you undo.`
+      : "";
+    offer(`${titleOf(meta)} is removed.${stopped}`, async () => {
       const back = await $fetch(`${at}/restore`, { method: "POST" }).catch(() => undefined);
       await task.readTasks();
       if (!back) chrome.toast(`Could not bring ${titleOf(meta)} back`, "destructive");
     });
+  };
+
+  const renameTask = async (meta: TaskMeta, title: string): Promise<void> => {
+    renaming.value = undefined;
+    if (title === titleOf(meta)) return;
+    const at = `/api/tasks/${encodeURIComponent(meta.slug)}`;
+    const done = await $fetch(at, { method: "PATCH", body: { title } }).catch((error: unknown) => {
+      chrome.toast(failReason(error) ?? `Could not rename ${titleOf(meta)}`, "destructive");
+      return undefined;
+    });
+    if (done) await Promise.all([task.readTasks(), task.slug === meta.slug ? task.refresh() : undefined]);
   };
 
   const undoLast = (): boolean => {
@@ -154,5 +172,22 @@ export const $desk = defineStore(() => {
     return made.slug;
   };
 
-  return { asks, bring, carrying, create, dragging, hide, isNaming, lead, load, move, place, remove, routes, undoLast };
+  return {
+    asks,
+    bring,
+    carrying,
+    create,
+    dragging,
+    hide,
+    isNaming,
+    lead,
+    load,
+    move,
+    place,
+    remove,
+    renameTask,
+    renaming,
+    routes,
+    undoLast,
+  };
 });

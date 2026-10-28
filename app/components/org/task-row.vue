@@ -9,6 +9,7 @@ const emit = defineEmits<{
   over: [event: DragEvent];
   drop: [event: DragEvent];
   leave: [];
+  menu: [event: MouseEvent, lead?: string];
 }>();
 
 const sc = useSidecar();
@@ -39,7 +40,19 @@ const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value
 </script>
 
 <template>
+  <OrgDraft
+    v-if="desk.renaming === one.meta.slug"
+    action="Rename"
+    :depth="depth"
+    :initial="one.meta.title || deslug(one.meta.slug)"
+    label="Rename the task"
+    placeholder="The task's new title"
+    tip="Rename, keeping its slug · {enter}"
+    @cancel="desk.renaming = undefined"
+    @name="desk.renameTask(one.meta, $event)"
+  />
   <OrgRow
+    v-else
     class="landing"
     :attach="attach"
     :attach-tip="leadTip"
@@ -49,6 +62,7 @@ const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value
     :is-selected="one.meta.slug === task.slug"
     :mark="one.mark"
     :name="one.meta.title || deslug(one.meta.slug)"
+    @contextmenu.prevent="emit('menu', $event, one.lead)"
     @dragleave="emit('leave')"
     @dragover="emit('over', $event)"
     @drop="emit('drop', $event)"
