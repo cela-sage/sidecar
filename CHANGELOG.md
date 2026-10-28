@@ -7,6 +7,21 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.36.0
+
+### Added
+
+- **The door draws the assistant's AskUserQuestion,** its header, question, options with their descriptions and
+  one or several picks, with an Attach to answer it in the terminal, and goes back to working once it is answered.
+- **`conversation.changed {key, doing, asking}` on the events bus,** published by the turn bus when a conversation's
+  turn opens or ends, with `GET /api/sessions/busy` for the ones open now.
+
+### Fixed
+
+- **A task in progress no longer spins while its Task Leads are idle.** A row works only while the turn bus says its
+  conversation has a turn open, and a task only while one of its Task Leads does, so `running` alone shows a check.
+- **An interrupted turn ends the door's working state,** since an interruption rarely writes the `turn_duration` line.
+
 ## 0.35.0
 
 ### Added

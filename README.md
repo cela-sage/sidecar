@@ -179,7 +179,9 @@ and only a title with no known project lists under No project at the bottom. Eac
 or icon, and each row carries its mark: a
 spinner while it works, red when a task or
 its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
-else, a check once it is idle. What a fold of done tasks or done Task Leads holds sits one level under it.
+else, a check once it is idle. A conversation works only while the turn bus says it has a turn open, through
+`conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
+task in progress spins only while one of its Task Leads works. What a fold of done tasks or done Task Leads holds sits one level under it.
 Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead while the lead's own row is
 folded away, the conversation in front has an ink bar, and clicking a conversation brings it in front on the
 Tasks face with its task open. The tree resizes from its edge like every other face's pane, sharing its width.
@@ -340,6 +342,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
 | `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the task face             | Settles the escalation on the face          |
 | `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | Every Attach, pressed on the one it holds   |
+| `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
 else runs `sidecar publish artifact.created '{"slug":"…","path":"…"}'`. A component consumes with
@@ -353,7 +356,11 @@ Inside the server a write to any transcript reaches `transcripts.on("grew", ({ k
 bus in `server/plugins/turns.ts` parses each growth into the chat's turns once and publishes them as
 `transcripts.on("turned", ({ key, path, turns, offset }) => …)`, so the chat stream and link adoption read the
 same turns instead of each parsing the transcript, and a `turn_duration` entry arrives as an `end` turn that
-settles the reply.
+settles the reply. The same plugin runs every growth through `BusyRules` in `shared/utils/busy.ts`, the rules
+the door's mascot also follows: a prompt opens the turn, an AskUserQuestion call marks it asking until its
+result, and an `end` turn, an interruption or 2.5 seconds of quiet after a narration closes it. Each flip is
+published as `conversation.changed`, and `GET /api/sessions/busy` returns the conversations with a turn open,
+which the app reads each time its event stream opens, since a restarted server knows none until they grow.
 
 ## Asking Claude
 
@@ -365,7 +372,10 @@ that task's history. The door follows the assistant's turn off the conversation 
 transcript, so the mascot and the step line under it say what it is doing now, reading a file, running a
 command or thinking, with a spinner on your message until it answers. A message sent while it is mid-turn shows
 as queued until the queue hands it over. Beside that it shows a receipt for each task it moves with Undo when it took one out of the inbox, its answer, and the question it asks
-back in amber, and the header picks another assistant or starts a new one. With no assistant running the door
+back in amber, with an AskUserQuestion drawn whole: its header, the question, each option with its description,
+and whether it takes one pick or several. Nothing the sidecar sends can answer that question, since a message
+sent while it is open waits in the queue until it is answered, so the block says to answer it in the terminal
+with an Attach, and it goes back to working once the answer lands. The header picks another assistant or starts a new one. With no assistant running the door
 says so, and your message starts one through `POST /api/assistant`, which runs
 `claude --bg --agent executive-assistant` in the meta project's folder, both set by `assistant: { agent, project }`
 in `~/.claude/sidecar/config.json`. An @ in the field lists everyone in the tree, and picking one writes their
