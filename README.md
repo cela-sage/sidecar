@@ -199,10 +199,18 @@ back. Eight seconds after the drop, unless undone, the project's Project Lead, i
 titled with PL and the project's token, gets the task to assess, told it is that project's Project Lead. With no
 Project Lead running, the sidecar starts one, `claude --bg --agent project-lead --name "[<token>] PL <slug>"` in
 the project's folder, with the same message, and `agents` in `~/.claude/sidecar/config.json` renames the agent
-for any role. A backlog row's trash deletes the task through `DELETE /api/tasks/:slug`, which moves its `.md`
-and its history into `~/.claude/sidecar/trash/` and only takes a task still in Backlog, and Undo, or ⌘Z, moves
-them back through `POST /api/tasks/:slug/restore`. New task, or N, drafts a row in the backlog,
+for any role. New task, or N, drafts a row in the backlog,
 writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
+
+Right-click on a task row, in the backlog or under a project, opens its menu. Attach hands the task's lead to
+`sidecar terminal`, and is off while the task has none. Rename turns the row into the New task field with the
+title in it, and Enter writes it through `PATCH /api/tasks/:slug {title}`, which rewrites the stamp title and the
+heading and keeps the file name, so every link by slug holds. Remove, like a backlog row's trash, goes through
+`DELETE /api/tasks/:slug` in any state: it stops every live conversation titled as one of the task's Task Leads,
+the way a conversation's own delete does, writes one history entry naming them, and moves the `.md` and its
+history into `~/.claude/sidecar/trash/`. Undo, or ⌘Z, moves those two back through
+`POST /api/tasks/:slug/restore`, and the toast says the stopped Task Leads stay stopped, since their transcripts
+remain but their processes are gone. A Done row's ✕ keeps its own path and only takes it off the list.
 
 Your own conversations drag. Dropped on another project it is renamed `[<project token>] <subject>`, and on an
 open task it becomes one of the task's Task Leads, renamed `[<project token>] TL <slug> <subject>`, while a
@@ -241,6 +249,7 @@ sidecar task new "Hook that blocks committing settings.local.json"  # an unassig
 sidecar task <slug>                                   # its state, what waits on a decision, your decisions, the history
 sidecar task <slug> state waiting --on "Cosmico" --reason "they confirm they have Fattura 1/2026"
 sidecar task <slug> assign cela
+sidecar task <slug> rename "Right-click menu on the Tasks tree"  # a new title, the same slug
 sidecar task <slug> escalate "Which model runs a Task Lead?" --options "Sonnet xhigh" --options "Opus" --quote "the text it is about"
 sidecar task <slug> hire "a tester, to drive the CLI, Sonnet xhigh"
 sidecar task <slug> judge "Yours, it sets the budget of every task" --pick 1

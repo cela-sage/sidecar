@@ -7,6 +7,19 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.35.0
+
+### Added
+
+- **Right-click on a task row opens Attach, Rename and Remove,** in the backlog and under a project.
+- **A task renames on its slug,** through `PATCH /api/tasks/:slug {title}` and `sidecar task <slug> rename "<title>"`,
+  which rewrite the stamp title and the heading and keep the file name, with a history entry.
+
+### Changed
+
+- **Remove takes a task in any state.** `DELETE /api/tasks/:slug` stops the task's live Task Leads, writes one history
+  entry naming them, and trashes the document and its history, and Undo brings back those two only.
+
 ## 0.34.2
 
 ### Fixed
