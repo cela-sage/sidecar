@@ -57,9 +57,13 @@ const candidates = computed(() => [
 
 const isEmpty = computed(() => !door.thread.length);
 const showsInbox = computed(() => isEmpty.value && inbox.value.length > 0);
-const isBusy = computed(() => door.assistant?.status === "busy");
-const step = computed(() => (isBusy.value ? door.assistant?.detail || "Working" : undefined));
-const mascot = computed<MascotState>(() => (isBusy.value ? "running" : "idle"));
+const live = useConversation(() => door.key);
+const isBusy = computed(() => live.isBusy.value || door.assistant?.status === "busy");
+const step = computed(() => (isBusy.value ? live.step.value || door.assistant?.detail || "Working" : undefined));
+const mascot = computed<MascotState>(() => {
+  if (live.isBusy.value) return live.mascot.value;
+  return isBusy.value ? "running" : "idle";
+});
 
 const who = computed(() => {
   if (door.mode === "new") return { name: "Assistant", id: "new" };
@@ -277,7 +281,7 @@ onMounted(() => {
             </button>
           </div>
         </template>
-        <DoorThread />
+        <DoorThread :step="step" />
       </div>
 
       <footer class="foot">

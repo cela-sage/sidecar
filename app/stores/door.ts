@@ -24,7 +24,7 @@ export interface DoorExchange {
   to?: string;
   text: string;
   step: DoorStep;
-  doing?: string;
+  isQueued?: boolean;
   answer?: string;
   failure?: string;
   receipts: DoorReceipt[];
@@ -41,6 +41,7 @@ interface Following {
 }
 
 const FOLLOW_MS = 15 * 60_000;
+const OPEN_MS = 2000;
 
 const FAILED: Record<Exclude<Delivery, { delivered: true }>["reason"], string> = {
   "no-live-session": "isn't running, so it never got the message",
@@ -87,11 +88,12 @@ export const $door = defineStore(() => {
     if (live) Object.assign(live, patch);
   };
 
-  // Nothing counts until our message lands, and the newest narration stands in for the answer until the turn ends.
-  const follow = (id: string, to: string): void => {
+  // Sent mid-turn, a message lands queued, and only the queue handing it over says the model has it.
+  const follow = (id: string, to: string, isTaken = false): Promise<void> => {
     const source = new EventSource(`/api/sessions/${encodeURIComponent(to)}/stream`);
     const states = new Map(Tasks.of(sc.catalogue.value).map((one) => [one.slug, one.task.state]));
-    let isOurs = false;
+    let isOurs = isTaken;
+    let isWaiting = false;
     let said: string | undefined;
     const stop = (): void => {
       source.close();
@@ -111,16 +113,26 @@ export const $door = defineStore(() => {
     source.addEventListener("turn", (event: MessageEvent<string>) => {
       const turn = parseTurn(event.data);
       if (!turn) return;
-      if (turn.role === "user" && !turn.queued) isOurs = true;
+      if (!isOurs && turn.role === "user" && turn.queued) {
+        isWaiting = true;
+        return update(id, { isQueued: true });
+      }
+      if (!isOurs && ((turn.role === "user" && !turn.queued) || (isWaiting && turn.kind === "drop"))) {
+        isOurs = true;
+        return update(id, { isQueued: false });
+      }
       if (!isOurs) return;
       if (turn.kind === "end") {
-        update(id, { step: "answered", answer: said, doing: undefined });
+        update(id, { step: "answered", answer: said });
         return stop();
       }
       if (turn.role !== "assistant") return;
       if (turn.kind === "narration" || turn.kind === "answer") said = turn.text;
       if (turn.kind === "acting" && turn.tool === "AskUserQuestion") update(id, { step: "waiting", answer: said });
-      else update(id, { doing: turn.text.split("\n")[0] });
+    });
+    return new Promise((ready) => {
+      source.addEventListener("open", () => ready(), { once: true });
+      setTimeout(ready, OPEN_MS);
     });
   };
 
@@ -160,7 +172,7 @@ export const $door = defineStore(() => {
 
   const ask = async (sent: DoorSend, to: string): Promise<void> => {
     const made = exchange(sent.text, to);
-    follow(made.id, to);
+    await follow(made.id, to);
     const reply = await tell({ key: to, text: composed(sent), slug: slugOf(sent.context) });
     if (reply.delivered) return;
     following.get(made.id)?.stop();
@@ -185,7 +197,7 @@ export const $door = defineStore(() => {
     }
     made.to = started.key;
     target.value = { kind: "assistant", key: started.key };
-    follow(made.id, started.key);
+    void follow(made.id, started.key, true);
   };
 
   const send = async (sent: DoorSend): Promise<void> => {

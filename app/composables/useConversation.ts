@@ -1,5 +1,6 @@
 import type { ComputedRef } from "vue";
 import type { MascotState } from "~/components/claude/mascot.vue";
+import type { MaybeComputed } from "~/composables/useSidecar";
 
 type TurnRole = "assistant" | "user" | "system";
 
@@ -11,6 +12,7 @@ export interface ConversationTurn {
   text: string;
   kind?: TurnKind;
   tool?: string;
+  arg?: string;
   /** The provider's tool_use id, so a result pairs back to its call. */
   ref?: string;
   /** Started with run_in_background, so it is long-running by construction. */
@@ -26,6 +28,8 @@ const QUIET_MS = 2_500;
 export interface Conversation {
   /** What the mascot acts out: the newest tool call, or thinking while nothing has come back yet. */
   mascot: ComputedRef<MascotState>;
+  step: MaybeComputed<string>;
+  isBusy: ComputedRef<boolean>;
 }
 
 interface ConversationSnapshot {
@@ -41,6 +45,7 @@ export function asTurn(value: unknown): ConversationTurn | undefined {
   if (role !== "assistant" && role !== "user" && role !== "system") return undefined;
   const kind = "kind" in value ? value.kind : undefined;
   const tool = "tool" in value ? value.tool : undefined;
+  const arg = "arg" in value ? value.arg : undefined;
   const ref = "ref" in value ? value.ref : undefined;
   return {
     at,
@@ -48,6 +53,7 @@ export function asTurn(value: unknown): ConversationTurn | undefined {
     text,
     kind: isKind(kind) ? kind : undefined,
     tool: typeof tool === "string" && tool ? tool : undefined,
+    arg: typeof arg === "string" && arg ? arg : undefined,
     ref: typeof ref === "string" && ref ? ref : undefined,
     bg: "bg" in value && value.bg === true ? true : undefined,
     queued: "queued" in value && value.queued === true ? true : undefined,
@@ -66,9 +72,9 @@ export function parseTurn(raw: string): ConversationTurn | undefined {
   }
 }
 
-export function useConversation(): Conversation {
+export function useConversation(keyOf: () => string | undefined): Conversation {
   const sc = useSidecar();
-  const { session } = useScreen();
+  const session = computed(() => sc.sessions.value.find((one) => one.key === keyOf()));
 
   // Never shown, but a replayed or re-queued turn is only recognised against what already arrived.
   let turns: ConversationTurn[] = [];
@@ -84,6 +90,8 @@ export function useConversation(): Conversation {
       long: long.value,
     }),
   );
+  const step = computed(() => stepOf({ turn: doing.value, awaiting: awaiting.value }));
+  const isBusy = computed(() => awaiting.value || !!doing.value);
   let ageing: ReturnType<typeof setTimeout> | undefined;
   let quiet: ReturnType<typeof setTimeout> | undefined;
   const open = new Map<string, number>();
@@ -240,11 +248,7 @@ export function useConversation(): Conversation {
   }
 
   onMounted(() => {
-    watch(
-      () => sc.sessionKey.value,
-      (key) => void follow(key),
-      { immediate: true },
-    );
+    watch(keyOf, (key) => void follow(key), { immediate: true });
     // The registry is the only thing that knows the turn is over; a text block never says so itself.
     watch(
       () => session.value?.status,
@@ -260,5 +264,5 @@ export function useConversation(): Conversation {
     });
   });
 
-  return { mascot };
+  return { isBusy, mascot, step };
 }

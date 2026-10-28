@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import type { DoorExchange, DoorReceipt } from "~/stores/door";
 
+const { step } = defineProps<{ step?: string }>();
 const door = $door();
 
 const canUndo = (receipt: DoorReceipt): boolean =>
@@ -35,7 +36,12 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
         </div>
       </div>
 
-      <p v-if="one.step === 'working'" class="busy shimmer">{{ one.doing || "Reading it" }}</p>
+      <p v-if="one.step === 'working'" class="busy" role="status">
+        <OrgMark :mark="one.isQueued ? 'queued' : 'working'" />
+        <span class="busy-line shimmer">{{
+          one.isQueued ? "Queued until it finishes what it is on" : step || "Reading your message"
+        }}</span>
+      </p>
 
       <div v-if="one.step === 'waiting'" class="asks">
         <span class="asks-eyebrow mono-meta"><span class="asks-dot dot" />Waiting on your answer</span>
@@ -90,7 +96,11 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
 }
 
 .busy {
-  @apply m-0 typo-body;
+  @apply m-0 flex min-w-0 items-center gap-2 typo-body;
+}
+
+.busy-line {
+  @apply min-w-0 truncate;
 }
 
 .says {

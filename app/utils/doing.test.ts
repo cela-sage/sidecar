@@ -1,8 +1,15 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { doingOf, wroteIn } from "./doing.ts";
+import { doingOf, stepOf, wroteIn } from "./doing.ts";
 
-const acting = (tool: string) => ({ at: 1, role: "assistant" as const, text: tool, kind: "acting" as const, tool });
+const acting = (tool: string, arg?: string) => ({
+  at: 1,
+  role: "assistant" as const,
+  text: tool,
+  kind: "acting" as const,
+  tool,
+  ...(arg ? { arg } : {}),
+});
 const said = { at: 1, role: "assistant" as const, text: "Reading the parser first.", kind: "narration" as const };
 
 test("asked but nothing back yet is thinking", () => {
@@ -49,6 +56,17 @@ test("offloading to another party is running at once, MCP by prefix", () => {
 
 test("nothing at all is idle", () => {
   assert.equal(doingOf({}), "idle");
+});
+
+test("the step line says what the newest block does, in words", () => {
+  assert.equal(stepOf({ awaiting: true }), "Reading your message");
+  assert.equal(stepOf({ turn: acting("Read", "Cela/sidecar-tasks-face.md") }), "Reading Cela/sidecar-tasks-face.md");
+  assert.equal(stepOf({ turn: acting("Bash", "Mark the task done") }), "Mark the task done");
+  assert.equal(stepOf({ turn: acting("Bash") }), "Bash");
+  assert.equal(stepOf({ turn: acting("mcp__claude_ai_Gmail__search_threads") }), "Using search_threads");
+  assert.equal(stepOf({ turn: { ...said, kind: "thinking" } }), "Thinking");
+  assert.equal(stepOf({ turn: { ...said, text: "Routing the inbox.\nThen the board." } }), "Routing the inbox.");
+  assert.equal(stepOf({}), undefined);
 });
 
 test("wroteIn spots the calls that set the latch", () => {

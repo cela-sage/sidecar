@@ -31,3 +31,33 @@ export function doingOf({ turn, awaiting, wrote, long }: Doing): MascotState {
 export function wroteIn(turn?: ConversationTurn): boolean {
   return turn?.kind === "acting" && !!turn.tool && WRITE.has(turn.tool);
 }
+
+const VERB: Record<string, string> = {
+  Read: "Reading",
+  WebFetch: "Reading",
+  Write: "Writing",
+  Edit: "Editing",
+  NotebookEdit: "Editing",
+  Grep: "Searching for",
+  Glob: "Looking for",
+  WebSearch: "Searching the web for",
+  AskUserQuestion: "Asking you",
+  Agent: "Handing off",
+  Task: "Handing off",
+  Workflow: "Running a workflow",
+  Skill: "Loading the skill",
+};
+
+const actingOf = (tool: string, arg?: string): string => {
+  const verb = VERB[tool] ?? (tool.startsWith("mcp__") ? `Using ${tool.split("__").at(-1)}` : undefined);
+  if (!verb) return arg ?? tool;
+  return arg ? `${verb} ${arg}` : verb;
+};
+
+export function stepOf({ turn, awaiting }: Doing): string | undefined {
+  if (awaiting) return "Reading your message";
+  if (!turn) return undefined;
+  if (turn.kind === "thinking") return "Thinking";
+  if (turn.kind === "acting" && turn.tool) return actingOf(turn.tool, turn.arg);
+  return turn.text.trim().split("\n")[0] || undefined;
+}
