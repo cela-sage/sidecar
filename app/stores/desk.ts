@@ -5,6 +5,13 @@ import { Titles } from "~~/shared/utils/titles";
 import type { OrgConversation } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
 
+interface Retitle {
+  row: OrgConversation;
+  title: string;
+  done: string;
+  failed: string;
+}
+
 export const $desk = defineStore(() => {
   const UNDO_MS = 8000;
   const sc = useSidecar();
@@ -69,17 +76,30 @@ export const $desk = defineStore(() => {
     return !!done;
   };
 
-  const lead = async (row: OrgConversation, meta: TaskMeta, project: Project): Promise<void> => {
+  const retitle = async ({ row, title, done, failed }: Retitle): Promise<void> => {
     const was = sc.sessions.value.find((one) => one.key === row.key)?.name;
-    const title = Titles.asLead({ was: row.title, token: project.token, slug: meta.slug });
-    if (!(await rename(row.key, title)))
-      return chrome.toast(`Could not put ${row.name} on ${titleOf(meta)}`, "destructive");
-    const text = `${row.name} joined ${titleOf(meta)} as a Task Lead.`;
-    if (!was) return chrome.toast(text);
-    offer(text, async () => {
+    if (!(await rename(row.key, title))) return chrome.toast(failed, "destructive");
+    if (!was) return chrome.toast(done);
+    offer(done, async () => {
       if (!(await rename(row.key, was))) chrome.toast(`Could not rename ${row.name} back`, "destructive");
     });
   };
+
+  const lead = (row: OrgConversation, meta: TaskMeta, project: Project): Promise<void> =>
+    retitle({
+      row,
+      title: Titles.asLead({ was: row.title, token: project.token, slug: meta.slug }),
+      done: `${row.name} joined ${titleOf(meta)} as a Task Lead.`,
+      failed: `Could not put ${row.name} on ${titleOf(meta)}`,
+    });
+
+  const bring = (row: OrgConversation, project: Project): Promise<void> =>
+    retitle({
+      row,
+      title: Titles.inProject({ was: row.title, token: project.token }),
+      done: `${row.name} moved to ${project.name}.`,
+      failed: `Could not move ${row.name} to ${project.name}`,
+    });
 
   const undoLast = (): boolean => {
     if (!last || last.until < Date.now()) return false;
@@ -99,5 +119,5 @@ export const $desk = defineStore(() => {
     return made.slug;
   };
 
-  return { asks, carrying, create, dragging, isNaming, lead, load, move, place, routes, undoLast };
+  return { asks, bring, carrying, create, dragging, isNaming, lead, load, move, place, routes, undoLast };
 });

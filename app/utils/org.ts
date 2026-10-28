@@ -30,6 +30,7 @@ export interface OrgProject {
   leads: OrgConversation[];
   tasks: OrgTask[];
   done: OrgTask[];
+  conversations: OrgConversation[];
 }
 
 export interface OrgTree {
@@ -51,6 +52,11 @@ export interface OrgInput {
 interface Placed {
   session: LiveSession;
   title: RoleTitle & { role: Role };
+}
+
+interface Owned {
+  session: LiveSession;
+  title: RoleTitle;
 }
 
 interface Placing {
@@ -82,11 +88,17 @@ const placedOf = (sessions: LiveSession[]): Placed[] =>
     return title?.role ? [{ session, title: { ...title, role: title.role } }] : [];
   });
 
-const looseOf = (session: LiveSession, asking: Set<string>): OrgConversation => {
+const ownedOf = (sessions: LiveSession[]): Owned[] =>
+  sessions.flatMap((session) => {
+    const title = session.name ? Titles.parse(session.name) : undefined;
+    return title && !title.role ? [{ session, title }] : [];
+  });
+
+const looseOf = (session: LiveSession, asking: Set<string>, name?: string): OrgConversation => {
   const title = session.name || session.cwd.split("/").filter(Boolean).at(-1) || session.key;
   const state = asking.has(session.name ?? "") ? "needs input" : Tasks.agentStateOf(session);
   const marks: Record<AgentState, Mark> = { working: "working", "needs input": "waits", completed: "completed" };
-  return { key: session.key, title, name: title, mark: marks[state] };
+  return { key: session.key, title, name: name ?? title, mark: marks[state] };
 };
 
 const nameOf = ({ title }: Placed, slug?: string): string => {
@@ -140,6 +152,7 @@ const treeOf = ({ sessions, tasks, projects, asking = [] }: OrgInput): OrgTree =
   const asked = new Set(asking);
   const listed = sessions.filter((session) => !session.archived || session.live);
   const placed = placedOf(listed);
+  const owned = ownedOf(listed);
   const ordered = [...tasks].sort(Tasks.order);
   const all = projectsOf(ordered, projects);
   const keys = all.map((one) => one.key);
@@ -153,13 +166,18 @@ const treeOf = ({ sessions, tasks, projects, asking = [] }: OrgInput): OrgTree =
       .sort(byLead)
       .map((one) => conversationOf(one, { asking: asked }));
     const open = built.filter((one) => one.meta.task.state !== "done");
+    const conversations = owned
+      .filter((one) => sameWord(one.title.token, project.token))
+      .sort((a, b) => Tasks.agentOrder(a.session, b.session))
+      .map((one) => looseOf(one.session, asked, one.title.rest));
     return {
       project,
       tint: Tasks.tintOf(project.key, keys),
-      mark: worst([...leads, ...open].map((one) => one.mark)),
+      mark: worst([...leads, ...open, ...conversations].map((one) => one.mark)),
       leads,
       tasks: open,
       done: built.filter((one) => one.meta.task.state === "done"),
+      conversations,
     };
   });
 
@@ -170,6 +188,7 @@ const treeOf = ({ sessions, tasks, projects, asking = [] }: OrgInput): OrgTree =
   const placedRows = groups.flatMap((group) => [
     ...group.leads,
     ...[...group.tasks, ...group.done].flatMap((one) => [...one.leads, ...one.done]),
+    ...group.conversations,
   ]);
   const seen = new Set([...assistants, ...placedRows].map((row) => row.key));
   const unplaced = listed

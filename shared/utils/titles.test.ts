@@ -34,3 +34,11 @@ test("a conversation dropped on a task becomes its Task Lead, keeping the deadli
   assert.equal(title?.role, "TL");
   assert.equal(!!title && Titles.belongsTo(title, "sidecar-tasks-face"), true);
 });
+
+test("a conversation dropped on a project takes its token, losing a role it had and a ticket from elsewhere", () => {
+  const into = (was: string, token = "MF"): string => Titles.inProject({ was, token });
+  assert.equal(into("[Cela] dark mode island visibility"), "[MF] dark mode island visibility");
+  assert.equal(into("[MF] Oct 5 AI-222 rebase and mf-ui bump"), "[MF] Oct 5 AI-222 rebase and mf-ui bump");
+  assert.equal(into("Sep 30 — Paris ITA Airways Art. 9", "madong"), "[madong] Sep 30 Paris ITA Airways Art. 9");
+  assert.equal(into("[Ops] TL rollout-plan review"), "[MF] review");
+});

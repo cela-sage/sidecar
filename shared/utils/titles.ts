@@ -7,10 +7,18 @@ export interface RoleTitle {
   words: string[];
 }
 
-export interface LeadTitle {
+export interface ProjectTitle {
   was: string;
   token: string;
+}
+
+export interface LeadTitle extends ProjectTitle {
   slug: string;
+}
+
+interface Parts {
+  head: string[];
+  subject: string[];
 }
 
 const MONTH = /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)$/;
@@ -34,15 +42,24 @@ const belongsTo = (title: RoleTitle, slug: string): boolean => {
   return title.words.slice(0, at + 2).some((word) => word.toLowerCase() === slug.toLowerCase());
 };
 
-const asLead = ({ was, token, slug }: LeadTitle): string => {
+const partsOf = ({ was, token }: ProjectTitle): Parts => {
   const title = parse(was);
   const words = (title?.words ?? was.split(/\s+/)).filter((word) => WORDY.test(word));
   const date = MONTH.test(words[0] ?? "") && DAY.test(words[1] ?? "") ? words.splice(0, 2) : [];
   const tickets: string[] = [];
   while (TICKET.test(words[0] ?? "")) tickets.push(...words.splice(0, 1));
   if (isRole(words[0])) words.splice(0, words[1]?.includes("-") ? 2 : 1);
-  const kept = title?.token === token ? tickets : [];
-  return `[${token}] ${[...date, ...kept, "TL", slug, ...words].join(" ")}`;
+  return { head: [...date, ...(title?.token === token ? tickets : [])], subject: words };
 };
 
-export const Titles = { asLead, belongsTo, parse };
+const inProject = (to: ProjectTitle): string => {
+  const { head, subject } = partsOf(to);
+  return `[${to.token}] ${[...head, ...subject].join(" ")}`;
+};
+
+const asLead = ({ slug, ...to }: LeadTitle): string => {
+  const { head, subject } = partsOf(to);
+  return `[${to.token}] ${[...head, "TL", slug, ...subject].join(" ")}`;
+};
+
+export const Titles = { asLead, belongsTo, inProject, parse };

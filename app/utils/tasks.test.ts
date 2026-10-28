@@ -79,7 +79,7 @@ test("the history folds runs, puts the divider under what the Project Lead read,
   assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past Running:running Done:future");
 });
 
-test("the org tree puts each role where it works, folds what is done and keeps your own conversations under No project", () => {
+test("the org tree puts each role where it works, folds what is done and files your own conversations by their prefix", () => {
   const meta = (slug: string, state: TaskMeta["task"]["state"], project?: string, lead?: string): TaskMeta => ({
     slug,
     title: slug,
@@ -101,6 +101,8 @@ test("the org tree puts each role where it works, folds what is done and keeps y
     session({ key: "loop", name: "[Cela] TL sidecar-task-board loop", live: false }),
     session({ key: "gone", name: "[Cela] TL sidecar-task-board titles", live: false, archived: true }),
     session({ key: "own", name: "contracts guide", status: "busy" }),
+    session({ key: "zoom", name: "[Cela] sidecar macOS zoom", status: "waiting" }),
+    session({ key: "ops", name: "[Ops] rollout review" }),
   ];
   const tree = Org.treeOf({
     sessions,
@@ -132,14 +134,18 @@ test("the org tree puts each role where it works, folds what is done and keeps y
     cela?.done.map((one) => one.meta.slug),
     ["session-title-rule"],
   );
+  assert.deepEqual(
+    cela?.conversations.map((one) => `${one.name} ${one.mark}`),
+    ["sidecar macOS zoom waits"],
+  );
   assert.equal(cela?.mark, "needs");
   assert.equal(metaProject?.mark, undefined);
   assert.equal(tree.open, 2);
   assert.deepEqual(
     tree.unplaced.map((one) => `${one.role ?? "-"} ${one.name} ${one.mark}`),
-    ["- contracts guide working"],
+    ["- contracts guide working", "- [Ops] rollout review completed"],
   );
-  assert.equal(tree.conversations, 7);
+  assert.equal(tree.conversations, 9);
 });
 
 test("a conversation reads the claude agents state off its lane, and off its status without one", () => {

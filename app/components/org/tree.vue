@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
 import { ArrowRight, ChevronDown, ChevronRight, Plus } from "@lucide/vue";
+import { useLocalStorage } from "@vueuse/core";
 import type { Mark, OrgConversation, OrgProject, OrgTask } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
 
@@ -10,7 +11,7 @@ const task = $task();
 const desk = $desk();
 const artifact = $artifact();
 const shown = useFaceShown();
-const toggled = ref<Partial<Record<string, boolean>>>({});
+const toggled = useLocalStorage<Partial<Record<string, boolean>>>("sc:org-folds", {});
 const hot = ref<string>();
 const hotTask = ref<string>();
 
@@ -37,6 +38,7 @@ const FOR_YOU: Mark[] = ["needs", "waits"];
 
 const holdsInView = (group: OrgProject): boolean =>
   group.leads.some(front) ||
+  group.conversations.some(front) ||
   [...group.tasks, ...group.done].some(
     (one) => one.meta.slug === task.slug || one.leads.some(front) || one.done.some(front),
   );
@@ -71,9 +73,13 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
 
 const dragged = computed(() => tree.value.inbox.find((one) => one.slug === desk.dragging));
 
+const isHome = (group: OrgProject, row: OrgConversation): boolean =>
+  group.conversations.some((one) => one.key === row.key);
+
 const over = (event: DragEvent, group: OrgProject): void => {
-  if (desk.carrying && !isOpen(group)) toggled.value = { ...toggled.value, [group.project.key]: true };
-  if (!dragged.value || !group.project.folder) return;
+  const row = carried.value;
+  if (row && !isOpen(group)) toggled.value = { ...toggled.value, [group.project.key]: true };
+  if (row ? isHome(group, row) : !dragged.value || !group.project.folder) return;
   event.preventDefault();
   if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
   hot.value = group.project.key;
@@ -81,6 +87,13 @@ const over = (event: DragEvent, group: OrgProject): void => {
 
 const drop = (event: DragEvent, group: OrgProject): void => {
   hot.value = undefined;
+  const row = carried.value;
+  if (row) {
+    letGo();
+    if (isHome(group, row)) return;
+    event.preventDefault();
+    return void desk.bring(row, group.project);
+  }
   const meta = dragged.value;
   if (!meta) return;
   event.preventDefault();
@@ -88,7 +101,11 @@ const drop = (event: DragEvent, group: OrgProject): void => {
   void desk.place(meta, group.project);
 };
 
-const carried = computed(() => tree.value.unplaced.find((one) => one.key === desk.carrying));
+const carried = computed(() =>
+  [...tree.value.unplaced, ...tree.value.projects.flatMap((one) => one.conversations)].find(
+    (one) => one.key === desk.carrying,
+  ),
+);
 
 const carry = (event: DragEvent, row: OrgConversation): void => {
   event.dataTransfer?.setData("text/plain", row.title);
@@ -104,15 +121,18 @@ const letGo = (): void => {
 const overTask = (event: DragEvent, one: OrgTask): void => {
   if (!carried.value || one.meta.task.state === "done") return;
   event.preventDefault();
+  event.stopPropagation();
   if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  hot.value = undefined;
   hotTask.value = one.meta.slug;
 };
 
 const dropOnTask = (event: DragEvent, one: OrgTask, group: OrgProject): void => {
   const row = carried.value;
-  letGo();
   if (!row || one.meta.task.state === "done") return;
   event.preventDefault();
+  event.stopPropagation();
+  letGo();
   void desk.lead(row, one.meta, group.project);
 };
 
@@ -223,7 +243,9 @@ useShortcuts(
           <OrgMark v-if="group.mark" :mark="group.mark" />
           <span v-else class="mark-square"><span class="square" :data-tint="group.tint" /></span>
           <span class="project-name">{{ group.project.name }}</span>
-          <span v-if="hot === group.project.key" class="drop mono-meta">to its Project Lead</span>
+          <span v-if="hot === group.project.key" class="drop mono-meta">{{
+            carried ? `as [${group.project.token}]` : "to its Project Lead"
+          }}</span>
         </button>
 
         <template v-if="isOpen(group)">
@@ -300,6 +322,23 @@ useShortcuts(
             <UiIcon :icon="isUnfolded(`tasks:${group.project.key}`) ? ChevronDown : ChevronRight" size="xs" />
             <span class="mono-meta">{{ plural(group.done.length, "done task") }}</span>
           </button>
+
+          <OrgRow
+            v-for="row in group.conversations"
+            :key="row.key"
+            class="carry"
+            :attach="row.key"
+            :data-ghost="desk.carrying === row.key"
+            :depth="1"
+            draggable="true"
+            :is-front="front(row)"
+            :mark="row.mark"
+            :name="row.name"
+            :tip="row.title"
+            @dragend="letGo"
+            @dragstart="carry($event, row)"
+            @open="openConversation(row)"
+          />
         </template>
       </div>
 
