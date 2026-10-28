@@ -24,12 +24,10 @@ figure.pasted figcaption>span:first-child{flex:1;min-width:0;overflow:hidden;tex
 figure.pasted .name{font-family:var(--mono);font-size:10px}
 figure.pasted .preview{border:1px solid var(--border);border-radius:999px;color:var(--muted);font-size:11px;padding:1px 8px;text-decoration:none}
 figure.pasted .preview:hover{border-color:var(--accent);color:var(--accent)}`;
-const TASK_CSS = `.page[data-task]{counter-reset:section;font-size:14px;line-height:1.6;max-width:none;padding:0 0 24px}
-.page[data-task] h2{align-items:baseline;counter-increment:section;display:flex;font-size:15px;font-weight:700;gap:10px;margin-top:0}
-.page[data-task] h2+*{margin-top:6px}
-.page[data-task] h2[id="impact"]+*{margin-top:8px}
-.page[data-task] h2::before{color:var(--muted);content:counter(section,decimal-leading-zero);font-family:var(--mono);font-size:10px;font-weight:400}
-.page[data-task] h2[data-needs-data]::after{align-items:center;align-self:center;border:1px dashed var(--border-strong);border-radius:999px;color:var(--muted);content:attr(data-needs-data);display:inline-flex;font-family:var(--mono);font-size:10px;font-weight:500;height:18px;letter-spacing:0;padding:0 8px}
+const TASK_CSS = `body:has(>.page[data-task]){background:transparent}
+.page[data-task]{padding-top:24px}
+.page[data-task]>:first-child>h2:first-child{margin-top:0}
+.page[data-task] h2[data-needs-data]::after{align-items:center;border:1px dashed var(--border-strong);border-radius:999px;color:var(--muted);content:attr(data-needs-data);display:inline-flex;font-family:var(--mono);font-size:10px;font-weight:500;height:18px;letter-spacing:0;margin-left:10px;padding:0 8px;vertical-align:middle}
 .impact{display:grid;gap:10px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));list-style:none;margin:0;padding:0}
 .impact li{margin:0}
 .impact .card{background:var(--surface-2);border:1px solid transparent;border-radius:12px;color:var(--muted);font-size:12px;line-height:1.5;padding:12px 14px}
