@@ -266,6 +266,7 @@ sidecar task <slug> rename "Right-click menu on the Tasks tree"  # a new title, 
 sidecar task <slug> escalate "Which model runs a Task Lead?" --options "Sonnet xhigh" --options "Opus" --quote "the text it is about"
 sidecar task <slug> hire "a tester, to drive the CLI, Sonnet xhigh"
 sidecar task <slug> judge "Yours, it sets the budget of every task" --pick 1
+sidecar task <slug> judge "The transcripts settle it" --pick 1 --settle  # within the Project Lead's reach
 sidecar task <slug> decide 1                          # or decide "your own words"; --thread <n> names one
 sidecar task <slug> done
 ```
@@ -276,7 +277,11 @@ holding its options, the Project Lead's verdict and pick, and in the end the dec
 deciding it puts the task back to running and tells the conversation that asked, under the `[[sidecar]]`
 marker. A hire is the same thread with Approve and Refuse, and blocks nothing. Who called is read off the
 conversation's title: a role token makes it that role, and no token makes it you, except that a decide is always
-yours, whichever conversation runs it, since you are the lane's only decider. Waiting needs `--reason`.
+yours, whichever conversation runs it. A judge alone is the Project Lead's read and waits on you, while
+`judge --settle` settles one within its reach the way a decide does, filed as the Project Lead's decision under
+its title, so it stays out of your decisions and a later decide on that thread is refused as settled. `--settle`
+with no verdict settles the verdict already standing, which lets a Task Lead close one the Project Lead judged.
+Waiting needs `--reason`.
 
 Escalate and hire notify you. When a sidecar page is open, the one holding the `sidecar:task-notices` lock
 raises a notification whose click opens the task on the Tasks face; with no page open, or without notification permission,

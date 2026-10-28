@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.39.1
+
+### Added
+
+- **`sidecar task <slug> judge "<verdict>" --pick <n> --settle`** settles an escalation within the Project Lead's
+  reach: the thread resolves as the Project Lead's decision under its title, the task goes back to running and the
+  conversation that asked hears it. A judge without the flag still waits on you, a decide on a settled thread is
+  refused, and `--settle` with no verdict settles the one already standing.
+
 ## 0.39.0
 
 ### Added
