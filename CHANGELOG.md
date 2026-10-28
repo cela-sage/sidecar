@@ -7,6 +7,22 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.37.0
+
+### Added
+
+- **The door answers the assistant's question with one click.** An option click answers it, a multi-select sends
+  its picks on Send, and the terminal's dialog closes, while a pick in the terminal still answers it first.
+- **`/api/questions` and `question.changed`,** the channel between the door and the mod's `tool.call` hook on
+  AskUserQuestion, keyed by the call's tool id: `POST` and `DELETE /api/questions/:ref` open and settle a
+  question, `GET /api/questions` lists the open ones, and `GET` and `POST /api/questions/:ref/answer` carry the pick.
+
+### Fixed
+
+- **An open question shows in the door and turns its conversation's mark red while it is open,** not only once
+  answered. A tool call reaches the transcript only after it finishes, so 0.36.0's question and asking mark,
+  read from the transcript, never showed in time; the mod now announces the question itself.
+
 ## 0.36.0
 
 ### Added

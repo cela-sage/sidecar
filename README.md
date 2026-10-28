@@ -343,6 +343,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the task face             | Settles the escalation on the face          |
 | `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | Every Attach, pressed on the one it holds   |
 | `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
+| `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion and again, without `questions`, when it settles | The door draws the question and its options |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
 else runs `sidecar publish artifact.created '{"slug":"…","path":"…"}'`. A component consumes with
@@ -357,8 +358,9 @@ bus in `server/plugins/turns.ts` parses each growth into the chat's turns once a
 `transcripts.on("turned", ({ key, path, turns, offset }) => …)`, so the chat stream and link adoption read the
 same turns instead of each parsing the transcript, and a `turn_duration` entry arrives as an `end` turn that
 settles the reply. The same plugin runs every growth through `BusyRules` in `shared/utils/busy.ts`, the rules
-the door's mascot also follows: a prompt opens the turn, an AskUserQuestion call marks it asking until its
-result, and an `end` turn, an interruption or 2.5 seconds of quiet after a narration closes it. Each flip is
+the door's mascot also follows: a prompt opens the turn, and an `end` turn, an interruption or 2.5 seconds of
+quiet after a narration closes it. A tool call reaches the transcript only once it has finished, so an open
+AskUserQuestion is never in it: the mod tells the server instead, and that marks the conversation asking. Each flip is
 published as `conversation.changed`, and `GET /api/sessions/busy` returns the conversations with a turn open,
 which the app reads each time its event stream opens, since a restarted server knows none until they grow.
 
@@ -373,9 +375,15 @@ transcript, so the mascot and the step line under it say what it is doing now, r
 command or thinking, with a spinner on your message until it answers. A message sent while it is mid-turn shows
 as queued until the queue hands it over. Beside that it shows a receipt for each task it moves with Undo when it took one out of the inbox, its answer, and the question it asks
 back in amber, with an AskUserQuestion drawn whole: its header, the question, each option with its description,
-and whether it takes one pick or several. Nothing the sidecar sends can answer that question, since a message
-sent while it is open waits in the queue until it is answered, so the block says to answer it in the terminal
-with an Attach, and it goes back to working once the answer lands. The header picks another assistant or starts a new one. With no assistant running the door
+and whether it takes one pick or several. Clicking an option answers it, a multi-select collects its picks and
+sends them on Send, and several questions go back together once each has a pick, posted to
+`POST /api/questions/:ref/answer` with the call's tool id and the answers keyed by question text. The door
+learns the question from `question.changed`, since the transcript only holds the call once it is answered. The mod hands
+them to the waiting call, so the terminal's dialog closes and the model reads the same result a pick in the
+terminal gives. The terminal stays a place to answer, with an Attach beside the options, and whichever answers
+first wins. A message typed in the field still waits in the queue behind the open question, and an answer
+the session never takes, one with no sidecar mod or already answered, says so and points at the terminal.
+The block goes back to working once the answer lands. The header picks another assistant or starts a new one. With no assistant running the door
 says so, and your message starts one through `POST /api/assistant`, which runs
 `claude --bg --agent executive-assistant` in the meta project's folder, both set by `assistant: { agent, project }`
 in `~/.claude/sidecar/config.json`. An @ in the field lists everyone in the tree, and picking one writes their
@@ -402,6 +410,15 @@ holds up a keystroke, and what that point does is the switching mode below. Each
 is how the sidecar still lists a conversation after it has ended. A turn that ends on the main loop with an
 answer, and a prompt you type, go to `sidecar task --heard turn` and `--heard message` on stdin, which keeps them
 only for a Task Lead's conversation, in its task's history.
+
+An AskUserQuestion call races its own dialog against the door. The mod's `tool.call` hook opens the question
+with `POST /api/questions/<tool id>` and the session's key, which the server publishes as `question.changed`
+and lists at `GET /api/questions`, runs the dialog, and at the same time long-polls
+`GET /api/questions/<tool id>/answer`, which the server holds for 20 seconds before answering empty. An answer
+the door posts within those seconds, or in the two after one ends, comes back to the hook, which returns it as
+the tool's result and so closes the dialog. However the call settles, a pick in either place or Esc
+interrupting the turn, the hook closes the question with `DELETE /api/questions/<tool id>`, which also ends its
+poll. With the sidecar down it tries again every five seconds, and the dialog answers as it always did.
 
 It also keeps the review the sidecar's Review face shows. Before Claude's first edit to a file, through
 Edit, Write, NotebookEdit or a shell command, it stores what the file held, and each turn it records which
