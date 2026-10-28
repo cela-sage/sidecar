@@ -12,6 +12,7 @@ const artifact = $artifact();
 const shown = useFaceShown();
 const toggled = ref<Partial<Record<string, boolean>>>({});
 const hot = ref<string>();
+const hotTask = ref<string>();
 
 const tree = computed(() =>
   Org.treeOf({
@@ -71,6 +72,7 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
 const dragged = computed(() => tree.value.inbox.find((one) => one.slug === desk.dragging));
 
 const over = (event: DragEvent, group: OrgProject): void => {
+  if (desk.carrying && !isOpen(group)) toggled.value = { ...toggled.value, [group.project.key]: true };
   if (!dragged.value || !group.project.folder) return;
   event.preventDefault();
   if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
@@ -84,6 +86,34 @@ const drop = (event: DragEvent, group: OrgProject): void => {
   event.preventDefault();
   desk.dragging = undefined;
   void desk.place(meta, group.project);
+};
+
+const carried = computed(() => tree.value.unplaced.find((one) => one.key === desk.carrying));
+
+const carry = (event: DragEvent, row: OrgConversation): void => {
+  event.dataTransfer?.setData("text/plain", row.title);
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+  requestAnimationFrame(() => (desk.carrying = row.key));
+};
+
+const letGo = (): void => {
+  desk.carrying = undefined;
+  hotTask.value = undefined;
+};
+
+const overTask = (event: DragEvent, one: OrgTask): void => {
+  if (!carried.value || one.meta.task.state === "done") return;
+  event.preventDefault();
+  if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
+  hotTask.value = one.meta.slug;
+};
+
+const dropOnTask = (event: DragEvent, one: OrgTask, group: OrgProject): void => {
+  const row = carried.value;
+  letGo();
+  if (!row || one.meta.task.state === "done") return;
+  event.preventDefault();
+  void desk.lead(row, one.meta, group.project);
 };
 
 useShortcuts(
@@ -215,15 +245,22 @@ useShortcuts(
             :key="one.meta.slug"
           >
             <OrgRow
+              class="landing"
               :attach="one.lead"
               :attach-tip="leadTip(one)"
+              :data-hot="hotTask === one.meta.slug"
               :depth="1"
               is-task
               :is-selected="one.meta.slug === task.slug"
               :mark="one.mark"
               :name="one.meta.title || deslug(one.meta.slug)"
+              @dragleave="hotTask = undefined"
+              @dragover="overTask($event, one)"
+              @drop="dropOnTask($event, one, group)"
               @open="task.show({ slug: one.meta.slug })"
-            />
+            >
+              <span v-if="hotTask === one.meta.slug" class="drop mono-meta">as its Task Lead</span>
+            </OrgRow>
             <OrgRow
               v-for="row in [...one.leads, ...(isUnfolded(`done:${one.meta.slug}`) ? one.done : [])]"
               :key="row.key"
@@ -271,12 +308,17 @@ useShortcuts(
         <OrgRow
           v-for="row in tree.unplaced"
           :key="row.key"
+          class="carry"
           :attach="row.key"
+          :data-ghost="desk.carrying === row.key"
+          draggable="true"
           :is-front="front(row)"
           :mark="row.mark"
           :name="row.name"
           :role="row.role"
           :tip="row.title"
+          @dragend="letGo"
+          @dragstart="carry($event, row)"
           @open="openConversation(row)"
         />
       </template>
@@ -338,8 +380,17 @@ useShortcuts(
   @apply border-border-strong bg-sunken;
 }
 
-.inbox[data-ghost="true"] {
+.inbox[data-ghost="true"],
+.carry[data-ghost="true"] {
   @apply border-dashed border-border-strong opacity-50;
+}
+
+.carry {
+  @apply cursor-grab;
+}
+
+.landing[data-hot="true"] {
+  @apply bg-primary-soft outline-2 outline-offset-1 outline-primary outline-dashed;
 }
 
 @media (hover: hover) and (pointer: fine) {

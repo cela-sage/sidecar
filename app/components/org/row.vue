@@ -52,6 +52,7 @@ const isHeld = computed(() => !!attach && terminal.state.held?.key === attach);
       <OrgMark :mark="mark" />
       <span v-if="role" class="role">{{ role }}</span>
       <span class="name">{{ name }}</span>
+      <slot />
       <span v-if="id" class="id">{{ id }}</span>
     </button>
     <button
