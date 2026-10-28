@@ -1,3 +1,4 @@
+import type { Question } from "./question.ts";
 import type { AskKind, TaskState, Who } from "./task.ts";
 
 export interface Topics {
@@ -7,6 +8,14 @@ export interface Topics {
   "task.decided": { slug: string; thread: string; text: string; who: Who };
   "terminal.changed": TerminalState;
   "conversation.changed": { key: string; doing: boolean; asking: boolean };
+  "question.changed": QuestionChanged;
+}
+
+/** Open while `questions` is there, settled once a frame comes without it. */
+export interface QuestionChanged {
+  key: string;
+  ref: string;
+  questions?: Question[];
 }
 
 export interface TerminalHeld {

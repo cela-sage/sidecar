@@ -24,6 +24,11 @@ const heard = (key: string, turns: BusyTurn[]): void => {
     );
 };
 
+const ask = (key: string, isAsking: boolean): void => {
+  const was = states.get(key) ?? BusyRules.IDLE;
+  set(key, { doing: was.doing || isAsking, asking: isAsking });
+};
+
 const snapshot = (): Record<string, Busy> => Object.fromEntries(states);
 
-export const TurnBus = { heard, snapshot };
+export const TurnBus = { ask, heard, snapshot };

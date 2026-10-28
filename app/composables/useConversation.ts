@@ -1,7 +1,6 @@
 import type { ComputedRef } from "vue";
 import type { MascotState } from "~/components/claude/mascot.vue";
 import type { MaybeComputed } from "~/composables/useSidecar";
-import type { Question, QuestionOption } from "~~/shared/types/question";
 import { BusyRules, type Busy } from "~~/shared/utils/busy";
 
 type TurnRole = "assistant" | "user" | "system";
@@ -20,7 +19,6 @@ export interface ConversationTurn {
   /** Started with run_in_background, so it is long-running by construction. */
   bg?: true;
   queued?: boolean;
-  ask?: Question[];
 }
 
 const ECHO_MS = 60_000;
@@ -58,37 +56,7 @@ export function asTurn(value: unknown): ConversationTurn | undefined {
     ref: typeof ref === "string" && ref ? ref : undefined,
     bg: "bg" in value && value.bg === true ? true : undefined,
     queued: "queued" in value && value.queued === true ? true : undefined,
-    ask: "ask" in value ? questionsOf(value.ask) : undefined,
   };
-}
-
-const textOf = (value: unknown): string | undefined => (typeof value === "string" && value ? value : undefined);
-
-function optionOf(value: unknown): QuestionOption[] {
-  if (typeof value !== "object" || !value || !("label" in value)) return [];
-  const label = textOf(value.label);
-  const description = "description" in value ? textOf(value.description) : undefined;
-  return label ? [{ label, ...(description ? { description } : {}) }] : [];
-}
-
-function questionsOf(value: unknown): Question[] | undefined {
-  if (!Array.isArray(value)) return undefined;
-  const questions = value.flatMap((one: unknown): Question[] => {
-    if (typeof one !== "object" || !one || !("question" in one)) return [];
-    const question = textOf(one.question);
-    const header = "header" in one ? textOf(one.header) : undefined;
-    const options = "options" in one && Array.isArray(one.options) ? one.options.flatMap(optionOf) : [];
-    if (!question) return [];
-    return [
-      {
-        question,
-        options,
-        ...(header ? { header } : {}),
-        ...("multi" in one && one.multi === true ? { multi: true as const } : {}),
-      },
-    ];
-  });
-  return questions.length ? questions : undefined;
 }
 
 function isKind(value: unknown): value is TurnKind {

@@ -2,6 +2,7 @@ import { appendFileSync, closeSync, mkdirSync, openSync, readSync, statSync } fr
 import { dirname, join } from "node:path";
 import type { SidecarEvent, Topic, Topics } from "../../shared/types/events.ts";
 import { AskKind, Role, TaskState, type Who } from "../../shared/types/task.ts";
+import { Questions } from "../../shared/utils/question.ts";
 import { Sidecar } from "./paths.ts";
 
 type Fields = Record<string, unknown>;
@@ -56,6 +57,11 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const key = text(data.key);
     const { doing, asking } = data;
     return key && typeof doing === "boolean" && typeof asking === "boolean" ? { key, doing, asking } : undefined;
+  },
+  "question.changed": (data) => {
+    const [key, ref] = [text(data.key), text(data.ref)];
+    const questions = Questions.of(data.questions);
+    return key && ref ? { key, ref, ...(questions ? { questions } : {}) } : undefined;
   },
 };
 
