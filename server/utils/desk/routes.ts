@@ -2,12 +2,13 @@ import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readTextSafe } from "../../../lib/files.ts";
 import type { Project } from "../../../shared/types/task.ts";
-import { Models } from "../models/index.ts";
+import { bare } from "../models/bare.ts";
 import { Projects } from "../projects.ts";
 import type { TaskFile } from "../tasks/file.ts";
 
 const INSTRUCTION =
-  "Each task below waits in the inbox. Pick the one project it belongs to from the projects listed. Answer with one line per task, written as slug: project key, and nothing else.";
+  "Each task below waits in the inbox. Pick the one project it belongs to from the projects listed, or none when the task says too little to tell. Answer with one line per task, written as slug: project key or slug: none, and nothing else.";
+const NONE = "none";
 const TASK_CHARS = 900;
 const PROJECT_CHARS = 500;
 const COMMENTS = /<!--[\s\S]*?-->/g;
@@ -29,10 +30,9 @@ const taskLine = (file: TaskFile): string =>
   `${file.slug}: ${readFileSync(file.path, "utf8").replace(COMMENTS, "").replace(/\s+/g, " ").trim().slice(0, TASK_CHARS)}`;
 
 const ask = async (files: TaskFile[], projects: Project[]): Promise<void> => {
-  const context = `Projects\n${projects.map(projectLine).join("\n\n")}\n\nTasks\n${files.map(taskLine).join("\n\n")}`;
-  const reply = await Models.fast({ task: "answer", instruction: INSTRUCTION, selection: "", context });
-  const text = reply.kind === "answer" ? reply.text : reply.replacement;
-  const keys = projects.map((one) => one.key);
+  const prompt = `Projects\n${projects.map(projectLine).join("\n\n")}\n\nTasks\n${files.map(taskLine).join("\n\n")}`;
+  const text = await bare({ model: "haiku", prompt, system: INSTRUCTION });
+  const keys = [...projects.map((one) => one.key), NONE];
   for (const line of text.split("\n")) {
     const [, slug, key] = /^[\s*-]*`?([\w.-]+)`?\s*:\s*`?([\w-]+)`?/.exec(line) ?? [];
     const file = files.find((one) => one.slug === slug);
@@ -51,7 +51,7 @@ const of = async (inbox: TaskFile[]): Promise<Partial<Record<string, string>>> =
   return Object.fromEntries(
     inbox.flatMap((file) => {
       const key = known.get(signatureOf(file));
-      return key ? [[file.slug, key]] : [];
+      return key && key !== NONE ? [[file.slug, key]] : [];
     }),
   );
 };
