@@ -7,6 +7,20 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.38.0
+
+### Added
+
+- **Paste or drop any file into the door.** It uploads to `POST /api/uploads` under `uploads/door/` with its own name
+  made safe, shows as an `@name` file mark, and the message carries its path on an `Attached:` line.
+- **The door's pill grows into its panel and shrinks back,** as one surface, with the panel's height easing as its
+  content grows. A keyboard toggle stays instant and reduced motion keeps only the crossfade.
+
+### Changed
+
+- **A door receipt shows the task's project and current title,** read from the catalogue when drawn, with the state
+  change under it.
+
 ## 0.37.0
 
 ### Added

@@ -367,13 +367,16 @@ which the app reads each time its event stream opens, since a restarted server k
 ## Asking Claude
 
 The assistant's door sits at the bottom right of every screen, the mascot with what the assistant is doing and
-how many tasks wait in the inbox. Ask, or ⌥↵, opens it on the assistant, the newest live conversation titled
+how many tasks wait in the inbox. The pill and the panel are one surface: a click on Ask grows the pill's box into
+the panel's with the drawer curve over `--duration-base`, the collapse shrinks it back over `--duration-snappy`,
+the panel's height eases the same way as its content grows, and reduced motion leaves only the crossfade. ⌥↵ and
+esc open and close it at once, since the motion contract never animates a keyboard toggle. Ask, or ⌥↵, opens it on the assistant, the newest live conversation titled
 with EA, and what you write goes to it through `/api/sessions/:key/message`, with a removable chip for what you
 are looking at: the conversation in front, or the open task, whose slug goes with the message so it lands in
 that task's history. The door follows the assistant's turn off the conversation bus from a snapshot of its
 transcript, so the mascot and the step line under it say what it is doing now, reading a file, running a
 command or thinking, with a spinner on your message until it answers. A message sent while it is mid-turn shows
-as queued until the queue hands it over. Beside that it shows a receipt for each task it moves with Undo when it took one out of the inbox, its answer, and the question it asks
+as queued until the queue hands it over. Beside that it shows a receipt for each task it moves, with Undo when it took one out of the inbox. A receipt keeps only the slug and the state change, and reads the task's project and title from the catalogue each time it is drawn, so an assign or a rename after the move shows at once, and a task that leaves the catalogue keeps the last title it had. Then comes its answer, and the question it asks
 back in amber, with an AskUserQuestion drawn whole: its header, the question, each option with its description,
 and whether it takes one pick or several. Clicking an option answers it, a multi-select collects its picks and
 sends them on Send, and several questions go back together once each has a pick, posted to
@@ -389,6 +392,12 @@ says so, and your message starts one through `POST /api/assistant`, which runs
 in `~/.claude/sidecar/config.json`. An @ in the field lists everyone in the tree, and picking one writes their
 title and key into the prompt, so the assistant knows whom you mean while the message still goes to it. When the
 inbox has tasks and nothing was asked yet, the door opens on it with each task's Route to.
+
+A file pasted or dropped into the field, of any type, uploads to `POST /api/uploads?name=<file name>`, which saves
+it under `~/.claude/sidecar/uploads/door/` with its own name made safe and a `-2` when that name is taken, keeps the
+20 MB cap, and returns its absolute path. The field shows it as `@name` drawn as its own mark, a paperclip in the
+info tint, which the conversation picker never reads as a pick, and the message carries one `Attached: /path` line
+per file still named in it, never the file's content, so the assistant reads it with its own tools.
 
 A comment asks a blank Claude on the side: Ask (⌘↵) in the comment popover opens a side question card where
 you picked, under the lines in Review and Files or in an artifact's margin, and posts to
