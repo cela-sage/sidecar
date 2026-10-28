@@ -27,7 +27,7 @@ const emit = defineEmits<{ click: [event: MouseEvent] }>();
     :aria-label="label ? undefined : tipText(tip)"
     :data-tip="tip"
     :disabled="isDisabled"
-    :selected="isOn"
+    :selected="isOn || isPressed"
     size="xs"
     @click="emit('click', $event)"
   >

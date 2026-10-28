@@ -7,6 +7,12 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.34.2
+
+### Fixed
+
+- **The conversations toggle shows when the rail is open,** because a pill action now draws pressed as on.
+
 ## 0.34.1
 
 ### Fixed
