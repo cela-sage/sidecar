@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Paperclip } from "@lucide/vue";
 import type { OrgConversation } from "~/utils/org";
 
 const text = defineModel<string>({ required: true });
@@ -7,31 +8,40 @@ const emit = defineEmits<{ escape: []; fill: []; send: [] }>();
 
 const PICKS_MAX = 30;
 
+type Segment = { text: string; kind: "text" | "mention" | "file" };
+
+const door = $door();
 const box = useTemplateRef<HTMLTextAreaElement>("box");
 const mirror = useTemplateRef<HTMLElement>("mirror");
 const caret = ref(0);
 const cursor = ref(0);
 const isDismissed = ref(false);
 
-const picking = computed(() =>
-  isDismissed.value ? undefined : Mentions.typing({ text: text.value, caret: caret.value }),
-);
+const picking = computed(() => {
+  const hit = isDismissed.value ? undefined : Mentions.typing({ text: text.value, caret: caret.value });
+  return hit && !door.attached.some((one) => one.name === hit.query) ? hit : undefined;
+});
 const rows = computed(() => {
   if (!picking.value) return [];
   const needle = picking.value.query.toLowerCase();
   return candidates.filter((row) => row.title.toLowerCase().includes(needle)).slice(0, PICKS_MAX);
 });
 
-// The textarea draws no colour of its own, so this copy under it is what shows a mention as one piece.
+// The textarea draws no colour of its own, so this copy under it is what shows a mention or a file as one piece.
 const segments = computed(() => {
-  const out: { text: string; isMention: boolean }[] = [];
+  const marks = [
+    ...Mentions.of(text.value).map((one) => ({ ...one, kind: "mention" as const })),
+    ...Attachments.of(text.value, door.attached).map((one) => ({ ...one, kind: "file" as const })),
+  ].sort((a, b) => a.start - b.start);
+  const out: Segment[] = [];
   let at = 0;
-  for (const one of Mentions.of(text.value)) {
-    if (one.start > at) out.push({ text: text.value.slice(at, one.start), isMention: false });
-    out.push({ text: text.value.slice(one.start, one.end), isMention: true });
+  for (const one of marks) {
+    if (one.start < at) continue;
+    if (one.start > at) out.push({ text: text.value.slice(at, one.start), kind: "text" });
+    out.push({ text: text.value.slice(one.start, one.end), kind: one.kind });
     at = one.end;
   }
-  if (at < text.value.length) out.push({ text: text.value.slice(at), isMention: false });
+  if (at < text.value.length) out.push({ text: text.value.slice(at), kind: "text" });
   return out;
 });
 
@@ -56,6 +66,37 @@ const pick = (row: OrgConversation): void => {
     box.value?.setSelectionRange(next.caret, next.caret);
     caret.value = next.caret;
   });
+};
+
+const attachAll = async (files: File[]): Promise<void> => {
+  for (const file of files) {
+    const got = await door.attach(file);
+    if (!got) continue;
+    const next = Attachments.insert({ text: text.value, caret: caret.value }, got.name);
+    text.value = next.text;
+    caret.value = next.caret;
+    await nextTick();
+    box.value?.focus();
+    box.value?.setSelectionRange(next.caret, next.caret);
+  }
+};
+
+const onPaste = (event: ClipboardEvent): void => {
+  const files = [...(event.clipboardData?.files ?? [])];
+  if (!files.length) return;
+  event.preventDefault();
+  void attachAll(files);
+};
+
+const onDragOver = (event: DragEvent): void => {
+  if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
+};
+
+const onDrop = (event: DragEvent): void => {
+  const files = [...(event.dataTransfer?.files ?? [])];
+  if (!files.length) return;
+  event.preventDefault();
+  void attachAll(files);
 };
 
 const STEPS: Partial<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 };
@@ -100,7 +141,9 @@ defineExpose({ focus });
     <div class="area">
       <div ref="mirror" class="mirror" aria-hidden="true">
         <template v-for="(one, at) in segments" :key="at"
-          ><mark v-if="one.isMention" class="mention">{{ one.text }}</mark
+          ><mark v-if="one.kind === 'mention'" class="mention">{{ one.text }}</mark
+          ><mark v-else-if="one.kind === 'file'" class="file"
+            ><span class="at">@<Paperclip class="clip" /></span>{{ one.text.slice(1) }}</mark
           ><template v-else>{{ one.text }}</template></template
         >&#8203;
       </div>
@@ -112,7 +155,10 @@ defineExpose({ focus });
         rows="1"
         :placeholder="placeholder"
         @click="track"
+        @dragover="onDragOver"
+        @drop="onDrop"
         @keydown="onKey"
+        @paste="onPaste"
         @keyup="track"
         @scroll="scroll"
       />
@@ -148,5 +194,18 @@ defineExpose({ focus });
 
 .mention {
   @apply rounded-sm bg-primary-soft box-decoration-clone font-semibold text-primary-deep;
+}
+
+.file {
+  @apply rounded-sm bg-info-soft box-decoration-clone font-semibold text-info;
+}
+
+/* The glyph sits over a transparent @, so the copy keeps the textarea's widths and the caret lines up. */
+.at {
+  @apply relative text-transparent;
+}
+
+.clip {
+  @apply absolute top-1/2 left-1/2 size-3 -translate-1/2 text-info;
 }
 </style>

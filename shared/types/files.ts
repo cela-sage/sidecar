@@ -1,5 +1,10 @@
 export type FileAction = "read" | "edit" | "delete";
 
+export interface AttachedFile {
+  name: string;
+  path: string;
+}
+
 // Produced: Claude created the file in this conversation. Interacted: it read or changed one that existed.
 export type FileGroup = "produced" | "interacted";
 

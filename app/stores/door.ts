@@ -1,5 +1,6 @@
 import type { Started } from "~~/shared/types/assistant";
 import type { QuestionChanged } from "~~/shared/types/events";
+import type { AttachedFile } from "~~/shared/types/files";
 import type { Question } from "~~/shared/types/question";
 import type { LiveSession } from "~~/shared/types/session";
 import type { TaskState } from "~~/shared/types/task";
@@ -40,6 +41,7 @@ export interface DoorExchange {
 export interface DoorSend {
   text: string;
   context?: DoorContext;
+  files?: AttachedFile[];
 }
 
 interface Following {
@@ -59,8 +61,10 @@ export const $door = defineStore(() => {
   const sc = useSidecar();
   const task = $task();
   const desk = $desk();
+  const chrome = useChrome();
   const isOpen = ref(false);
   const draft = ref("");
+  const attached = ref<AttachedFile[]>([]);
   const target = ref<DoorTarget>({ kind: "assistant" });
   const exchanges = ref<DoorExchange[]>([]);
   const following = new Map<string, Following>();
@@ -186,8 +190,25 @@ export const $door = defineStore(() => {
     await task.readTasks();
   };
 
-  const composed = ({ text, context }: DoorSend): string =>
-    context?.kind === "conversation" ? `About the conversation ${context.title} (${context.key}):\n\n${text}` : text;
+  const composed = ({ text, context, files = [] }: DoorSend): string => {
+    const said = Attachments.message(text, files);
+    return context?.kind === "conversation"
+      ? `About the conversation ${context.title} (${context.key}):\n\n${said}`
+      : said;
+  };
+
+  const attach = async (file: File): Promise<AttachedFile | undefined> => {
+    const got = await $fetch<AttachedFile>(`/api/uploads?name=${encodeURIComponent(file.name)}`, {
+      body: file,
+      headers: { "content-type": file.type || "application/octet-stream" },
+      method: "POST",
+    }).catch((error: unknown) => {
+      chrome.toast(failReason(error) ?? `${file.name} did not attach`, "destructive");
+      return undefined;
+    });
+    if (got) attached.value = [...attached.value, got];
+    return got;
+  };
 
   const slugOf = (context?: DoorContext): string | undefined => (context?.kind === "task" ? context.slug : undefined);
 
@@ -243,9 +264,11 @@ export const $door = defineStore(() => {
   const send = async (sent: DoorSend): Promise<void> => {
     const text = sent.text.trim();
     if (!text) return;
+    const files = attached.value;
     draft.value = "";
-    if (mode.value === "assistant" && key.value) return ask({ ...sent, text }, key.value);
-    return start({ ...sent, text });
+    attached.value = [];
+    if (mode.value === "assistant" && key.value) return ask({ ...sent, text, files }, key.value);
+    return start({ ...sent, text, files });
   };
 
   // Several questions go back as one answer, so a pick waits until every question has one.
@@ -272,6 +295,8 @@ export const $door = defineStore(() => {
   return {
     assistant,
     assistants,
+    attach,
+    attached,
     clear,
     draft,
     hearChange,
