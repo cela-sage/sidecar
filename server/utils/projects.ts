@@ -16,10 +16,16 @@ const DEFAULTS: Project[] = [
     name: "Cela",
     token: "Cela",
     folder: "~/Notes/projects/Cela",
-    image: "~/Notes/projects/Cela/cela/public/favicon.ico",
+    image: "~/Notes/projects/Cela/cela/public/brand/cela-static.svg",
   },
   { key: "nana", name: "Nana", token: "Nana", folder: "~/Notes/projects/Nanaco", icon: "💞" },
-  { key: "madong", name: "madong", token: "madong", folder: "~/Notes/projects/Madong", icon: "🏠" },
+  {
+    key: "madong",
+    name: "madong",
+    token: "madong",
+    folder: "~/Notes/projects/Madong",
+    image: "~/Notes/projects/Madong/portfolio/public/favicon.svg",
+  },
   { key: "meta", name: "meta", token: "meta", folder: "~/Notes", icon: "⚙️" },
 ];
 

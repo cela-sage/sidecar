@@ -284,8 +284,8 @@ waiting task says what it waits on, nothing for you to do, and a resumed or done
 The projects are the `projects` list in `~/.claude/sidecar/config.json`, each
 `{ key, name, token, folder, image?, icon? }`, where `token` is the bracketed prefix its conversations' titles
 carry, `image` a path to a picture the tree shows for it through `GET /api/projects/:key/image`, and `icon` an
-emoji shown when there is no image. Without one they are Moneyfarm and Cela with their app icons, and Nana,
-madong and meta with an emoji each, under `~/Notes`.
+emoji shown when there is no image. Without one they are Moneyfarm with its app icon, Cela with its blob,
+madong with the portfolio's icon, and Nana and meta with an emoji each, under `~/Notes`.
 
 ## Desktop or web
 

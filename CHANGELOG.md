@@ -14,6 +14,10 @@ carries fixes. Nothing here is stable enough to promise otherwise yet.
 - **The tree lists every conversation agent view lists again,** done ones included, because agent view is
   `claude agents --json --all` and the plain call returns only the running ones.
 
+### Changed
+
+- **Cela shows its blob and madong the portfolio's icon** in the tree by default.
+
 ## 0.34.0
 
 ### Added
