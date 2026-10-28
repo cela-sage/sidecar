@@ -46,7 +46,6 @@ const faces = computed(() => [
 ]);
 
 const title = computed(() => meta.title || deslug(meta.slug));
-const look = computed(() => Tasks.lookOf(meta.task.state));
 const tint = computed(() =>
   Tasks.tintOf(
     project?.key,
@@ -122,9 +121,7 @@ onBeforeUnmount(() => (task.isEditing = false));
         <span class="project">{{ project?.name ?? "Inbox" }}</span>
         <span class="slash">/</span>
         <span class="name">{{ title }}</span>
-        <span class="chip" :data-look="look"
-          ><TaskDot :look="look" size="sm" />{{ Tasks.chipOf(meta.task.state) }}</span
-        >
+        <TaskStatePick :meta="meta" />
         <UiSegmented
           v-if="!task.isEditing"
           v-model="task.face"
@@ -236,26 +233,6 @@ onBeforeUnmount(() => (task.isEditing = false));
 
 .name {
   @apply min-w-0 truncate typo-body-strong font-bold;
-}
-
-.chip {
-  @apply box-border inline-flex h-5.5 flex-none items-center gap-1.5 rounded-full border border-transparent bg-raised px-2.25 typo-meta-semibold text-primary-deep;
-}
-
-.chip[data-look="running"] {
-  @apply bg-primary-soft;
-}
-
-.chip[data-look="waiting"] {
-  @apply border-primary;
-}
-
-.chip[data-look="needs"] {
-  @apply border-error text-error;
-}
-
-.chip[data-look="done"] {
-  @apply bg-sunken text-muted;
 }
 
 .spacer {
