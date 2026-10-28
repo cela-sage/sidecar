@@ -43,7 +43,7 @@ function lane(value: unknown): SessionLane["name"] {
   return LANES.find((one) => one === value) || "done";
 }
 
-function stateOf(key: string): Record<string, unknown> | undefined {
+export function jobStateOf(key: string): Record<string, unknown> | undefined {
   const raw = readTextSafe(join(jobsHome(), key, "state.json"));
   if (!raw) return undefined;
   try {
@@ -98,7 +98,7 @@ async function fromCli(): Promise<JobEntry[] | undefined> {
       cwd: text(record.cwd),
       name: text(record.name),
       // The CLI's JSON leaves out the job list's one-line status, so it comes off the state file.
-      detail: detailOf(stateOf(key)),
+      detail: detailOf(jobStateOf(key)),
       lane: { name: lane(record.state) },
       pid: num(record.pid),
       status: statusOf(record.status),
@@ -146,7 +146,7 @@ function fromDisk(): JobEntry[] {
   const out: JobEntry[] = [];
   for (const name of names) {
     if (!isKey(name)) continue;
-    const record = stateOf(name);
+    const record = jobStateOf(name);
     if (!record) continue;
     const id = text(record.sessionId);
     if (!id || !isSessionId(id) || keyOf(id) !== name) continue;

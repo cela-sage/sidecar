@@ -6,7 +6,7 @@ import { Sidecar, configRoot } from "../../../lib/sidecar/paths.ts";
 import { artifactListsHome, canvasHome, conversationsHome, isKey, jobsHome, keyOf, teamsHome } from "./paths.ts";
 import { Links } from "./links.ts";
 import { isAlive, liveEntries } from "./registry.ts";
-import { refreshJobs } from "./jobs.ts";
+import { jobStateOf, refreshJobs } from "./jobs.ts";
 
 export interface Removal {
   key: string;
@@ -17,17 +17,6 @@ export interface Removal {
 
 const KILL_DEADLINE_MS = 3000;
 const KILL_POLL_MS = 100;
-
-function stateOf(key: string): Record<string, unknown> | undefined {
-  const raw = readTextSafe(join(jobsHome(), key, "state.json"));
-  if (!raw) return undefined;
-  try {
-    const value = JSON.parse(raw);
-    return typeof value === "object" && value ? (value as Record<string, unknown>) : undefined;
-  } catch {
-    return undefined;
-  }
-}
 
 function commandOf(pid: number): string {
   try {
@@ -104,7 +93,7 @@ const forgetMode = (key: string): void => {
 export async function removeSession(key: string): Promise<Removal> {
   if (!isKey(key)) return { key, removed: [], refused: "not a session key" };
 
-  const state = stateOf(key);
+  const state = jobStateOf(key);
   const id = typeof state?.sessionId === "string" ? state.sessionId : undefined;
   // The key is a truncation of the uuid, so a mismatch means this directory is somebody else's.
   if (state && (!id || keyOf(id) !== key)) {
