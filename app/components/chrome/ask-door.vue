@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ArrowRight, ArrowUp, ChevronDown, Terminal, Trash2, X } from "@lucide/vue";
+import { useResizeObserver } from "@vueuse/core";
 import { Titles } from "~~/shared/utils/titles";
 import type { MascotState } from "~/components/claude/mascot.vue";
 import type { DoorContext, DoorTarget } from "~/stores/door";
@@ -17,8 +18,13 @@ const door = $door();
 const terminal = $terminal();
 const field = useTemplateRef<{ focus: () => void }>("field");
 const body = useTemplateRef<HTMLElement>("body");
+const restLayer = useTemplateRef<HTMLElement>("rest");
+const panelLayer = useTemplateRef<HTMLElement>("panel");
 const isPicking = ref(false);
 const keepsContext = ref(true);
+const hasPanel = ref(door.isOpen);
+const isInstant = ref(false);
+const box = ref<{ width: number; height: number }>();
 
 const CHIPS: Record<"conversation" | "task", string[]> = {
   conversation: ["What needs me?", "Route the backlog", "Open a task from this conversation"],
@@ -122,15 +128,43 @@ const routeAll = (): void => {
 
 const focus = (): void => void nextTick(() => field.value?.focus());
 
-const open = (): void => {
+// The layers sit absolute inside the one surface, so its box comes from the layer in front plus its own border.
+const measure = (): void => {
+  const layer = door.isOpen ? panelLayer.value : restLayer.value;
+  const surface = layer?.parentElement;
+  if (!layer || !surface) return;
+  box.value = {
+    width: layer.offsetWidth + surface.offsetWidth - surface.clientWidth,
+    height: layer.offsetHeight + surface.offsetHeight - surface.clientHeight,
+  };
+};
+
+const sized = computed(() =>
+  box.value ? { height: `${box.value.height}px`, width: `${box.value.width}px` } : undefined,
+);
+
+// The motion contract never animates what a keyboard toggles, so ⌥↵ and esc land the end state at once.
+const instantly = (): void => {
+  isInstant.value = true;
+  requestAnimationFrame(() => requestAnimationFrame(() => (isInstant.value = false)));
+};
+
+const open = (isKey = false): void => {
+  if (isKey) instantly();
   door.isOpen = true;
   void desk.load();
   focus();
 };
 
-const close = (): void => {
+const close = (isKey = false): void => {
+  if (isKey) instantly();
   door.isOpen = false;
   isPicking.value = false;
+  if (isKey) hasPanel.value = false;
+};
+
+const onFaded = (event: TransitionEvent): void => {
+  if (event.propertyName === "opacity" && !door.isOpen) hasPanel.value = false;
 };
 
 const pick = (next: DoorTarget): void => {
@@ -152,8 +186,18 @@ const onKey = (event: KeyboardEvent): void => {
   if (event.key !== "Enter" || !event.altKey || event.metaKey || event.ctrlKey || event.defaultPrevented) return;
   event.preventDefault();
   if (door.isOpen) focus();
-  else open();
+  else open(true);
 };
+
+watch(
+  () => door.isOpen,
+  (isOpen) => {
+    if (isOpen) hasPanel.value = true;
+    void nextTick(measure);
+  },
+);
+useResizeObserver(restLayer, measure);
+useResizeObserver(panelLayer, measure);
 
 watch(contextKey, () => (keepsContext.value = true));
 watch(
@@ -173,150 +217,180 @@ onMounted(() => {
 
 <template>
   <div class="door" data-region="ask-door">
-    <UiSurface v-if="!door.isOpen" class="rest-island" pad="none" shape="pill" variant="glass-liquid">
-      <button
-        class="rest plain-button focusable"
-        data-tip="Ask the assistant · {alt enter}"
-        type="button"
-        @click="open"
+    <UiSurface
+      :aria-label="door.isOpen ? 'Ask Claude' : undefined"
+      class="surface"
+      :data-instant="isInstant"
+      :data-open="door.isOpen"
+      pad="none"
+      :role="door.isOpen ? 'dialog' : undefined"
+      :shape="door.isOpen ? 'island' : 'pill'"
+      :style="sized"
+      :variant="door.isOpen ? 'raised' : 'glass-liquid'"
+    >
+      <div
+        v-if="hasPanel"
+        ref="panel"
+        class="layer panel"
+        :data-on="door.isOpen"
+        :inert="!door.isOpen || undefined"
+        @transitionend.self="onFaded"
       >
-        <span class="perch"><ClaudeMascot :size="30" :state="mascot" /></span>
-        <span class="who">
-          <span class="who-name">Assistant</span>
-          <span v-if="step" class="who-line shimmer">{{ step }}</span>
-          <span v-else class="who-line" data-quiet="true">acts for you</span>
-        </span>
-        <span v-if="inbox.length" class="count" data-tip="In the backlog, waiting to be routed"
-          ><OrgMark mark="queued" />{{ inbox.length }}</span
-        >
-        <span class="ask">Ask</span>
-      </button>
-    </UiSurface>
-
-    <UiSurface v-else class="panel" aria-label="Ask Claude" pad="none" role="dialog" shape="island" variant="raised">
-      <header class="head">
-        <span class="perch"><ClaudeMascot :size="30" :state="mascot" /></span>
-        <button
-          class="pick plain-button focusable"
-          data-region="door-pick"
-          data-tip="Pick who to ask, or start a new assistant"
-          type="button"
-          aria-haspopup="menu"
-          :aria-expanded="isPicking"
-          @click="isPicking = !isPicking"
-        >
-          <span class="pick-name">{{ who.name }}</span>
-          <span class="pick-id mono-meta">{{ who.id }}</span>
-          <UiIcon class="pick-chevron" :icon="ChevronDown" size="xs" />
-        </button>
-        <span class="spacer" />
-        <UiIconButton
-          v-if="!isEmpty"
-          :icon="Trash2"
-          aria-label="Clear this thread"
-          data-tip="Clear this thread"
-          size="xs"
-          @click="door.clear()"
-        />
-        <UiIconButton
-          v-if="attachKey"
-          :icon="Terminal"
-          aria-label="Attach in your terminal"
-          data-tip="Attach in your terminal"
-          size="xs"
-          @click="terminal.attach(attachKey)"
-        />
-        <UiIconButton :icon="ChevronDown" aria-label="Collapse" data-tip="Collapse · {esc}" size="xs" @click="close" />
-      </header>
-      <p class="sub mono-meta">
-        <span class="sub-dot dot" :data-tone="sub.tone" /><span class="sub-text">{{ sub.text }}</span>
-      </p>
-      <DoorMenu v-if="isPicking" class="menu" @pick="pick" />
-
-      <div ref="body" class="body">
-        <section v-if="showsInbox" class="inbox" aria-label="Backlog">
-          <div class="inbox-head">
-            <span class="inbox-title">Backlog</span>
-            <span class="mono-meta">{{ inbox.length }} to route</span>
-          </div>
-          <div class="inbox-rows">
-            <div v-for="one in inbox" :key="one.slug" class="inbox-row">
-              <OrgMark mark="queued" />
-              <button class="inbox-name plain-button focusable" type="button" @click="task.show({ slug: one.slug })">
-                {{ one.title || deslug(one.slug) }}
-              </button>
-              <UiButton
-                v-if="routeOf(one)"
-                :data-tip="`Route to ${routeOf(one)?.project.name}'s Project Lead`"
-                :icon="ArrowRight"
-                size="xs"
-                variant="outline"
-                @click="routeTask(one)"
-                ><span class="square" :data-tint="tintOf(routeOf(one)?.project.key)" />{{
-                  routeOf(one)?.project.name
-                }}</UiButton
-              >
-            </div>
-          </div>
-          <UiButton v-if="routable.length > 1" class="route-all" size="xs" variant="primary" @click="routeAll"
-            >Route all {{ routable.length }}</UiButton
+        <header class="head">
+          <span class="perch"><ClaudeMascot :size="30" :state="mascot" /></span>
+          <button
+            class="pick plain-button focusable"
+            data-region="door-pick"
+            data-tip="Pick who to ask, or start a new assistant"
+            type="button"
+            aria-haspopup="menu"
+            :aria-expanded="isPicking"
+            @click="isPicking = !isPicking"
           >
-        </section>
-        <template v-else-if="isEmpty">
-          <div class="greet">
-            <span class="greeting">{{ greeting }}</span>
-            <span class="about-it">
-              It sees every project, routes tasks to their Project Lead, drafts, and does anything on the board you
-              could. An @ points it at anyone in the tree.
-            </span>
-          </div>
-          <div v-if="chips.length" class="chips" role="listbox" aria-label="Fill the prompt">
-            <button
-              v-for="chip in chips"
-              :key="chip"
-              class="chip plain-button focusable"
-              data-tip="Fills the prompt · {tab}"
-              role="option"
-              type="button"
-              @click="fill(chip)"
+            <span class="pick-name">{{ who.name }}</span>
+            <span class="pick-id mono-meta">{{ who.id }}</span>
+            <UiIcon class="pick-chevron" :icon="ChevronDown" size="xs" />
+          </button>
+          <span class="spacer" />
+          <UiIconButton
+            v-if="!isEmpty"
+            :icon="Trash2"
+            aria-label="Clear this thread"
+            data-tip="Clear this thread"
+            size="xs"
+            @click="door.clear()"
+          />
+          <UiIconButton
+            v-if="attachKey"
+            :icon="Terminal"
+            aria-label="Attach in your terminal"
+            data-tip="Attach in your terminal"
+            size="xs"
+            @click="terminal.attach(attachKey)"
+          />
+          <UiIconButton
+            :icon="ChevronDown"
+            aria-label="Collapse"
+            data-tip="Collapse · {esc}"
+            size="xs"
+            @click="close()"
+          />
+        </header>
+        <p class="sub mono-meta">
+          <span class="sub-dot dot" :data-tone="sub.tone" /><span class="sub-text">{{ sub.text }}</span>
+        </p>
+        <DoorMenu v-if="isPicking" class="menu" @pick="pick" />
+
+        <div ref="body" class="body">
+          <section v-if="showsInbox" class="inbox" aria-label="Backlog">
+            <div class="inbox-head">
+              <span class="inbox-title">Backlog</span>
+              <span class="mono-meta">{{ inbox.length }} to route</span>
+            </div>
+            <div class="inbox-rows">
+              <div v-for="one in inbox" :key="one.slug" class="inbox-row">
+                <OrgMark mark="queued" />
+                <button class="inbox-name plain-button focusable" type="button" @click="task.show({ slug: one.slug })">
+                  {{ one.title || deslug(one.slug) }}
+                </button>
+                <UiButton
+                  v-if="routeOf(one)"
+                  :data-tip="`Route to ${routeOf(one)?.project.name}'s Project Lead`"
+                  :icon="ArrowRight"
+                  size="xs"
+                  variant="outline"
+                  @click="routeTask(one)"
+                  ><span class="square" :data-tint="tintOf(routeOf(one)?.project.key)" />{{
+                    routeOf(one)?.project.name
+                  }}</UiButton
+                >
+              </div>
+            </div>
+            <UiButton v-if="routable.length > 1" class="route-all" size="xs" variant="primary" @click="routeAll"
+              >Route all {{ routable.length }}</UiButton
             >
-              {{ chip }}
+          </section>
+          <template v-else-if="isEmpty">
+            <div class="greet">
+              <span class="greeting">{{ greeting }}</span>
+              <span class="about-it">
+                It sees every project, routes tasks to their Project Lead, drafts, and does anything on the board you
+                could. An @ points it at anyone in the tree.
+              </span>
+            </div>
+            <div v-if="chips.length" class="chips" role="listbox" aria-label="Fill the prompt">
+              <button
+                v-for="chip in chips"
+                :key="chip"
+                class="chip plain-button focusable"
+                data-tip="Fills the prompt · {tab}"
+                role="option"
+                type="button"
+                @click="fill(chip)"
+              >
+                {{ chip }}
+              </button>
+            </div>
+          </template>
+          <DoorThread :step="step" />
+        </div>
+
+        <footer class="foot">
+          <span v-if="sending" class="context" data-tip="Goes with your message. Remove it to ask without it">
+            <span class="about mono-meta">about</span>
+            <span class="context-name">{{ sending.title }}</span>
+            <button
+              class="remove plain-button focusable"
+              aria-label="Remove"
+              type="button"
+              @click="keepsContext = false"
+            >
+              <UiIcon :icon="X" size="xs" />
+            </button>
+          </span>
+          <div class="compose">
+            <DoorField
+              ref="field"
+              v-model="door.draft"
+              :candidates="candidates"
+              :placeholder="placeholder"
+              @escape="close(true)"
+              @fill="fill()"
+              @send="send"
+            />
+            <button
+              class="send plain-button focusable"
+              aria-label="Send"
+              data-tip="Send · {enter}"
+              type="button"
+              :disabled="!door.draft.trim()"
+              @click="send"
+            >
+              <UiIcon :icon="ArrowUp" size="sm" />
             </button>
           </div>
-        </template>
-        <DoorThread :step="step" />
+        </footer>
       </div>
 
-      <footer class="foot">
-        <span v-if="sending" class="context" data-tip="Goes with your message. Remove it to ask without it">
-          <span class="about mono-meta">about</span>
-          <span class="context-name">{{ sending.title }}</span>
-          <button class="remove plain-button focusable" aria-label="Remove" type="button" @click="keepsContext = false">
-            <UiIcon :icon="X" size="xs" />
-          </button>
-        </span>
-        <div class="compose">
-          <DoorField
-            ref="field"
-            v-model="door.draft"
-            :candidates="candidates"
-            :placeholder="placeholder"
-            @escape="close"
-            @fill="fill()"
-            @send="send"
-          />
-          <button
-            class="send plain-button focusable"
-            aria-label="Send"
-            data-tip="Send · {enter}"
-            type="button"
-            :disabled="!door.draft.trim()"
-            @click="send"
+      <div ref="rest" class="layer" :data-on="!door.isOpen" :inert="door.isOpen || undefined">
+        <button
+          class="rest plain-button focusable"
+          data-tip="Ask the assistant · {alt enter}"
+          type="button"
+          @click="open()"
+        >
+          <span class="perch"><ClaudeMascot :size="30" :state="mascot" /></span>
+          <span class="who">
+            <span class="who-name">Assistant</span>
+            <span v-if="step" class="who-line shimmer">{{ step }}</span>
+            <span v-else class="who-line" data-quiet="true">acts for you</span>
+          </span>
+          <span v-if="inbox.length" class="count" data-tip="In the backlog, waiting to be routed"
+            ><OrgMark mark="queued" />{{ inbox.length }}</span
           >
-            <UiIcon :icon="ArrowUp" size="sm" />
-          </button>
-        </div>
-      </footer>
+          <span class="ask">Ask</span>
+        </button>
+      </div>
     </UiSurface>
   </div>
 </template>
@@ -328,6 +402,42 @@ onMounted(() => {
 
 .rest-island {
   @apply shadow-md;
+}
+
+/* One surface for the pill and the panel: its box eases to the layer in front while UiSurface eases
+   its own fill, radius and shadow. Closing runs at the snappier step, as exits do. */
+.door .surface {
+  @apply relative overflow-hidden;
+  --surface-structure:
+    height var(--duration-base) var(--ease-drawer), width var(--duration-base) var(--ease-drawer),
+    scale var(--duration-press) var(--ease-out);
+
+  &[data-open="false"] {
+    @apply shadow-md;
+    --surface-structure:
+      height var(--duration-snappy) var(--ease-drawer), width var(--duration-snappy) var(--ease-drawer),
+      scale var(--duration-press) var(--ease-out);
+  }
+
+  &[data-instant="true"],
+  &[data-instant="true"] .layer {
+    transition: none;
+  }
+}
+
+.layer {
+  @apply absolute right-0 bottom-0 transition-opacity duration-(--duration-snappy) ease-out;
+
+  &[data-on="false"] {
+    @apply pointer-events-none opacity-0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .door .surface,
+  .door .surface[data-open="false"] {
+    --surface-structure: scale 0ms;
+  }
 }
 
 .rest {
@@ -363,7 +473,7 @@ onMounted(() => {
 }
 
 .panel {
-  @apply relative flex max-h-[calc(100vh_-_var(--stage-top)_-_var(--gutter))] w-110 max-w-full flex-col overflow-hidden shadow-lg;
+  @apply flex max-h-[calc(100vh_-_var(--stage-top)_-_var(--gutter))] w-110 flex-col;
 }
 
 .head {
