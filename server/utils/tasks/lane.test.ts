@@ -8,6 +8,7 @@ import { HistoryLines } from "../../../shared/utils/history.ts";
 import { TaskCommand } from "../../../bin/task.ts";
 import { TaskHistory } from "./history.ts";
 import { TaskLane } from "./lane.ts";
+import { TaskNotice } from "./notice.ts";
 import { TaskTrash } from "./trash.ts";
 
 const home = mkdtempSync(join(tmpdir(), "lane-"));
@@ -219,4 +220,21 @@ test("a remove in any state trashes the task with one history entry, and only it
     ).map((one) => one.key),
     ["aaaa0001"],
   );
+});
+
+test("an option keeps the commas inside it, and only one-word options split on the comma shorthand", async (context) => {
+  context.mock.method(TaskNotice, "raise", async () => "page");
+  context.mock.method(console, "log", () => undefined);
+  task("spike", "running");
+  const optionsOf = async (...given: string[]): Promise<string[] | undefined> => {
+    const args = given.flatMap((one) => ["--options", one]);
+    await TaskCommand.run(["spike", "escalate", "Which theme?", ...args], "http://localhost:0");
+    return TaskLane.read({ given: "spike", caller: lead }).asks.at(-1)?.ask.options;
+  };
+  assert.deepEqual(await optionsOf("Keep the light theme, unreadable in light", "Drop it"), [
+    "Keep the light theme, unreadable in light",
+    "Drop it",
+  ]);
+  assert.deepEqual(await optionsOf("Keep it, unreadable in light"), ["Keep it, unreadable in light"]);
+  assert.deepEqual(await optionsOf("Sonnet, Opus,Haiku"), ["Sonnet", "Opus", "Haiku"]);
 });

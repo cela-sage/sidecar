@@ -15,8 +15,9 @@ export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slu
                              set its state, one of ${TaskState.join(", ")}; waiting needs --reason
   assign <project>           put it on a project
   rename "<title>"           retitle it, keeping its slug, so every link to it holds
-  escalate "<question>" [--options "a" --options "b" | --options a,b] [--quote "the text it is about"]
-                             ask Marco: a red thread on the task, blocked, and a notification on his Mac
+  escalate "<question>" [--options "first option" --options "second" | --options a,b] [--quote "the text it is about"]
+                             ask Marco: a red thread on the task, blocked, and a notification on his Mac;
+                             each --options is one option whatever its commas, and a,b splits only one-word options
   hire "<who, why, tier>"    propose a specialist, which Marco approves or refuses like an escalation
   judge "<verdict>" [--pick <n>] [--thread <n>] [--settle]
                              the Project Lead's read of the open escalation and its pick, which waits on Marco;
@@ -68,8 +69,12 @@ const lineOf = (entry: HistoryEntry): string => {
   return `  ${clock(entry.at).padEnd(13)} ${entry.who.padEnd(4)} ${said.length > 110 ? `${said.slice(0, 109)}…` : said}`;
 };
 
-const optionsOf = (given: string[] = []): string[] =>
-  (given.length === 1 ? (given[0] ?? "").split(",") : given).map((one) => one.trim()).filter(Boolean);
+// A value with a space in it is a sentence, so its commas belong to it.
+const optionsOf = (given: string[] = []): string[] => {
+  const words = given.length === 1 ? (given[0] ?? "").split(",").map((one) => one.trim()) : [];
+  const isShorthand = words.length > 1 && words.every((one) => !/\s/.test(one));
+  return (isShorthand ? words : given).map((one) => one.trim()).filter(Boolean);
+};
 
 const askLines = (thread: AskThread): string[] => {
   const { ask } = thread;
