@@ -24,6 +24,8 @@ const asks = (files: TaskFile[]): DeskAsk[] =>
 export const Desk = {
   asks,
   cancelHandoff: DeskHandoff.cancel,
+  cancelLead: DeskHandoff.cancelLead,
   handOff: DeskHandoff.schedule,
+  lead: DeskHandoff.lead,
   routes: DeskRoutes.of,
 };

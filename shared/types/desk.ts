@@ -20,4 +20,10 @@ export interface TaskAssigned {
   state: TaskState;
   project?: string;
   lead?: string;
+  starts?: true;
+}
+
+export interface LeadJoined {
+  key: string;
+  title: string;
 }

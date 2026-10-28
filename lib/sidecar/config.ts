@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-import type { Project } from "../../shared/types/task.ts";
+import type { Project, Role } from "../../shared/types/task.ts";
 import { readTextSafe } from "../files.ts";
 import { Sidecar } from "./paths.ts";
 
@@ -10,6 +10,7 @@ export interface AssistantSettings {
 }
 
 export interface Settings {
+  agents?: Partial<Record<Role, string>>;
   assistant?: AssistantSettings;
   projects?: Project[];
   surface?: "desktop" | "web";

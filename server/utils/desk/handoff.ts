@@ -3,11 +3,23 @@ import { Titles } from "../../../shared/utils/titles.ts";
 import { deliver } from "../sessions/inbox.ts";
 import { keyOf } from "../sessions/paths.ts";
 import { liveEntries } from "../sessions/registry.ts";
+import { Roles } from "../sessions/roles.ts";
 import type { TaskFile } from "../tasks/file.ts";
+import { TaskLane } from "../tasks/lane.ts";
 
 export interface HandoffInput {
   file: TaskFile;
   project: Project;
+}
+
+export interface LeadInput extends HandoffInput {
+  key: string;
+  title: string;
+}
+
+export interface Handed {
+  lead?: string;
+  starts?: true;
 }
 
 const UNDO_MS = 8000;
@@ -23,26 +35,74 @@ const leadOf = (project: Project): { key: string; name: string } | undefined => 
   return entry?.name ? { key: keyOf(entry.id), name: entry.name } : undefined;
 };
 
-const cancel = (slug: string): void => {
-  clearTimeout(pending.get(slug));
-  pending.delete(slug);
-};
-
-const schedule = ({ file, project }: HandoffInput): string | undefined => {
-  cancel(file.slug);
-  const lead = leadOf(project);
-  if (!lead) return undefined;
-  const text = `I put ${file.title} on ${project.name} from the Desk, it's ${file.path}. Assess it, then spawn a Task Lead or fold it into one already running. sidecar task ${file.slug} has its history.`;
+const later = (id: string, run: () => Promise<unknown>): void => {
+  clearTimeout(pending.get(id));
   pending.set(
-    file.slug,
+    id,
     setTimeout(() => {
-      pending.delete(file.slug);
-      void deliver({ key: lead.key, text, slug: file.slug }).then((sent) => {
-        if (!sent.delivered) console.error(`sidecar: ${lead.name} did not take ${file.slug}: ${sent.reason}`);
-      });
+      pending.delete(id);
+      void run();
     }, UNDO_MS),
   );
-  return lead.name;
 };
 
-export const DeskHandoff = { cancel, schedule };
+const cancel = (id: string): void => {
+  clearTimeout(pending.get(id));
+  pending.delete(id);
+};
+
+const send = async ({
+  key,
+  name,
+  text,
+  slug,
+}: {
+  key: string;
+  name: string;
+  text: string;
+  slug: string;
+}): Promise<void> => {
+  const sent = await deliver({ key, text, slug });
+  if (!sent.delivered) console.error(`sidecar: ${name} did not take ${slug}: ${sent.reason}`);
+};
+
+const schedule = ({ file, project }: HandoffInput): Handed => {
+  cancel(file.slug);
+  if (!project.folder) return {};
+  const lead = leadOf(project);
+  const text = `You're the Project Lead of ${project.name}. I put ${file.title} on it from the Desk, it's ${file.path}. Assess it, then spawn a Task Lead or fold it into one already running. sidecar task ${file.slug} has its history.`;
+  if (lead) {
+    later(file.slug, () => send({ ...lead, text, slug: file.slug }));
+    return { lead: lead.name };
+  }
+  const name = `[${project.token}] PL ${file.slug}`;
+  later(file.slug, async () => {
+    const ran = await Roles.launch({ agent: Roles.agentOf("PL"), cwd: project.folder, prompt: text, name });
+    if ("failed" in ran) return console.error(`sidecar: no Project Lead started for ${file.slug}: ${ran.failed}`);
+    TaskLane.heard({ caller: { who: "YOU", from: name }, kind: "message", text, slug: file.slug });
+  });
+  return { starts: true };
+};
+
+const leadId = (slug: string, key: string): string => `${slug}:${key}`;
+
+// A conversation made a Task Lead by a drop was never started as that agent, so the message hands it the file that defines the role.
+const lead = ({ file, project, key, title }: LeadInput): void => {
+  const role = Roles.fileOf("TL");
+  const text = [
+    `You're now a Task Lead of ${file.title} on ${project.name}, renamed ${title}.`,
+    role ? `Your role is ${role}: read it first and work by it from here.` : "Work as its Task Lead from here.",
+    `The task is ${file.path}, and sidecar task ${file.slug} has its history and the verbs that move it.`,
+  ].join(" ");
+  later(leadId(file.slug, key), async () => {
+    TaskLane.heard({ caller: { who: "YOU", from: title }, kind: "message", text, slug: file.slug });
+    await send({ key, name: title, text, slug: file.slug });
+  });
+};
+
+export const DeskHandoff = {
+  cancel,
+  cancelLead: (slug: string, key: string): void => cancel(leadId(slug, key)),
+  lead,
+  schedule,
+};

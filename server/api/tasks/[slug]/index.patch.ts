@@ -32,6 +32,9 @@ export default defineEventHandler(async (event): Promise<TaskAssigned> => {
     .then(() => TaskLane.assign({ given: file.slug, caller, project }))
     .catch(TaskRoute.refused);
   const on = Projects.list().find((one) => one.key === next.task.project);
-  const lead = on ? Desk.handOff({ file: next, project: on }) : undefined;
-  return { state: next.task.state, project: next.task.project, ...(lead ? { lead } : {}) };
+  return {
+    state: next.task.state,
+    project: next.task.project,
+    ...(on ? Desk.handOff({ file: next, project: on }) : {}),
+  };
 });
