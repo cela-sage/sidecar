@@ -7,6 +7,24 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.32.0
+
+### Added
+
+- **Your own conversations drag onto another project too,** renamed `[<project token>] <subject>`.
+- **The task's state chip moves it by hand** to running, needs you, waiting, done or back to the inbox, through
+  `PATCH /api/tasks/:slug` with a `state`.
+
+### Changed
+
+- **Your own conversations list under the project their title's `[token]` names,** so No project keeps only a
+  title with no known project.
+- **The door shows what the assistant is doing as it does it,** following its turn stream from a snapshot, and a
+  message sent mid-turn reads as queued until the queue hands it over instead of a static "Reading it".
+- **Route to asks Haiku directly through `claude -p`** on your Claude Code login, and leaves a task with too little
+  to tell unrouted.
+- **Moving to another conversation keeps the page,** and the tree's folds persist across reloads.
+
 ## 0.31.0
 
 ### Added

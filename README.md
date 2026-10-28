@@ -169,31 +169,37 @@ The rail is the org tree, built from the conversations the sidecar already polls
 inbox of unassigned tasks heads it, then the assistant's conversations, titled with EA, then each project with
 its Project Lead and Design Lead conversations and its tasks, each task with its Task Leads. A Task Lead whose
 process ended folds under the task as done, and a done task folds under its project. A project starts folded
-unless something in it waits on you or it holds the open task or the conversation in front. Your own
-conversations, whose titles have no role token, and any whose project matches none list under No project at the
-bottom. Each row carries its mark: a spinner while it works, red when a task or
+unless something in it waits on you or it holds the open task or the conversation in front, and a fold you
+open or close stays that way across conversations and reloads, kept in the browser as `sc:org-folds`. Your own
+conversations, whose titles have no role token, list under the project their `[token]` names, after its tasks,
+and only a title with no known project lists under No project at the bottom. Each row carries its mark: a
+spinner while it works, red when a task or
 its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
 else, a check once it is idle. Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead,
 the conversation in front has an ink bar, and clicking a conversation brings it in front on the Tasks face with
 its task open.
 
 With no task open the centre stays on the conversation in front, its page from Artifacts, and a task opens the
-sheet with Document and History in its bar and Back, or esc, closing it. Dropping an inbox row on a project, or
-pressing its Route to, the fast model's suggestion cached until the task changes, assigns it through the lane
+sheet with Document and History in its bar and Back, or esc, closing it. The state chip beside the title moves
+the task by hand to running, needs you, waiting with what it waits for, done or back to the inbox, through the
+same lane and its rules. Dropping an inbox row on a project, or pressing its Route to, Haiku's suggestion through
+`claude -p` on your Claude Code login, cached until the task changes and left out when the task says too little
+to tell, assigns it through the lane
 with `PATCH /api/tasks/:slug`, so it lands in the history and on the bus, and the toast's Undo, or ⌘Z, puts it
 back. Eight seconds after the drop, unless undone, the project's Project Lead, its newest live conversation
 titled with PL and the project's token, gets the task to assess. New task, or N, drafts a row in the inbox,
 writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
 
-Dragging a row out of No project onto an open task makes that conversation one of the task's Task Leads, and a
-folded project opens while the row passes over it. The drop renames it `[<project token>] TL <slug> <subject>`,
-keeping a leading deadline, and its tickets while the project stays the same, through
-`PATCH /api/sessions/<key>`. That appends a title record to the transcript and writes the name, marked as yours,
+Your own conversations drag. Dropped on another project it is renamed `[<project token>] <subject>`, and on an
+open task it becomes one of the task's Task Leads, renamed `[<project token>] TL <slug> <subject>`, while a
+folded project opens as the row passes over it. Either keeps a leading deadline, and its tickets while the
+project stays the same, through `PATCH /api/sessions/<key>`. That appends a title record to the transcript and writes the name, marked as yours,
 into the job's state file, which is where the job list and the running process read it. Undo, or ⌘Z, puts the old
 title back when it had one.
 
-Clicking the conversation's title opens the conversation picker, which lists every conversation the sidecar
-knows, yours included, and deletes one with its trash button or ⌘⌫, the transcript staying on disk.
+Moving to another conversation keeps the page, so the tree, its folds and every face already opened stay put
+while they follow the new key. Clicking the conversation's title opens the conversation picker, which lists every
+conversation the sidecar knows, yours included, and deletes one with its trash button or ⌘⌫, the transcript staying on disk.
 
 ### Following the terminal
 
@@ -326,8 +332,10 @@ The assistant's door sits at the bottom right of every screen, the mascot with w
 how many tasks wait in the inbox. Ask, or ⌥↵, opens it on the assistant, the newest live conversation titled
 with EA, and what you write goes to it through `/api/sessions/:key/message`, with a removable chip for what you
 are looking at: the conversation in front, or the open task, whose slug goes with the message so it lands in
-that task's history. The door follows the assistant's turn off the conversation bus, shows what it is doing, a
-receipt for each task it moves with Undo when it took one out of the inbox, its answer, and the question it asks
+that task's history. The door follows the assistant's turn off the conversation bus from a snapshot of its
+transcript, so the mascot and the step line under it say what it is doing now, reading a file, running a
+command or thinking, with a spinner on your message until it answers. A message sent while it is mid-turn shows
+as queued until the queue hands it over. Beside that it shows a receipt for each task it moves with Undo when it took one out of the inbox, its answer, and the question it asks
 back in amber, and the header picks another assistant or starts a new one. With no assistant running the door
 says so, and your message starts one through `POST /api/assistant`, which runs
 `claude --bg --agent executive-assistant` in the meta project's folder, both set by `assistant: { agent, project }`
