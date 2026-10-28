@@ -12,6 +12,7 @@ interface JumpRow {
 
 const sc = useSidecar();
 const chrome = useChrome();
+const desk = $desk();
 
 const query = ref("");
 const cursor = ref(0);
@@ -61,15 +62,7 @@ function go(row?: JumpRow): void {
 }
 
 async function remove(row?: JumpRow): Promise<void> {
-  if (!row) return;
-  try {
-    await $fetch(`/api/sessions/${row.key}`, { method: "DELETE" });
-    sc.sessions.value = sc.sessions.value.filter((session) => session.key !== row.key);
-    chrome.toast(`Deleted ${row.name}. Its transcript stays on disk.`, "success");
-  } catch (error) {
-    const reason = error instanceof Error ? error.message : String(error);
-    chrome.toast(`Could not delete ${row.name}. ${reason}`, "destructive");
-  }
+  if (row) await desk.removeConversation(row);
 }
 
 function onKey(event: KeyboardEvent): void {

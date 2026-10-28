@@ -83,6 +83,29 @@ export const $desk = defineStore(() => {
     return !!done;
   };
 
+  const renameConversation = async ({
+    key,
+    title,
+    name,
+  }: {
+    key: string;
+    title: string;
+    name: string;
+  }): Promise<void> => {
+    if (await rename(key, title)) return chrome.toast(`Renamed ${name} to ${title}`);
+    chrome.toast(`Could not rename ${name}`, "destructive");
+  };
+
+  const removeConversation = async ({ key, name }: { key: string; name: string }): Promise<void> => {
+    try {
+      await $fetch(`/api/sessions/${key}`, { method: "DELETE" });
+      sc.sessions.value = sc.sessions.value.filter((session) => session.key !== key);
+      chrome.toast(`Removed ${name}. Its transcript stays on disk.`, "success");
+    } catch (error) {
+      chrome.toast(`Could not remove ${name}. ${failReason(error) ?? "The sidecar refused it."}`, "destructive");
+    }
+  };
+
   const retitle = async ({ row, title, done, failed }: Retitle): Promise<void> => {
     const was = sc.sessions.value.find((one) => one.key === row.key)?.name;
     if (!(await rename(row.key, title))) return chrome.toast(failed, "destructive");
@@ -185,6 +208,8 @@ export const $desk = defineStore(() => {
     move,
     place,
     remove,
+    removeConversation,
+    renameConversation,
     renameTask,
     renaming,
     routes,

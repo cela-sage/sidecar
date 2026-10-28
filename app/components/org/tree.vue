@@ -8,23 +8,15 @@ const sc = useSidecar();
 const chrome = useChrome();
 const task = $task();
 const desk = $desk();
-const busy = $busy();
 const artifact = $artifact();
+const conversationMenu = $conversationMenu();
 const shown = useFaceShown();
 const folds = useOrgFolds();
 const hot = ref<string>();
 const hotTask = ref<string>();
 const menu = useTemplateRef<{ openFor: (event: MouseEvent, meta: TaskMeta, lead?: string) => void }>("menu");
 
-const tree = computed(() =>
-  Org.treeOf({
-    sessions: sc.sessions.value,
-    tasks: Tasks.of(sc.catalogue.value),
-    projects: task.projects,
-    asking: desk.asks.flatMap((ask) => (ask.kind === "escalation" && ask.from ? [ask.from] : [])),
-    busy: busy.keys,
-  }),
-);
+const tree = useOrgTree();
 
 const FOR_YOU: Mark[] = ["needs", "waits"];
 
@@ -49,6 +41,9 @@ const openConversation = (row: OrgConversation): void => {
   sc.sessionKey.value = row.key;
   void navigateTo(`/c/${row.key}`, { replace: true });
 };
+
+const menuFor = (event: MouseEvent, row: OrgConversation): void =>
+  conversationMenu.openFor(event, { key: row.key, title: row.title, open: () => openConversation(row) });
 
 const dragged = computed(() => tree.value.inbox.find((one) => one.slug === desk.dragging));
 
@@ -162,6 +157,7 @@ useShortcuts(
         :name="row.name"
         role="EA"
         :tip="row.title"
+        @contextmenu.prevent="menuFor($event, row)"
         @open="openConversation(row)"
       />
       <p v-if="!tree.assistants.length" class="none">No assistant is running. Ask, bottom right, starts one.</p>
@@ -201,6 +197,7 @@ useShortcuts(
             :name="row.name"
             :role="row.role"
             :tip="row.title"
+            @contextmenu.prevent="menuFor($event, row)"
             @open="openConversation(row)"
           />
 
@@ -245,6 +242,7 @@ useShortcuts(
             :mark="row.mark"
             :name="row.name"
             :tip="row.title"
+            @contextmenu.prevent="menuFor($event, row)"
             @dragend="letGo"
             @dragstart="carry($event, row)"
             @open="openConversation(row)"
@@ -266,6 +264,7 @@ useShortcuts(
           :name="row.name"
           :role="row.role"
           :tip="row.title"
+          @contextmenu.prevent="menuFor($event, row)"
           @dragend="letGo"
           @dragstart="carry($event, row)"
           @open="openConversation(row)"

@@ -15,6 +15,7 @@ const emit = defineEmits<{
 const sc = useSidecar();
 const task = $task();
 const desk = $desk();
+const conversationMenu = $conversationMenu();
 const folds = useOrgFolds();
 
 const lines = computed(() =>
@@ -90,6 +91,13 @@ const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value
         :name="line.item.name"
         :role="line.item.role"
         :tip="line.item.title"
+        @contextmenu.prevent="
+          conversationMenu.openFor($event, {
+            key: line.item.key,
+            title: line.item.title,
+            open: () => emit('open', line.item),
+          })
+        "
         @open="emit('open', line.item)"
       />
       <div

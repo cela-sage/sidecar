@@ -124,6 +124,7 @@ onMounted(() => {
        content column, so the layout shell deliberately does not bound them.
        ChromeTopRight is a cell of the island row and is rendered by the layout. -->
   <ChromeJump />
+  <OrgConversationMenu />
   <ChromeCommentMode />
   <ChromeVeil />
   <ChromeToaster />
