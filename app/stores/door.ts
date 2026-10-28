@@ -6,10 +6,10 @@ import type { LiveSession } from "~~/shared/types/session";
 import type { TaskState } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
 import type { Delivery } from "~/stores/notes";
+import type { DoorFollower, DoorStep } from "~/utils/door-turns";
 
 export type DoorTarget = { kind: "assistant"; key?: string } | { kind: "new" };
 export type DoorMode = DoorTarget["kind"];
-export type DoorStep = "working" | "answered" | "waiting" | "failed";
 
 export type DoorContext =
   { kind: "task"; slug: string; title: string } | { kind: "conversation"; key: string; title: string };
@@ -28,6 +28,7 @@ export interface DoorExchange {
   text: string;
   step: DoorStep;
   isQueued?: boolean;
+  isFolded?: boolean;
   answer?: string;
   questions?: Question[];
   asked?: string;
@@ -99,13 +100,10 @@ export const $door = defineStore(() => {
     if (live) Object.assign(live, patch);
   };
 
-  // Sent mid-turn, a message lands queued, and only the queue handing it over says the model has it.
   const follow = (id: string, to: string, isTaken = false): Promise<void> => {
     const source = new EventSource(`/api/sessions/${encodeURIComponent(to)}/stream`);
     const states = new Map(Tasks.of(sc.catalogue.value).map((one) => [one.slug, one.task.state]));
-    let isOurs = isTaken;
-    let isWaiting = false;
-    let said: string | undefined;
+    const follower: DoorFollower = { id, isOurs: isTaken, isWaiting: false };
     const stop = (): void => {
       source.close();
       clearTimeout(timer);
@@ -116,28 +114,15 @@ export const $door = defineStore(() => {
       const was = states.get(slug);
       states.set(slug, now);
       const live = find(id);
-      if (!was || was === now || live?.step !== "working") return;
+      if (!was || was === now || live?.step !== "working" || live.isQueued || live.isFolded) return;
       const meta = Tasks.of(sc.catalogue.value).find((one) => one.slug === slug);
       live.receipts.push({ slug, title: meta?.title || deslug(slug), was, now });
     };
     following.set(id, { stop, heard });
     source.addEventListener("turn", (event: MessageEvent<string>) => {
       const turn = parseTurn(event.data);
-      if (!turn) return;
-      if (!isOurs && turn.role === "user" && turn.queued) {
-        isWaiting = true;
-        return update(id, { isQueued: true });
-      }
-      if (!isOurs && ((turn.role === "user" && !turn.queued) || (isWaiting && turn.kind === "drop"))) {
-        isOurs = true;
-        return update(id, { isQueued: false });
-      }
-      if (!isOurs) return;
-      if (turn.kind === "end") {
-        update(id, { step: "answered", answer: said });
-        return stop();
-      }
-      if (turn.role === "assistant" && (turn.kind === "narration" || turn.kind === "answer")) said = turn.text;
+      const thread = exchanges.value.filter((one) => one.to === to);
+      if (turn && DoorTurns.hear(thread, follower, turn)) stop();
     });
     return new Promise((ready) => {
       source.addEventListener("open", () => ready(), { once: true });

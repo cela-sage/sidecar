@@ -16,6 +16,7 @@ const task = $task();
 const desk = $desk();
 const door = $door();
 const terminal = $terminal();
+const busy = $busy();
 const field = useTemplateRef<{ focus: () => void }>("field");
 const body = useTemplateRef<HTMLElement>("body");
 const restLayer = useTemplateRef<HTMLElement>("rest");
@@ -64,11 +65,11 @@ const candidates = computed(() => [
 const isEmpty = computed(() => !door.thread.length);
 const showsInbox = computed(() => isEmpty.value && inbox.value.length > 0);
 const live = useConversation(() => door.key);
-const isBusy = computed(() => live.isBusy.value || door.assistant?.status === "busy");
+const isBusy = computed(() => !!door.key && !!busy.keys[door.key]?.doing);
 const step = computed(() => (isBusy.value ? live.step.value || door.assistant?.detail || "Working" : undefined));
 const mascot = computed<MascotState>(() => {
-  if (live.isBusy.value) return live.mascot.value;
-  return isBusy.value ? "running" : "idle";
+  if (!isBusy.value) return "idle";
+  return live.isBusy.value ? live.mascot.value : "running";
 });
 
 const who = computed(() => {

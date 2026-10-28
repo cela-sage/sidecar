@@ -6,6 +6,7 @@ const door = $door();
 const terminal = $terminal();
 
 const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id;
+const lines = computed(() => DoorTurns.linesOf(door.thread));
 </script>
 
 <template>
@@ -17,11 +18,13 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
         <DoorReceipt v-for="receipt in one.receipts" :key="`${receipt.slug}-${receipt.now}`" :receipt="receipt" />
       </div>
 
-      <p v-if="one.step === 'working'" class="busy" role="status">
-        <OrgMark :mark="one.isQueued ? 'queued' : 'working'" />
-        <span class="busy-line shimmer">{{
-          one.isQueued ? "Queued until it finishes what it is on" : step || "Reading your message"
-        }}</span>
+      <p v-if="lines.get(one.id) === 'live'" class="busy" role="status">
+        <OrgMark mark="working" />
+        <span class="busy-line shimmer">{{ step || "Reading your message" }}</span>
+      </p>
+      <p v-else-if="lines.get(one.id) === 'queued'" class="busy" role="status">
+        <OrgMark mark="queued" />
+        <span class="busy-line shimmer">Queued until it finishes what it is on</span>
       </p>
 
       <div v-if="one.step === 'waiting'" class="asks">
