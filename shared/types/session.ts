@@ -30,3 +30,8 @@ export interface LiveSession {
   archived?: boolean;
   startedAt?: number;
 }
+
+export interface Retitled {
+  key: string;
+  title: string;
+}
