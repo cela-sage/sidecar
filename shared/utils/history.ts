@@ -55,7 +55,11 @@ const LINES: { [K in HistoryKind]: (entry: EntryOf[K]) => Line } = {
     text,
     chips: [...moved(move), "notified you"],
   }),
-  judge: ({ pick, text }) => ({ lead: "Judged it: ", text, chips: pick ? [`picked option ${pick}`] : [] }),
+  judge: ({ move, pick, settled, text }) => ({
+    lead: settled ? "Settled it: " : "Judged it: ",
+    text,
+    chips: [...(pick ? [`picked option ${pick}`] : []), ...(settled ? ["settled"] : []), ...moved(move)],
+  }),
   decide: ({ move, text, who }) => ({
     lead: who === "YOU" ? "You decided: " : "Settled it: ",
     text,

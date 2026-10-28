@@ -62,6 +62,51 @@ test("an escalation blocks the task, Marco's pick settles it back to running, an
   );
 });
 
+test("a judge with --settle unblocks the task as the Project Lead's decision, and a decide on it is refused", () => {
+  const path = task("verdict", "running");
+  const pl = { who: "PL" as const, from: "[Cela] PL board plan" };
+  const asked = { given: "verdict", caller: lead, kind: "escalation" as const, options: ["No line", "Queued"] };
+  TaskLane.escalate({ ...asked, text: "How does the earlier exchange draw?" });
+  assert.throws(() => TaskLane.judge({ given: "verdict", caller: pl, verdict: " " }), /verdict in quotes/);
+  assert.equal(
+    TaskLane.judge({ given: "verdict", caller: pl, verdict: "Transcripts settle it", pick: 1 }).decided,
+    undefined,
+  );
+  assert.equal(stateOf(path), "blocked");
+
+  const standing = TaskLane.judge({ given: "verdict", caller: lead, verdict: "", settle: true }).decided;
+  assert.deepEqual(
+    [standing?.text, standing?.ask.decision?.who, standing?.ask.decision?.from],
+    ["No line", "PL", pl.from],
+  );
+  assert.equal(stateOf(path), "running");
+  assert.throws(
+    () => TaskLane.decide({ given: "verdict", caller: { who: "YOU" }, answer: "2", thread: "1" }),
+    /#1 is settled already by the Project Lead/,
+  );
+
+  TaskLane.escalate({ ...asked, text: "And the answer?" });
+  const once = TaskLane.judge({ given: "verdict", caller: pl, verdict: "Once, on the last", settle: true }).decided;
+  assert.deepEqual([once?.text, once?.ask.verdict?.from], ["Once, on the last", pl.from]);
+  assert.equal(stateOf(path), "running");
+
+  const lines = TaskHistory.read("verdict").map((entry) => HistoryLines.of(entry));
+  assert.deepEqual(
+    lines.map(({ lead: said, chips }) => [said, chips]),
+    [
+      ["Escalated: ", ["running to blocked", "notified you"]],
+      ["Judged it: ", ["picked option 1"]],
+      ["Settled it: ", ["picked option 1", "settled", "blocked to running"]],
+      ["Escalated: ", ["running to blocked", "notified you"]],
+      ["Settled it: ", ["settled", "blocked to running"]],
+    ],
+  );
+  assert.equal(
+    lines.some((one) => one.isDecision),
+    false,
+  );
+});
+
 test("a decide typed at a Task Lead's prompt is Marco's, in the history and on the thread", () => {
   task("desk", "running");
   TaskLane.escalate({

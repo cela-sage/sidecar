@@ -18,8 +18,10 @@ export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slu
   escalate "<question>" [--options "a" --options "b" | --options a,b] [--quote "the text it is about"]
                              ask Marco: a red thread on the task, blocked, and a notification on his Mac
   hire "<who, why, tier>"    propose a specialist, which Marco approves or refuses like an escalation
-  judge "<verdict>" [--pick <n>] [--thread <n>]
-                             the Project Lead's read of the open escalation, and its pick
+  judge "<verdict>" [--pick <n>] [--thread <n>] [--settle]
+                             the Project Lead's read of the open escalation and its pick, which waits on Marco;
+                             --settle settles one within the Project Lead's reach as its decision, and the
+                             conversation that asked hears it; judge --settle alone settles the standing verdict
   decide <n|"words"> [--thread <n>]
                              settle it, and the conversation that asked hears the decision
   done                       mark it done
@@ -35,6 +37,7 @@ interface Run {
 type Values = Partial<Record<"reason" | "on" | "quote" | "pick" | "thread" | "heard", string>> & {
   options?: string[];
   json?: boolean;
+  settle?: boolean;
 };
 
 const OPTIONS = {
@@ -46,6 +49,7 @@ const OPTIONS = {
   thread: { type: "string" },
   heard: { type: "string" },
   json: { type: "boolean" },
+  settle: { type: "boolean" },
 } as const;
 
 const caller = TaskCaller.of;
@@ -170,14 +174,19 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
   hire: (run) => escalated(run, "hire"),
   judge: async ({ slug, words, values }) => {
     const pick = values.pick ? Number(values.pick) : undefined;
-    const file = TaskLane.judge({
+    const { file, decided } = TaskLane.judge({
       given: slug,
       caller: caller(),
       verdict: words.join(" "),
       ...(pick ? { pick } : {}),
       ...(values.thread ? { thread: values.thread } : {}),
+      ...(values.settle ? { settle: true } : {}),
     });
-    console.log(`your verdict is on ${file.slug}, which still waits on Marco`);
+    console.log(
+      decided
+        ? `settled as the Project Lead's: ${decided.text}\n${file.slug} is ${file.task.state}, and ${await told(decided)}`
+        : `your verdict is on ${file.slug}, which still waits on Marco`,
+    );
     return 0;
   },
   decide: async ({ slug, words, values }) => {

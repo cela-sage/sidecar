@@ -41,6 +41,12 @@ export interface JudgeInput {
   verdict: string;
   pick?: number;
   thread?: string;
+  settle?: boolean;
+}
+
+export interface Judged {
+  file: TaskFile;
+  decided?: Decided;
 }
 
 export interface DecideInput {
@@ -239,7 +245,8 @@ const pending = (threads: Thread[], n?: string): AskThread => {
   const hit = n ? asks.find((one) => String(one.n) === n || one.id === n) : newest;
   if (!hit)
     throw new Refusal(n ? `no escalation or hire #${n} on this task` : "nothing on this task waits on a decision", 2);
-  if (hit.status === "resolved") throw new Refusal(`#${n} is settled already`, 2);
+  if (hit.status === "resolved")
+    throw new Refusal(`#${n} is settled already${hit.ask.decision?.who === "PL" ? " by the Project Lead" : ""}`, 2);
   return hit;
 };
 
@@ -253,32 +260,63 @@ const pickOf = (options: string[], given?: number): number | undefined => {
   return given;
 };
 
-const judge = ({ given, caller, verdict, pick, thread: n }: JudgeInput): TaskFile => {
-  const file = TaskFiles.open(given);
-  const doc = Threads.read(file.path);
-  const thread = pending(doc.threads, n);
-  const chosen = pickOf(thread.ask.options, pick);
-  const at = now();
-  const ask: TaskAsk = {
-    ...thread.ask,
-    verdict: { ...(caller.from ? { from: caller.from } : {}), text: verdict, ...(chosen ? { pick: chosen } : {}), at },
-  };
-  Threads.write(file.path, { ...doc, updated: at, threads: replace(doc.threads, { ...thread, ask, updated: at }) });
-  record(file, {
-    ...saidBy(caller),
-    kind: "judge",
-    thread: String(thread.id),
-    text: verdict,
-    ...(chosen ? { pick: chosen } : {}),
-  });
-  return file;
-};
-
 const answerOf = (ask: TaskAsk, question: string, answer: string): { text: string; option?: number } => {
   const option = /^\d+$/.test(answer.trim()) ? pickOf(ask.options, Number(answer)) : undefined;
   if (!option) return { text: answer.trim() };
   if (ask.kind === "hire") return { text: `${option === 1 ? "Approved" : "Refused"}: ${question}`, option };
   return { text: ask.options[option - 1] ?? answer, option };
+};
+
+const unblocked = (opened: TaskFile, threads: Thread[], thread: AskThread): { file: TaskFile; move?: Move } => {
+  const stillBlocked = asksOf(threads).some((one) => one.status !== "resolved" && one.ask.kind === "escalation");
+  const unblocks = thread.ask.kind === "escalation" && opened.task.state === "blocked" && !stillBlocked;
+  return unblocks ? move(opened, "running") : { file: opened };
+};
+
+// Bare, --settle settles the verdict already standing, so a Task Lead can close one the Project Lead judged.
+const judge = ({ given, caller, verdict, pick, thread: n, settle = false }: JudgeInput): Judged => {
+  const opened = TaskFiles.open(given);
+  const doc = Threads.read(opened.path);
+  const thread = pending(doc.threads, n);
+  const at = now();
+  const said = verdict.trim();
+  const standing = !said && settle ? thread.ask.verdict : undefined;
+  if (!said && !standing) throw new Refusal('judge needs the verdict in quotes: judge "<verdict>" --pick <n>', 2);
+  const chosen = pickOf(thread.ask.options, pick ?? standing?.pick);
+  const judged = standing ?? {
+    ...(caller.from ? { from: caller.from } : {}),
+    text: said,
+    ...(chosen ? { pick: chosen } : {}),
+    at,
+  };
+  const question = String(thread.body ?? "");
+  const { text, option } = chosen ? answerOf(thread.ask, question, String(chosen)) : { text: judged.text };
+  const lead: Caller = { who: "PL", ...(judged.from ? { from: judged.from } : {}) };
+  const ask: TaskAsk = {
+    ...thread.ask,
+    verdict: judged,
+    ...(settle ? { decision: { ...saidBy(lead), text, ...(option ? { option } : {}), at } } : {}),
+  };
+  const threads = replace(doc.threads, {
+    ...thread,
+    ask,
+    updated: at,
+    ...(settle ? { status: "resolved", resolvedBy: "claude" } : {}),
+  });
+  Threads.write(opened.path, { ...doc, updated: at, threads });
+  const { file, move: moved } = settle ? unblocked(opened, threads, thread) : { file: opened };
+  record(file, {
+    ...saidBy(caller),
+    kind: "judge",
+    thread: String(thread.id),
+    text: judged.text,
+    ...(chosen ? { pick: chosen } : {}),
+    ...(settle ? { settled: true as const } : {}),
+    ...(moved ? { move: moved } : {}),
+  });
+  if (!settle) return { file };
+  Events.publish({ topic: "task.decided", data: { slug: file.slug, thread: String(thread.id), text, who: lead.who } });
+  return { file, decided: { file, question, ask, text } };
 };
 
 const decide = ({ given, caller, answer, thread: n }: DecideInput): Decided => {
@@ -293,9 +331,7 @@ const decide = ({ given, caller, answer, thread: n }: DecideInput): Decided => {
   const ask: TaskAsk = { ...thread.ask, decision: { ...saidBy(marco), text, ...(option ? { option } : {}), at } };
   const threads = replace(doc.threads, { ...thread, ask, status: "resolved", resolvedBy: "user", updated: at });
   Threads.write(opened.path, { ...doc, updated: at, threads });
-  const stillBlocked = asksOf(threads).some((one) => one.status !== "resolved" && one.ask.kind === "escalation");
-  const unblocks = thread.ask.kind === "escalation" && opened.task.state === "blocked" && !stillBlocked;
-  const { file, move: moved } = unblocks ? move(opened, "running") : { file: opened };
+  const { file, move: moved } = unblocked(opened, threads, thread);
   TaskHistory.append(file.slug, {
     ...saidBy(marco),
     kind: "decide",
@@ -313,7 +349,8 @@ const tell = async ({ file, question, ask, text }: Decided): Promise<boolean> =>
   const key = ask.from ? TaskCaller.keyByTitle(ask.from) : undefined;
   if (!key) return false;
   const what = ask.kind === "hire" ? "the hire" : "your escalation";
-  const sent = await deliver({ key, text: `On ${what} in ${file.slug}, "${question}". My decision: ${text}` });
+  const by = ask.decision?.who === "PL" ? "The Project Lead settled it" : "My decision";
+  const sent = await deliver({ key, text: `On ${what} in ${file.slug}, "${question}". ${by}: ${text}` });
   return sent.delivered;
 };
 

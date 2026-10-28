@@ -18,7 +18,7 @@ export type HistoryEntry =
   | (Said & { kind: "assign"; project: string; move?: Move })
   | (Said & { kind: "content"; parts: string[] })
   | (Said & { kind: "ask"; thread: string; ask: AskKind; text: string; options: string[]; move?: Move })
-  | (Said & { kind: "judge"; thread: string; text: string; pick?: number })
+  | (Said & { kind: "judge"; thread: string; text: string; pick?: number; settled?: true; move?: Move })
   | (Said & { kind: "decide"; thread: string; ask: AskKind; text: string; option?: number; move?: Move })
   | (Said & { kind: "rename"; was: string; now: string })
   | (Said & { kind: "remove"; stopped: string[] })

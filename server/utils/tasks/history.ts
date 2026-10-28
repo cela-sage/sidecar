@@ -26,7 +26,15 @@ const Entry = z.discriminatedUnion("kind", [
     options: z.array(z.string()),
     move: Move.optional(),
   }),
-  z.object({ ...Said, kind: z.literal("judge"), thread: z.string(), text: z.string(), pick: z.number().optional() }),
+  z.object({
+    ...Said,
+    kind: z.literal("judge"),
+    thread: z.string(),
+    text: z.string(),
+    pick: z.number().optional(),
+    settled: z.literal(true).optional(),
+    move: Move.optional(),
+  }),
   z.object({
     ...Said,
     kind: z.literal("decide"),

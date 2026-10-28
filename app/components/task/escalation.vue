@@ -93,7 +93,7 @@ function sendWords(): void {
               ><span v-if="judge.token && judge.token !== 'PL'" class="token">[{{ judge.token }}]</span>
               {{ judge.rest }}</span
             >
-            <span class="state mono-meta">judged it yours</span>
+            <span class="state mono-meta">{{ decision && !byYou ? "settled it" : "judged it yours" }}</span>
           </span>
           <span class="text">{{ ask.verdict.text }}</span>
         </div>
@@ -149,7 +149,11 @@ function sendWords(): void {
         </div>
         <p class="kept">
           <UiIcon :icon="History" size="xs" />
-          Sent to the conversation that asked and kept in your decisions, so nobody asks it again.
+          {{
+            byYou
+              ? "Sent to the conversation that asked and kept in your decisions, so nobody asks it again."
+              : "Sent to the conversation that asked and kept in the task's history."
+          }}
         </p>
       </template>
     </div>
