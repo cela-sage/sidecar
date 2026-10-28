@@ -213,6 +213,14 @@ test("the org tree puts each role where it works, folds what is done and files y
     ["- contracts guide working", "- [Ops] rollout review completed"],
   );
   assert.equal(tree.conversations, 9);
+
+  assert.deepEqual(
+    ["fol", "dl", "ea", "ops", "nope"].map((key) => {
+      const place = Org.placeOf(tree, key);
+      return place ? `${place.row.name} ${place.group?.project.key ?? "-"}` : "none";
+    }),
+    ["follower cela", "sidecar-task-board design cela", "daily triage -", "[Ops] rollout review -", "none"],
+  );
 });
 
 test("a conversation reads the claude agents state off its lane, and off its status without one", () => {

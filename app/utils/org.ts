@@ -231,4 +231,24 @@ const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, now = Date.
   };
 };
 
-export const Org = { treeOf };
+export interface OrgPlace {
+  row: OrgConversation;
+  group?: OrgProject;
+}
+
+const placeOf = (tree: OrgTree, key: string): OrgPlace | undefined => {
+  const is = (row: OrgConversation): boolean => row.key === key;
+  for (const group of tree.projects) {
+    const rows = [
+      ...group.leads,
+      ...[...group.tasks, ...group.done].flatMap((one) => [...one.leads, ...one.done]),
+      ...group.conversations,
+    ];
+    const row = rows.find(is);
+    if (row) return { row, group };
+  }
+  const row = [...tree.assistants, ...tree.unplaced].find(is);
+  return row ? { row } : undefined;
+};
+
+export const Org = { placeOf, treeOf };
