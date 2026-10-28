@@ -7,6 +7,23 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.39.0
+
+### Added
+
+- **`@<key>` draws as that conversation live,** its tree row inline with project, mark, name and Attach, wherever
+  the sidecar renders prose. The door's `@<title> (<key>)` reads the same, and a key the tree does not list stays
+  text.
+- **One conversation menu** on a right-click of a chip or a conversation row in the tree: Open, Attach, Rename and
+  Remove, the transcript staying on disk.
+- **The sidecar rule tells Claude to write another conversation as `@<key>`.**
+
+### Fixed
+
+- **The door shows one loading line.** A second message sent mid-turn joins the turn already running, so only the
+  last open message carries the live step and the answer lands once, under it. Whether the assistant works is read
+  from `conversation.changed`.
+
 ## 0.38.0
 
 ### Added

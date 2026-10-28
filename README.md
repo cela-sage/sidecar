@@ -22,7 +22,7 @@ bin/sidecar setup
 
 ## What Claude is told
 
-While the plugin is installed, the mod adds one section to every system prompt, from `rules/sidecar.md`: the sidecar is installed, pages and documents written for you to read go into `~/.claude/sidecar/artifacts/` as `<slug>.html` or `<slug>.md`, the chat reply says only what Claude did while any explanation goes there as a `.md`, a message opening on a `[[sidecar]]` line is you writing from the sidecar, and a page's open threads are read with `sidecar comments <slug>` before it changes. Uninstalling the plugin takes the section away, and nothing is written into anyone's `CLAUDE.md` or rules.
+While the plugin is installed, the mod adds one section to every system prompt, from `rules/sidecar.md`: the sidecar is installed, pages and documents written for you to read go into `~/.claude/sidecar/artifacts/` as `<slug>.html` or `<slug>.md`, the chat reply says only what Claude did while any explanation goes there as a `.md`, a message opening on a `[[sidecar]]` line is you writing from the sidecar, a page's open threads are read with `sidecar comments <slug>` before it changes, and another conversation is named as `@<key>`. Uninstalling the plugin takes the section away, and nothing is written into anyone's `CLAUDE.md` or rules.
 
 ## The CLI
 
@@ -214,6 +214,17 @@ history into `~/.claude/sidecar/trash/`. Undo, or ⌘Z, moves those two back thr
 `POST /api/tasks/:slug/restore`, and the toast says the stopped Task Leads stay stopped, since their transcripts
 remain but their processes are gone. A Done row's ✕ keeps its own path and only takes it off the list.
 
+Right-click on a conversation row, or on a conversation chip, opens the conversation menu. Open brings it in
+front, Attach hands it to `sidecar terminal`, Rename turns the menu into a field with the full title in it, and
+Enter writes it through `PATCH /api/sessions/<key>`, and Remove stops it through `DELETE /api/sessions/<key>`
+with the transcript staying on disk, as the conversation picker's trash does.
+
+A conversation named as `@<key>`, or as the door's `@<title> (<key>)`, in an answer in the door, a comment
+thread or a side question draws as its tree row inline: the project's avatar, the row's mark and short name
+with the full title in its tip, and Attach. Clicking the name brings it in front. Both forms resolve by key
+against every conversation the tree lists, so an ended one shows its check, while a key the tree does not
+list, and any key inside code or a link, stays plain text.
+
 Your own conversations drag. Dropped on another project it is renamed `[<project token>] <subject>`, and on an
 open task it becomes one of the task's Task Leads, renamed `[<project token>] TL <slug> <subject>`, while a
 folded project opens as the row passes over it. Either keeps a leading deadline, and its tickets while the
@@ -375,8 +386,10 @@ with EA, and what you write goes to it through `/api/sessions/:key/message`, wit
 are looking at: the conversation in front, or the open task, whose slug goes with the message so it lands in
 that task's history. The door follows the assistant's turn off the conversation bus from a snapshot of its
 transcript, so the mascot and the step line under it say what it is doing now, reading a file, running a
-command or thinking, with a spinner on your message until it answers. A message sent while it is mid-turn shows
-as queued until the queue hands it over. Beside that it shows a receipt for each task it moves, with Undo when it took one out of the inbox. A receipt keeps only the slug and the state change, and reads the task's project and title from the catalogue each time it is drawn, so an assign or a rename after the move shows at once, and a task that leaves the catalogue keeps the last title it had. Then comes its answer, and the question it asks
+command or thinking, with a spinner on your message until it answers. Whether it works is read from
+`conversation.changed` for its key, and only the last open message carries that line. A message sent while it is
+mid-turn shows as queued until the queue hands it over, and once handed over it joins the turn already running, so
+the earlier message loses its line and the one answer lands under the last. Beside that it shows a receipt for each task it moves, with Undo when it took one out of the inbox. A receipt keeps only the slug and the state change, and reads the task's project and title from the catalogue each time it is drawn, so an assign or a rename after the move shows at once, and a task that leaves the catalogue keeps the last title it had. Then comes its answer, and the question it asks
 back in amber, with an AskUserQuestion drawn whole: its header, the question, each option with its description,
 and whether it takes one pick or several. Clicking an option answers it, a multi-select collects its picks and
 sends them on Send, and several questions go back together once each has a pick, posted to
