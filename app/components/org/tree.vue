@@ -1,9 +1,10 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
-import { ArrowRight, ChevronDown, ChevronRight, Plus } from "@lucide/vue";
+import { ArrowRight, ChevronDown, ChevronRight, Plus, Trash2, X } from "@lucide/vue";
 import { useLocalStorage } from "@vueuse/core";
 import type { Mark, OrgConversation, OrgProject, OrgTask } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
+import { tintOf as agentTint } from "~/utils/tint";
 
 const sc = useSidecar();
 const chrome = useChrome();
@@ -46,6 +47,24 @@ const holdsInView = (group: OrgProject): boolean =>
 const isOpen = (group: OrgProject): boolean =>
   toggled.value[group.project.key] ?? ((!!group.mark && FOR_YOU.includes(group.mark)) || holdsInView(group));
 const isUnfolded = (key: string): boolean => toggled.value[key] ?? false;
+
+interface Lines<T> {
+  open: T[];
+  done: T[];
+  fold: string;
+  keyOf: (one: T) => string;
+}
+
+type Line<T> = { key: string; item: T } | { key: string; fold: number };
+
+const linesOf = <T,>({ open, done, fold, keyOf }: Lines<T>): Line<T>[] => [
+  ...open.map((item) => ({ key: keyOf(item), item })),
+  ...(done.length ? [{ key: fold, fold: done.length }] : []),
+  ...(isUnfolded(fold) ? done.map((item) => ({ key: keyOf(item), item })) : []),
+];
+
+const slugOf = (one: OrgTask): string => one.meta.slug;
+const keyOfRow = (row: OrgConversation): string => row.key;
 const toggle = (key: string, now: boolean): void => {
   toggled.value = { ...toggled.value, [key]: !now };
 };
@@ -127,13 +146,13 @@ const overTask = (event: DragEvent, one: OrgTask): void => {
   hotTask.value = one.meta.slug;
 };
 
-const dropOnTask = (event: DragEvent, one: OrgTask, group: OrgProject): void => {
+const dropOnTask = (event: DragEvent, one: OrgTask): void => {
   const row = carried.value;
   if (!row || one.meta.task.state === "done") return;
   event.preventDefault();
   event.stopPropagation();
   letGo();
-  void desk.lead(row, one.meta, group.project);
+  void desk.lead(row, one.meta);
 };
 
 useShortcuts(
@@ -172,7 +191,7 @@ useShortcuts(
 
     <nav class="scroll" role="tree" aria-label="Who is where">
       <template v-if="tree.inbox.length || desk.isNaming">
-        <span class="section mono-meta">Inbox</span>
+        <span class="section mono-meta">Backlog</span>
         <OrgDraft v-if="desk.isNaming" />
         <div
           v-for="one in tree.inbox"
@@ -207,6 +226,14 @@ useShortcuts(
               routeOf(one)?.project.name
             }}</UiButton
           >
+          <UiIconButton
+            class="delete"
+            :icon="Trash2"
+            aria-label="Delete"
+            data-tip="Delete it. Undo, or ⌘Z, brings it back"
+            size="xs"
+            @click="desk.remove(one)"
+          />
         </div>
       </template>
 
@@ -263,65 +290,106 @@ useShortcuts(
           />
 
           <template
-            v-for="one in [...group.tasks, ...(isUnfolded(`tasks:${group.project.key}`) ? group.done : [])]"
-            :key="one.meta.slug"
+            v-for="line in linesOf({
+              open: group.tasks,
+              done: group.done,
+              fold: `tasks:${group.project.key}`,
+              keyOf: slugOf,
+            })"
+            :key="line.key"
           >
-            <OrgRow
-              class="landing"
-              :attach="one.lead"
-              :attach-tip="leadTip(one)"
-              :data-hot="hotTask === one.meta.slug"
-              :depth="1"
-              is-task
-              :is-selected="one.meta.slug === task.slug"
-              :mark="one.mark"
-              :name="one.meta.title || deslug(one.meta.slug)"
-              @dragleave="hotTask = undefined"
-              @dragover="overTask($event, one)"
-              @drop="dropOnTask($event, one, group)"
-              @open="task.show({ slug: one.meta.slug })"
-            >
-              <span v-if="hotTask === one.meta.slug" class="drop mono-meta">as its Task Lead</span>
-            </OrgRow>
-            <OrgRow
-              v-for="row in [...one.leads, ...(isUnfolded(`done:${one.meta.slug}`) ? one.done : [])]"
-              :key="row.key"
-              :attach="row.key"
-              :depth="2"
-              :is-front="front(row)"
-              :mark="row.mark"
-              :name="row.name"
-              :role="row.role"
-              :tip="row.title"
-              @open="openConversation(row)"
-            />
             <button
-              v-if="one.done.length"
+              v-if="'fold' in line"
               class="fold plain-button focusable"
-              data-depth="2"
+              data-depth="1"
               type="button"
-              :aria-expanded="isUnfolded(`done:${one.meta.slug}`)"
-              @click="toggle(`done:${one.meta.slug}`, isUnfolded(`done:${one.meta.slug}`))"
+              :aria-expanded="isUnfolded(line.key)"
+              @click="toggle(line.key, isUnfolded(line.key))"
             >
               <span class="guide" aria-hidden="true" />
-              <span class="guide deep" aria-hidden="true" />
-              <UiIcon :icon="isUnfolded(`done:${one.meta.slug}`) ? ChevronDown : ChevronRight" size="xs" />
-              <span class="mono-meta">{{ one.done.length }} done</span>
+              <UiIcon :icon="isUnfolded(line.key) ? ChevronDown : ChevronRight" size="xs" />
+              <span class="mono-meta">{{ plural(line.fold, "done task") }}</span>
             </button>
+            <template v-else>
+              <OrgRow
+                class="landing"
+                :attach="line.item.lead"
+                :attach-tip="leadTip(line.item)"
+                :data-hot="hotTask === line.item.meta.slug"
+                :depth="1"
+                is-task
+                :is-selected="line.item.meta.slug === task.slug"
+                :mark="line.item.mark"
+                :name="line.item.meta.title || deslug(line.item.meta.slug)"
+                @dragleave="hotTask = undefined"
+                @dragover="overTask($event, line.item)"
+                @drop="dropOnTask($event, line.item)"
+                @open="task.show({ slug: line.item.meta.slug })"
+              >
+                <span v-if="hotTask === line.item.meta.slug" class="drop mono-meta">as its Task Lead</span>
+                <template v-if="line.item.meta.task.state === 'done'" #after>
+                  <UiIconButton
+                    :icon="X"
+                    aria-label="Remove from the list"
+                    data-tip="Remove from the list. It goes by itself a day after Done"
+                    size="xs"
+                    @click.stop="desk.hide(line.item.meta)"
+                  />
+                </template>
+              </OrgRow>
+              <template
+                v-for="lead in linesOf({
+                  open: line.item.leads,
+                  done: line.item.done,
+                  fold: `done:${line.item.meta.slug}`,
+                  keyOf: keyOfRow,
+                })"
+                :key="lead.key"
+              >
+                <button
+                  v-if="'fold' in lead"
+                  class="fold plain-button focusable"
+                  data-depth="2"
+                  type="button"
+                  :aria-expanded="isUnfolded(lead.key)"
+                  @click="toggle(lead.key, isUnfolded(lead.key))"
+                >
+                  <span class="guide" aria-hidden="true" />
+                  <span class="guide deep" aria-hidden="true" />
+                  <UiIcon :icon="isUnfolded(lead.key) ? ChevronDown : ChevronRight" size="xs" />
+                  <span class="mono-meta">{{ lead.fold }} done</span>
+                </button>
+                <template v-else>
+                  <OrgRow
+                    :attach="lead.item.key"
+                    :depth="2"
+                    :is-front="front(lead.item)"
+                    :mark="lead.item.mark"
+                    :name="lead.item.name"
+                    :role="lead.item.role"
+                    :tip="lead.item.title"
+                    @open="openConversation(lead.item)"
+                  />
+                  <div
+                    v-if="lead.item.agents?.length"
+                    class="hired"
+                    role="group"
+                    :aria-label="`Specialists ${lead.item.name} hired`"
+                  >
+                    <span class="guide" aria-hidden="true" />
+                    <span class="guide deep" aria-hidden="true" />
+                    <span
+                      v-for="agent in lead.item.agents"
+                      :key="agent.name"
+                      class="hire mono-meta"
+                      :data-tip="`A specialist ${lead.item.name} hired`"
+                      ><span class="square" :data-tint="agentTint(agent.color, agent.name)" />{{ agent.name }}</span
+                    >
+                  </div>
+                </template>
+              </template>
+            </template>
           </template>
-
-          <button
-            v-if="group.done.length"
-            class="fold plain-button focusable"
-            data-depth="1"
-            type="button"
-            :aria-expanded="isUnfolded(`tasks:${group.project.key}`)"
-            @click="toggle(`tasks:${group.project.key}`, isUnfolded(`tasks:${group.project.key}`))"
-          >
-            <span class="guide" aria-hidden="true" />
-            <UiIcon :icon="isUnfolded(`tasks:${group.project.key}`) ? ChevronDown : ChevronRight" size="xs" />
-            <span class="mono-meta">{{ plural(group.done.length, "done task") }}</span>
-          </button>
 
           <OrgRow
             v-for="row in group.conversations"
@@ -452,6 +520,15 @@ useShortcuts(
   @apply flex-none text-muted;
 }
 
+.delete {
+  @apply flex-none opacity-0 transition-opacity duration-(--duration-fast) ease-out focus-visible:opacity-100;
+}
+
+.inbox:hover .delete,
+.inbox[data-selected="true"] .delete {
+  @apply opacity-100;
+}
+
 .square {
   @apply size-1.75 flex-none rounded-xs bg-tint;
 }
@@ -500,7 +577,20 @@ useShortcuts(
   @apply absolute -top-px -bottom-px left-2.25 w-px origin-left scale-x-50 bg-border;
 }
 
-.fold .guide.deep {
+.fold .guide.deep,
+.hired .guide.deep {
   @apply left-10;
+}
+
+.hired {
+  @apply relative flex flex-wrap items-center gap-1 pt-0.5 pr-1 pb-1 pl-17;
+}
+
+.hired .guide {
+  @apply absolute -top-px -bottom-px left-2.25 w-px origin-left scale-x-50 bg-border;
+}
+
+.hire {
+  @apply inline-flex items-center gap-1 rounded-full border border-border px-1.75 py-px text-muted normal-case;
 }
 </style>

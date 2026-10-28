@@ -56,7 +56,7 @@ const updated = computed(() =>
   meta.updated ? new Date(meta.updated).toLocaleDateString([], { day: "numeric", month: "short" }) : "",
 );
 const eyebrow = computed(() =>
-  ["Task", project ? `on ${project.name}` : "in the inbox", updated.value && `updated ${updated.value}`]
+  ["Task", project ? `on ${project.name}` : "in the backlog", updated.value && `updated ${updated.value}`]
     .filter(Boolean)
     .join(" · "),
 );
@@ -118,7 +118,7 @@ onBeforeUnmount(() => (task.isEditing = false));
           <UiIcon :icon="ChevronLeft" size="xs" />Back
         </button>
         <span class="square" :data-tint="tint" />
-        <span class="project">{{ project?.name ?? "Inbox" }}</span>
+        <span class="project">{{ project?.name ?? "Backlog" }}</span>
         <span class="slash">/</span>
         <span class="name">{{ title }}</span>
         <TaskStatePick :meta="meta" />

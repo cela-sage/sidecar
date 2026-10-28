@@ -21,13 +21,13 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
           <span class="what">
             <span class="title">{{ receipt.title }}</span>
             <span class="note mono-meta">{{
-              receipt.isUndone ? "back in the inbox" : `${receipt.was} to ${receipt.now}`
+              receipt.isUndone ? "back in the backlog" : `${receipt.was} to ${receipt.now}`
             }}</span>
           </span>
           <button
             v-if="canUndo(receipt)"
             class="link plain-button focusable"
-            data-tip="Put it back in the inbox"
+            data-tip="Put it back in the backlog"
             type="button"
             @click="door.undo(receipt)"
           >

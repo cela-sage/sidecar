@@ -20,13 +20,17 @@ test("the strip passes what is behind, marks where it is, and dashes what is ahe
     Tasks.stepsOf(state)
       .map((step) => `${step.label}:${step.kind}`)
       .join(" ");
-  assert.equal(strip("running"), "Unassigned:past Assigned:past Assessed:past Running:running Done:future");
-  assert.equal(
-    strip("blocked"),
-    "Unassigned:past Assigned:past Assessed:past Running:past Needs you:needs Done:future",
+  assert.equal(strip("running"), "Backlog:past Assigned:past Assessed:past In progress:running Done:future");
+  assert.equal(strip("blocked"), "Backlog:past Assigned:past Assessed:past In progress:past Blocked:needs Done:future");
+  assert.equal(strip("unassigned"), "Backlog:waiting Assigned:future Assessed:future In progress:future Done:future");
+  assert.equal(strip("done"), "Backlog:past Assigned:past Assessed:past In progress:past Done:done");
+  assert.deepEqual(
+    (["unassigned", "assessed", "running", "waiting", "blocked", "done"] as const).map(Tasks.chipOf),
+    ["Backlog", "Backlog", "In progress", "In progress", "Blocked", "Done"],
   );
-  assert.equal(strip("unassigned"), "Unassigned:waiting Assigned:future Assessed:future Running:future Done:future");
-  assert.equal(strip("done"), "Unassigned:past Assigned:past Assessed:past Running:past Done:done");
+  assert.equal(Tasks.stateFor("backlog", { state: "running", project: "cela" }), "assigned");
+  assert.equal(Tasks.stateFor("backlog", { state: "running" }), "unassigned");
+  assert.equal(Tasks.stateFor("progress", { state: "waiting", project: "cela" }), "running");
   assert.deepEqual(
     Tasks.stepsOf("running").map((step) => step.joint),
     ["none", "solid", "solid", "primary", "dashed"],
@@ -69,14 +73,50 @@ test("the history folds runs, puts the divider under what the Project Lead read,
       .slice(3)
       .map((step) => `${step.label}:${step.kind}`)
       .join(" ");
-  assert.equal(steps("running", story), "Running:running Blocked, settled by you:decided Done:future");
+  assert.equal(steps("running", story), "In progress:running Blocked, settled by you:decided Done:future");
 
   const waited: HistoryEntry[] = [
     { at: "2026-10-26T16:40:00Z", who: "TL", kind: "state", move: { was: "running", now: "waiting" }, on: "Cosmico", reason: "they confirm" },
     { at: "2026-10-27T16:40:00Z", who: "TL", kind: "state", move: { was: "waiting", now: "running" } },
   ];
-  assert.equal(steps("waiting", Timeline.story(waited.slice(0, 1), "waiting")), "Running:past Waiting on Cosmico:waiting Done:future");
-  assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past Running:running Done:future");
+  assert.equal(steps("waiting", Timeline.story(waited.slice(0, 1), "waiting")), "In progress:past Waiting on Cosmico:waiting Done:future");
+  assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past In progress:running Done:future");
+});
+
+test("the tree drops a Done task you removed or that went Done a day ago, and lists only what agent view lists", () => {
+  const done = (slug: string, task: Partial<TaskMeta["task"]>): TaskMeta => ({
+    slug,
+    title: slug,
+    kind: "page",
+    format: "md",
+    path: `/tmp/${slug}.md`,
+    task: { state: "done", project: "cela", ...task },
+  });
+  const now = Date.parse("2026-10-28T12:00:00Z");
+  const tree = Org.treeOf({
+    now,
+    projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
+    sessions: [
+      session({ key: "seen", name: "[Cela] sidecar zoom", inView: true }),
+      session({ key: "gone", name: "[Cela] sage storybook", inView: false }),
+    ],
+    tasks: [
+      done("today", { doneAt: "2026-10-28T09:00:00Z" }),
+      done("yesterday", { doneAt: "2026-10-27T09:00:00Z" }),
+      done("removed", { doneAt: "2026-10-28T11:00:00Z", hidden: true }),
+      done("untimed", {}),
+    ],
+  });
+  const [cela] = tree.projects;
+  assert.deepEqual(
+    cela?.done.map((one) => one.meta.slug),
+    ["today", "untimed"],
+  );
+  assert.deepEqual(
+    cela?.conversations.map((one) => one.key),
+    ["seen"],
+  );
+  assert.equal(tree.conversations, 1);
 });
 
 test("the org tree puts each role where it works, folds what is done and files your own conversations by their prefix", () => {
@@ -96,7 +136,12 @@ test("the org tree puts each role where it works, folds what is done and files y
     session({ key: "ea", name: "[meta] EA daily triage", status: "busy" }),
     session({ key: "pl", name: "[Cela] PL sidecar-task-board plan", status: "waiting" }),
     session({ key: "dl", name: "[Cela] DL sidecar-task-board design" }),
-    session({ key: "fol", name: "[Cela] TL sidecar-task-board follower", status: "busy" }),
+    session({
+      key: "fol",
+      name: "[Cela] TL sidecar-task-board follower",
+      status: "busy",
+      agents: [{ name: "designer", color: "blue" }],
+    }),
     session({ key: "lane", name: "[Cela] TL sidecar-task-board lane" }),
     session({ key: "loop", name: "[Cela] TL sidecar-task-board loop", live: false }),
     session({ key: "gone", name: "[Cela] TL sidecar-task-board titles", live: false, archived: true }),
@@ -129,6 +174,10 @@ test("the org tree puts each role where it works, folds what is done and files y
   assert.equal(board?.mark, "needs");
   assert.equal(board?.lead, "lane");
   assert.deepEqual(board?.leads.map(row), ["TL lane needs", "TL follower working"]);
+  assert.deepEqual(
+    board?.leads.map((one) => one.agents?.map((agent) => agent.name)),
+    [undefined, ["designer"]],
+  );
   assert.deepEqual(board?.done.map(row), ["TL loop completed"]);
   assert.deepEqual(
     cela?.done.map((one) => one.meta.slug),

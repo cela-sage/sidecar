@@ -1,46 +1,35 @@
 <script lang="ts" setup>
 import type { TaskAssigned } from "~~/shared/types/desk";
-import type { TaskState } from "~~/shared/types/task";
-import type { TaskMeta } from "~/utils/tasks";
+import { TaskStatus, type TaskLook, type TaskMeta } from "~/utils/tasks";
 
 const { meta } = defineProps<{ meta: TaskMeta }>();
 const task = $task();
 const chrome = useChrome();
-const isAsking = ref(false);
-const reason = ref("");
 
-const PICKS: TaskState[] = ["running", "blocked", "waiting", "done", "unassigned"];
+const LOOK: Record<TaskStatus, TaskLook> = { backlog: "waiting", progress: "running", blocked: "needs", done: "done" };
 
 const look = computed(() => Tasks.lookOf(meta.task.state));
-const picks = computed(() => PICKS.filter((one) => one !== meta.task.state));
-const labelOf = (state: TaskState): string => (state === "unassigned" ? "Back to the inbox" : Tasks.chipOf(state));
+const picks = computed(() => TaskStatus.filter((one) => one !== Tasks.statusOf(meta.task.state)));
 
-async function set(state: TaskState, close: () => void): Promise<void> {
-  const why = reason.value.trim();
-  if (state === "waiting" && !why) {
-    isAsking.value = true;
-    return;
-  }
+async function set(status: TaskStatus, close: () => void): Promise<void> {
   close();
-  isAsking.value = false;
-  reason.value = "";
   await $fetch<TaskAssigned>(`/api/tasks/${encodeURIComponent(meta.slug)}`, {
     method: "PATCH",
-    body: { state, ...(state === "waiting" ? { reason: why } : {}) },
+    body: { state: Tasks.stateFor(status, meta.task) },
   }).catch((error: unknown) =>
-    chrome.toast(failReason(error) ?? `Could not move it to ${labelOf(state)}`, "destructive"),
+    chrome.toast(failReason(error) ?? `Could not move it to ${Tasks.statusLabel(status)}`, "destructive"),
   );
   await Promise.all([task.readTasks(), task.refresh()]);
 }
 </script>
 
 <template>
-  <UiPopover :estimated-height="250" placement="bottom" width="w-60">
+  <UiPopover :estimated-height="200" placement="bottom" width="w-56">
     <template #trigger="{ open }">
       <button
         class="chip plain-button focusable"
         data-region="task-state"
-        data-tip="Move it by hand"
+        data-tip="Change its status"
         type="button"
         :aria-expanded="open"
         :data-look="look"
@@ -50,14 +39,11 @@ async function set(state: TaskState, close: () => void): Promise<void> {
     </template>
 
     <template #default="{ close }">
-      <div class="menu" role="group" aria-label="Task state">
-        <p class="head mono-meta">Move it by hand</p>
+      <div class="menu" role="group" aria-label="Task status">
+        <p class="head mono-meta">Status</p>
         <UiMenuItem v-for="one in picks" :key="one" @click="set(one, close)">
-          <span class="pick"><TaskDot :look="Tasks.lookOf(one)" size="sm" />{{ labelOf(one) }}</span>
+          <span class="pick"><TaskDot :look="LOOK[one]" size="sm" />{{ Tasks.statusLabel(one) }}</span>
         </UiMenuItem>
-        <form v-if="isAsking" class="ask" @submit.prevent="set('waiting', close)">
-          <UiTextInput v-model="reason" placeholder="What it waits for, then enter" />
-        </form>
       </div>
     </template>
   </UiPopover>
@@ -94,9 +80,5 @@ async function set(state: TaskState, close: () => void): Promise<void> {
 
 .pick {
   @apply inline-flex items-center gap-2 typo-body text-fg;
-}
-
-.ask {
-  @apply px-1 pt-1;
 }
 </style>

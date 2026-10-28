@@ -1,4 +1,4 @@
-import type { DeskAsk, DeskTriage, TaskAssigned } from "~~/shared/types/desk";
+import type { DeskAsk, DeskTriage, LeadJoined, TaskAssigned } from "~~/shared/types/desk";
 import type { Retitled } from "~~/shared/types/session";
 import type { Project } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
@@ -52,8 +52,8 @@ export const $desk = defineStore(() => {
 
   const unplace = async (meta: TaskMeta): Promise<void> => {
     await move(meta.slug).then(
-      () => chrome.toast(`${titleOf(meta)} is back in the inbox`),
-      () => chrome.toast(`Could not put ${titleOf(meta)} back in the inbox`, "destructive"),
+      () => chrome.toast(`${titleOf(meta)} is back in the backlog`),
+      () => chrome.toast(`Could not put ${titleOf(meta)} back in the backlog`, "destructive"),
     );
     await task.readTasks();
   };
@@ -64,15 +64,21 @@ export const $desk = defineStore(() => {
     if (!moved) return chrome.toast(`Could not put ${titleOf(meta)} on ${project.name}`, "destructive");
     const next = moved.lead
       ? "and its Project Lead reads it next."
-      : "and no Project Lead runs there yet, so it waits on the board.";
+      : moved.starts
+        ? "and a new Project Lead starts on it."
+        : "and no Project Lead can run there, so it waits on the board.";
     offer(`${titleOf(meta)} went to ${project.name}, ${next}`, () => unplace(meta));
+  };
+
+  const named = (key: string, title: string): void => {
+    sc.sessions.value = sc.sessions.value.map((one) => (one.key === key ? { ...one, name: title } : one));
   };
 
   const rename = async (key: string, title: string): Promise<boolean> => {
     const done = await $fetch<Retitled>(`/api/sessions/${key}`, { method: "PATCH", body: { title } }).catch(
       () => undefined,
     );
-    if (done) sc.sessions.value = sc.sessions.value.map((one) => (one.key === key ? { ...one, name: title } : one));
+    if (done) named(key, title);
     return !!done;
   };
 
@@ -85,13 +91,17 @@ export const $desk = defineStore(() => {
     });
   };
 
-  const lead = (row: OrgConversation, meta: TaskMeta, project: Project): Promise<void> =>
-    retitle({
-      row,
-      title: Titles.asLead({ was: row.title, token: project.token, slug: meta.slug }),
-      done: `${row.name} joined ${titleOf(meta)} as a Task Lead.`,
-      failed: `Could not put ${row.name} on ${titleOf(meta)}`,
+  const lead = async (row: OrgConversation, meta: TaskMeta): Promise<void> => {
+    const was = sc.sessions.value.find((one) => one.key === row.key)?.name;
+    const at = `/api/tasks/${encodeURIComponent(meta.slug)}/lead`;
+    const joined = await $fetch<LeadJoined>(at, { method: "POST", body: { key: row.key } }).catch(() => undefined);
+    if (!joined) return chrome.toast(`Could not put ${row.name} on ${titleOf(meta)}`, "destructive");
+    named(row.key, joined.title);
+    offer(`${row.name} joined ${titleOf(meta)} as a Task Lead, and reads it next.`, async () => {
+      await $fetch(at, { method: "DELETE", query: { key: row.key } }).catch(() => undefined);
+      if (was && !(await rename(row.key, was))) chrome.toast(`Could not rename ${row.name} back`, "destructive");
     });
+  };
 
   const bring = (row: OrgConversation, project: Project): Promise<void> =>
     retitle({
@@ -100,6 +110,31 @@ export const $desk = defineStore(() => {
       done: `${row.name} moved to ${project.name}.`,
       failed: `Could not move ${row.name} to ${project.name}`,
     });
+
+  const hide = async (meta: TaskMeta): Promise<void> => {
+    const at = `/api/tasks/${encodeURIComponent(meta.slug)}/hide`;
+    const done = await $fetch(at, { method: "POST" }).catch(() => undefined);
+    await task.readTasks();
+    chrome.toast(
+      done
+        ? `${titleOf(meta)} left the list, and sidecar task ${meta.slug} still reads it`
+        : `Could not remove ${titleOf(meta)}`,
+      done ? undefined : "destructive",
+    );
+  };
+
+  const remove = async (meta: TaskMeta): Promise<void> => {
+    const at = `/api/tasks/${encodeURIComponent(meta.slug)}`;
+    const gone = await $fetch(at, { method: "DELETE" }).catch(() => undefined);
+    if (task.slug === meta.slug) task.close();
+    await task.readTasks();
+    if (!gone) return chrome.toast(`Could not delete ${titleOf(meta)}`, "destructive");
+    offer(`${titleOf(meta)} is deleted.`, async () => {
+      const back = await $fetch(`${at}/restore`, { method: "POST" }).catch(() => undefined);
+      await task.readTasks();
+      if (!back) chrome.toast(`Could not bring ${titleOf(meta)} back`, "destructive");
+    });
+  };
 
   const undoLast = (): boolean => {
     if (!last || last.until < Date.now()) return false;
@@ -119,5 +154,5 @@ export const $desk = defineStore(() => {
     return made.slug;
   };
 
-  return { asks, bring, carrying, create, dragging, isNaming, lead, load, move, place, routes, undoLast };
+  return { asks, bring, carrying, create, dragging, hide, isNaming, lead, load, move, place, remove, routes, undoLast };
 });

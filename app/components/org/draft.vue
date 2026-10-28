@@ -35,7 +35,12 @@ onMounted(() => field.value?.focus());
       @blur="!title.trim() && cancel()"
       @keydown.esc.stop.prevent="cancel"
     />
-    <UiButton data-tip="Add to inbox · {enter}" :disabled="!title.trim()" size="xs" type="submit" variant="primary"
+    <UiButton
+      data-tip="Add to the backlog · {enter}"
+      :disabled="!title.trim()"
+      size="xs"
+      type="submit"
+      variant="primary"
       >Add</UiButton
     >
   </form>

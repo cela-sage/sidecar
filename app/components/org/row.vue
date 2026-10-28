@@ -55,6 +55,7 @@ const isHeld = computed(() => !!attach && terminal.state.held?.key === attach);
       <slot />
       <span v-if="id" class="id">{{ id }}</span>
     </button>
+    <slot name="after" />
     <button
       v-if="attach"
       class="attach plain-button focusable"

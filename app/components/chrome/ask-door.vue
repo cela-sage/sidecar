@@ -21,7 +21,7 @@ const isPicking = ref(false);
 const keepsContext = ref(true);
 
 const CHIPS: Record<"conversation" | "task", string[]> = {
-  conversation: ["What needs me?", "Route the inbox", "Open a task from this conversation"],
+  conversation: ["What needs me?", "Route the backlog", "Open a task from this conversation"],
   task: ["Where does it stand?", "What is it waiting on?", "What did I decide on it?"],
 };
 
@@ -183,7 +183,7 @@ onMounted(() => {
           <span v-if="step" class="who-line shimmer">{{ step }}</span>
           <span v-else class="who-line" data-quiet="true">acts for you</span>
         </span>
-        <span v-if="inbox.length" class="count" data-tip="In the inbox, waiting to be routed"
+        <span v-if="inbox.length" class="count" data-tip="In the backlog, waiting to be routed"
           ><OrgMark mark="queued" />{{ inbox.length }}</span
         >
         <span class="ask">Ask</span>
@@ -231,9 +231,9 @@ onMounted(() => {
       <DoorMenu v-if="isPicking" class="menu" @pick="pick" />
 
       <div ref="body" class="body">
-        <section v-if="showsInbox" class="inbox" aria-label="Inbox">
+        <section v-if="showsInbox" class="inbox" aria-label="Backlog">
           <div class="inbox-head">
-            <span class="inbox-title">Inbox</span>
+            <span class="inbox-title">Backlog</span>
             <span class="mono-meta">{{ inbox.length }} to route</span>
           </div>
           <div class="inbox-rows">

@@ -1,4 +1,4 @@
-import type { LiveSession } from "~~/shared/types/session";
+import type { LiveSession, SessionAgent } from "~~/shared/types/session";
 import type { Project, Role, TaskState } from "~~/shared/types/task";
 import { Titles, type RoleTitle } from "../../shared/utils/titles.ts";
 import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
@@ -13,6 +13,7 @@ export interface OrgConversation {
   role?: Role;
   mark: Mark;
   slug?: string;
+  agents?: SessionAgent[];
 }
 
 export interface OrgTask {
@@ -47,6 +48,7 @@ export interface OrgInput {
   tasks: TaskMeta[];
   projects: Project[];
   asking?: string[];
+  now?: number;
 }
 
 interface Placed {
@@ -76,6 +78,10 @@ const TASK_MARK: Record<TaskState, Mark> = {
   done: "done",
 };
 const LEAD_ORDER: Role[] = ["PL", "DL", "TL"];
+const DONE_KEPT_MS = 24 * 60 * 60_000;
+
+const isShown = ({ task }: TaskMeta, now: number): boolean =>
+  task.state !== "done" || (!task.hidden && !(task.doneAt && now - Date.parse(task.doneAt) > DONE_KEPT_MS));
 
 const worst = (marks: Mark[]): Mark | undefined =>
   marks.reduce<Mark | undefined>((was, one) => (!was || RANK[one] > RANK[was] ? one : was), undefined);
@@ -123,6 +129,7 @@ const conversationOf = (placed: Placed, { asking, slug, waiting = false }: Placi
     role: title.role,
     mark: marks[state],
     ...(slug ? { slug } : {}),
+    ...(isLead && session.agents?.length ? { agents: session.agents } : {}),
   };
 };
 
@@ -148,12 +155,13 @@ const projectsOf = (tasks: TaskMeta[], projects: Project[]): Project[] => {
   return [...projects, ...[...strays].map((key) => ({ key, name: key, token: key, folder: "" }))];
 };
 
-const treeOf = ({ sessions, tasks, projects, asking = [] }: OrgInput): OrgTree => {
+const treeOf = ({ sessions, tasks, projects, asking = [], now = Date.now() }: OrgInput): OrgTree => {
   const asked = new Set(asking);
-  const listed = sessions.filter((session) => !session.archived || session.live);
+  const inView = sessions.some((session) => typeof session.inView === "boolean");
+  const listed = sessions.filter((session) => (inView ? session.inView : !session.archived || session.live));
   const placed = placedOf(listed);
   const owned = ownedOf(listed);
-  const ordered = [...tasks].sort(Tasks.order);
+  const ordered = tasks.filter((one) => isShown(one, now)).sort(Tasks.order);
   const all = projectsOf(ordered, projects);
   const keys = all.map((one) => one.key);
 

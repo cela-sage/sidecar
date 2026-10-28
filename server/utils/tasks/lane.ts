@@ -12,6 +12,7 @@ import { Ask } from "./ask.ts";
 import { TaskCaller, type Caller } from "./caller.ts";
 import { TaskFiles, type TaskFile } from "./file.ts";
 import { TaskHistory } from "./history.ts";
+import { TaskShelf } from "./shelf.ts";
 
 export interface StateInput {
   given: string;
@@ -71,7 +72,11 @@ const H2 = /^##[ \t]+(.+?)[ \t#]*$/;
 
 const now = (): string => new Date().toISOString();
 const uid8 = (): string => crypto.randomUUID().replace(/-/g, "").slice(0, 8);
-const saidBy = (caller: Caller): Said => ({ at: now(), who: caller.who, ...(caller.from ? { from: caller.from } : {}) });
+const saidBy = (caller: Caller): Said => ({
+  at: now(),
+  who: caller.who,
+  ...(caller.from ? { from: caller.from } : {}),
+});
 
 const changed = (file: TaskFile): void =>
   Events.publish({ topic: "task.changed", data: { slug: file.slug, state: file.task.state } });
@@ -99,7 +104,14 @@ const state = ({ given, caller, state: now, reason, on }: StateInput): TaskFile 
   if (was === now && !reason) return file;
   const task = { ...file.task, state: now, ...(now === "unassigned" ? { project: undefined } : {}) };
   const next = TaskFiles.restamp(file, task);
-  record(next, { ...saidBy(caller), kind: "state", move: { was, now }, ...(reason ? { reason } : {}), ...(on ? { on } : {}) });
+  if (now !== "done") TaskShelf.show(file.slug);
+  record(next, {
+    ...saidBy(caller),
+    kind: "state",
+    move: { was, now },
+    ...(reason ? { reason } : {}),
+    ...(on ? { on } : {}),
+  });
   return next;
 };
 
@@ -145,7 +157,11 @@ const escalate = ({ given, caller, kind, text, options = [], quote }: AskInput):
   const doc = Threads.read(opened.path);
   const at = now();
   const label = quote ? sectionOf(readFileSync(opened.path, "utf8"), quote) : undefined;
-  const ask: TaskAsk = { kind, ...(caller.from ? { from: caller.from } : {}), options: kind === "hire" ? HIRE : options };
+  const ask: TaskAsk = {
+    kind,
+    ...(caller.from ? { from: caller.from } : {}),
+    options: kind === "hire" ? HIRE : options,
+  };
   const thread: AskThread = {
     id: uid8(),
     n: doc.threads.reduce((max, one) => Math.max(max, Number(one.n) || 0), 0) + 1,
@@ -183,7 +199,8 @@ const pending = (threads: Thread[], n?: string): AskThread => {
     .filter((one) => one.status !== "resolved")
     .sort((a, b) => String(b.at).localeCompare(String(a.at)));
   const hit = n ? asks.find((one) => String(one.n) === n || one.id === n) : newest;
-  if (!hit) throw new Refusal(n ? `no escalation or hire #${n} on this task` : "nothing on this task waits on a decision", 2);
+  if (!hit)
+    throw new Refusal(n ? `no escalation or hire #${n} on this task` : "nothing on this task waits on a decision", 2);
   if (hit.status === "resolved") throw new Refusal(`#${n} is settled already`, 2);
   return hit;
 };
