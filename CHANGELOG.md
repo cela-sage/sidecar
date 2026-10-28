@@ -7,6 +7,18 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.31.0
+
+### Added
+
+- **A conversation in No project drops onto an open task as one of its Task Leads,** renamed
+  `[<project token>] TL <slug> <subject>` through the new `PATCH /api/sessions/<key>`, with Undo.
+
+### Fixed
+
+- **A title's role is the first role token in it,** so a subject that happens to hold PL or EA no longer outranks
+  the TL before it.
+
 ## 0.30.1
 
 ### Changed

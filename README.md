@@ -185,6 +185,13 @@ back. Eight seconds after the drop, unless undone, the project's Project Lead, i
 titled with PL and the project's token, gets the task to assess. New task, or N, drafts a row in the inbox,
 writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
 
+Dragging a row out of No project onto an open task makes that conversation one of the task's Task Leads, and a
+folded project opens while the row passes over it. The drop renames it `[<project token>] TL <slug> <subject>`,
+keeping a leading deadline, and its tickets while the project stays the same, through
+`PATCH /api/sessions/<key>`. That appends a title record to the transcript and writes the name, marked as yours,
+into the job's state file, which is where the job list and the running process read it. Undo, or ⌘Z, puts the old
+title back when it had one.
+
 Clicking the conversation's title opens the conversation picker, which lists every conversation the sidecar
 knows, yours included, and deletes one with its trash button or ⌘⌫, the transcript staying on disk.
 
