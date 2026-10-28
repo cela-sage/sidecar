@@ -1,4 +1,5 @@
 import type { Started } from "~~/shared/types/assistant";
+import type { Question } from "~~/shared/types/question";
 import type { LiveSession } from "~~/shared/types/session";
 import type { TaskState } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
@@ -26,6 +27,7 @@ export interface DoorExchange {
   step: DoorStep;
   isQueued?: boolean;
   answer?: string;
+  questions?: Question[];
   failure?: string;
   receipts: DoorReceipt[];
 }
@@ -95,6 +97,7 @@ export const $door = defineStore(() => {
     let isOurs = isTaken;
     let isWaiting = false;
     let said: string | undefined;
+    let asked: string | undefined;
     const stop = (): void => {
       source.close();
       clearTimeout(timer);
@@ -126,9 +129,16 @@ export const $door = defineStore(() => {
         update(id, { step: "answered", answer: said });
         return stop();
       }
+      if (turn.kind === "done" && turn.ref && turn.ref === asked) {
+        asked = undefined;
+        return update(id, { step: "working", questions: undefined });
+      }
       if (turn.role !== "assistant") return;
       if (turn.kind === "narration" || turn.kind === "answer") said = turn.text;
-      if (turn.kind === "acting" && turn.tool === "AskUserQuestion") update(id, { step: "waiting", answer: said });
+      if (turn.kind === "acting" && turn.tool === "AskUserQuestion") {
+        asked = turn.ref;
+        update(id, { step: "waiting", answer: said, questions: turn.ask });
+      }
     });
     return new Promise((ready) => {
       source.addEventListener("open", () => ready(), { once: true });

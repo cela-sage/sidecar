@@ -1,13 +1,11 @@
 import { splitLines } from "../../../lib/text.ts";
+import type { Question, QuestionOption } from "../../../shared/types/question.ts";
 import { plain } from "./relay.ts";
 import { argOf, readOut } from "./speaker.ts";
 import { readRange, transcriptIndex, type TranscriptGrowth } from "./transcripts.ts";
 
 // Narration and answer share the provider's `text` block, told apart only by position.
 export type TurnKind = "thinking" | "narration" | "answer" | "acting" | "note" | "drop" | "done" | "end";
-
-export type AskOption = { label: string; description?: string };
-export type Ask = { question: string; header?: string; multi?: true; options: AskOption[] };
 
 export type ConversationTurn = {
   role: "user" | "assistant" | "system";
@@ -17,7 +15,7 @@ export type ConversationTurn = {
   tool?: string;
   arg?: string;
   /** AskUserQuestion only, so the chat can offer the options instead of an opaque tool row. */
-  ask?: Ask[];
+  ask?: Question[];
   /** The provider's tool_use id, so a result pairs back to its call. */
   ref?: string;
   /** Started with run_in_background, so it is long-running by construction. */
@@ -143,9 +141,9 @@ function resultRefOf(content: unknown): string | undefined {
   return rec.type === "tool_result" && typeof rec.tool_use_id === "string" ? rec.tool_use_id : undefined;
 }
 
-type Said = { text: string; kind: TurnKind; tool?: string; arg?: string; ref?: string; bg?: true; ask?: Ask[] };
+type Said = { text: string; kind: TurnKind; tool?: string; arg?: string; ref?: string; bg?: true; ask?: Question[] };
 
-function optionsOf(raw: unknown): AskOption[] {
+function optionsOf(raw: unknown): QuestionOption[] {
   if (!Array.isArray(raw)) return [];
   return raw.flatMap((one) => {
     const rec = one as Record<string, unknown>;
@@ -154,7 +152,7 @@ function optionsOf(raw: unknown): AskOption[] {
   });
 }
 
-function asksOf(input: unknown): Ask[] | undefined {
+function asksOf(input: unknown): Question[] | undefined {
   if (typeof input !== "object" || !input) return undefined;
   const { questions } = input as { questions?: unknown };
   if (!Array.isArray(questions)) return undefined;
@@ -183,7 +181,7 @@ function saidOf(content: unknown): Said | undefined {
   let arg: string | undefined;
   let ref: string | undefined;
   let bg: true | undefined;
-  let ask: Ask[] | undefined;
+  let ask: Question[] | undefined;
   for (const part of content) {
     if (typeof part !== "object" || !part) continue;
     const rec = part as Record<string, unknown>;

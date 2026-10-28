@@ -3,6 +3,7 @@ import type { DoorExchange, DoorReceipt } from "~/stores/door";
 
 const { step } = defineProps<{ step?: string }>();
 const door = $door();
+const terminal = $terminal();
 
 const canUndo = (receipt: DoorReceipt): boolean =>
   !receipt.isUndone && receipt.was === "unassigned" && receipt.now !== "unassigned";
@@ -46,7 +47,19 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
       <div v-if="one.step === 'waiting'" class="asks">
         <span class="asks-eyebrow mono-meta"><span class="asks-dot dot" />Waiting on your answer</span>
         <Prose v-if="one.answer" :value="one.answer" />
-        <span class="asks-hint">Answer below.</span>
+        <DoorQuestion v-for="question in one.questions" :key="question.question" :question="question" />
+        <span v-if="one.questions && one.to" class="asks-hint">
+          Answer it in the terminal.
+          <button
+            class="link plain-button focusable"
+            data-tip="Attach in your terminal"
+            type="button"
+            @click="one.to && terminal.attach(one.to)"
+          >
+            Attach
+          </button>
+        </span>
+        <span v-else class="asks-hint">Answer below.</span>
       </div>
       <Prose v-else-if="one.step === 'answered' && one.answer" class="says" :value="one.answer" />
       <p v-if="one.step === 'failed'" class="failure" role="alert">{{ one.failure }}</p>
