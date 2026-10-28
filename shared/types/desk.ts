@@ -23,6 +23,11 @@ export interface TaskAssigned {
   starts?: true;
 }
 
+export interface TaskRemoved {
+  trashed: true;
+  stopped: string[];
+}
+
 export interface LeadJoined {
   key: string;
   title: string;

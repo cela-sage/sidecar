@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -8,9 +8,11 @@ import { HistoryLines } from "../../../shared/utils/history.ts";
 import { TaskCommand } from "../../../bin/task.ts";
 import { TaskHistory } from "./history.ts";
 import { TaskLane } from "./lane.ts";
+import { TaskTrash } from "./trash.ts";
 
 const home = mkdtempSync(join(tmpdir(), "lane-"));
 process.env.CLAUDE_CONFIG_DIR = home;
+process.env.CLAUDE_BIN = join(home, "no-such-claude");
 const artifacts = join(home, "sidecar", "artifacts");
 mkdirSync(artifacts, { recursive: true });
 
@@ -62,7 +64,13 @@ test("an escalation blocks the task, Marco's pick settles it back to running, an
 
 test("a decide typed at a Task Lead's prompt is Marco's, in the history and on the thread", () => {
   task("desk", "running");
-  TaskLane.escalate({ given: "desk", caller: lead, kind: "escalation", text: "Where does the icon go?", options: ["In"] });
+  TaskLane.escalate({
+    given: "desk",
+    caller: lead,
+    kind: "escalation",
+    text: "Where does the icon go?",
+    options: ["In"],
+  });
   const decided = TaskLane.decide({ given: "desk", caller: lead, answer: "1" });
   assert.equal(decided.ask.decision?.who, "YOU");
   const [entry] = TaskHistory.read("desk").filter((one) => one.kind === "decide");
@@ -103,9 +111,11 @@ test("waiting needs a reason, a task on no project cannot run, and a Task Lead's
   assert.throws(() => TaskLane.state({ given: "fattura", caller: lead, state: "running" }), /no project/);
 
   assert.deepEqual(
-    TaskLane.heard({ caller: { who: "TL", from: "[Madong] TL fattura follow-up" }, kind: "turn", text: "Sent it." }).map(
-      (one) => one.slug,
-    ),
+    TaskLane.heard({
+      caller: { who: "TL", from: "[Madong] TL fattura follow-up" },
+      kind: "turn",
+      text: "Sent it.",
+    }).map((one) => one.slug),
     ["fattura"],
   );
   assert.deepEqual(TaskLane.heard({ caller: { who: "YOU", from: "[madong] fattura" }, kind: "turn", text: "x" }), []);
@@ -118,5 +128,50 @@ test("waiting needs a reason, a task on no project cannot run, and a Task Lead's
   assert.deepEqual(
     TaskHistory.read("fattura").map((entry) => (entry.kind === "message" ? `message to ${entry.to}` : entry.kind)),
     ["state", "state", "turn", "message to [meta] EA daily triage"],
+  );
+});
+
+test("a rename rewrites the stamp title and the heading, keeps the slug, and lands in the history", async (context) => {
+  const path = task("menu", "running");
+  context.mock.method(console, "log", () => undefined);
+  assert.equal(await TaskCommand.run(["menu", "rename", "Right-click", "menu"], "http://localhost:0"), 0);
+  const text = readFileSync(path, "utf8");
+  assert.equal(Stamp.fields(text).title, "Right-click menu");
+  assert.match(text, /\n# Right-click menu\n/);
+  assert.equal(TaskLane.read({ given: "menu", caller: lead }).file.slug, "menu");
+  const [renamed] = TaskHistory.read("menu");
+  assert.equal(renamed && HistoryLines.of(renamed).text, "Renamed it Right-click menu, from Board.");
+  assert.throws(() => TaskLane.rename({ given: "menu", caller: lead, title: "  " }), /new title/);
+});
+
+test("a remove in any state trashes the task with one history entry, and only its live Task Leads are stopped", async () => {
+  task("loop", "running");
+  assert.deepEqual(await TaskLane.remove({ given: "loop", caller: { who: "YOU" } }), { stopped: [] });
+  assert.equal(existsSync(join(artifacts, "loop.md")), false);
+  assert.equal(existsSync(join(home, "sidecar", "trash", "loop.md")), true);
+  assert.equal(TaskTrash.restore("loop"), true);
+  assert.deepEqual(
+    TaskHistory.read("loop").map((entry) => HistoryLines.of(entry).text),
+    ["Removed it."],
+  );
+  const session = (key: string, name: string, live = true) => ({
+    key,
+    id: key,
+    name,
+    cwd: "/tmp",
+    live,
+    artifacts: [],
+  });
+  assert.deepEqual(
+    TaskLane.leadsOf(
+      [
+        session("aaaa0001", "[Cela] TL loop build"),
+        session("aaaa0002", "[Cela] PL loop plan"),
+        session("aaaa0003", "[Cela] TL loop-two build"),
+        { ...session("aaaa0004", "[Cela] TL loop old", false), archived: true },
+      ],
+      "loop",
+    ).map((one) => one.key),
+    ["aaaa0001"],
   );
 });

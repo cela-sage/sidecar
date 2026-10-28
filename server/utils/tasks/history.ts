@@ -36,6 +36,8 @@ const Entry = z.discriminatedUnion("kind", [
     option: z.number().optional(),
     move: Move.optional(),
   }),
+  z.object({ ...Said, kind: z.literal("rename"), was: z.string(), now: z.string() }),
+  z.object({ ...Said, kind: z.literal("remove"), stopped: z.array(z.string()) }),
   z.object({ ...Said, kind: z.literal("read") }),
 ]) satisfies z.ZodType<HistoryEntry>;
 

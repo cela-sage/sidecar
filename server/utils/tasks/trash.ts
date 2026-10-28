@@ -14,8 +14,10 @@ const move = (from: string, to: string): void => {
   renameSync(from, to);
 };
 
+const holds = (file: TaskFile): boolean => dirname(file.path) === Sidecar.artifacts();
+
 const trash = (file: TaskFile): boolean => {
-  if (dirname(file.path) !== Sidecar.artifacts()) return false;
+  if (!holds(file)) return false;
   move(TaskHistory.file(file.slug), join(home(), `${file.slug}.jsonl`));
   move(file.path, join(home(), `${file.slug}.md`));
   return true;
@@ -30,4 +32,4 @@ const restore = (slug: string): boolean => {
   return true;
 };
 
-export const TaskTrash = { home, restore, trash };
+export const TaskTrash = { holds, home, restore, trash };

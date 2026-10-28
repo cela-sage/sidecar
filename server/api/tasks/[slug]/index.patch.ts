@@ -10,12 +10,19 @@ const Body = z.object({
   project: z.string().min(1).optional(),
   state: z.enum(TaskState).optional(),
   reason: z.string().trim().min(1).optional(),
+  title: z.string().trim().min(1).optional(),
 });
 
 export default defineEventHandler(async (event): Promise<TaskAssigned> => {
   const file = await TaskRoute.task(getRouterParam(event, "slug") ?? "");
-  const { project, state, reason } = await readValidatedBody(event, (raw) => Body.parse(raw ?? {}));
+  const { project, state, reason, title } = await readValidatedBody(event, (raw) => Body.parse(raw ?? {}));
   const caller = { who: "YOU" } as const;
+  if (title) {
+    const renamed = await Promise.resolve()
+      .then(() => TaskLane.rename({ given: file.slug, caller, title }))
+      .catch(TaskRoute.refused);
+    return { state: renamed.task.state, ...(renamed.task.project ? { project: renamed.task.project } : {}) };
+  }
   if (state) {
     if (state === "unassigned") Desk.cancelHandoff(file.slug);
     const moved = await Promise.resolve()

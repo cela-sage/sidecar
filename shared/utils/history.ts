@@ -61,6 +61,12 @@ const LINES: { [K in HistoryKind]: (entry: EntryOf[K]) => Line } = {
     text,
     chips: ["decision", ...moved(move)],
   }),
+  rename: ({ now, was }) => ({ lead: "", text: `Renamed it ${now}, from ${was}.`, chips: ["renamed"] }),
+  remove: ({ stopped }) => ({
+    lead: "",
+    text: stopped.length ? `Removed it, and stopped ${listed(stopped)}.` : "Removed it.",
+    chips: ["removed"],
+  }),
   read: () => ({ lead: "", text: "Read the history.", chips: [] }),
 };
 

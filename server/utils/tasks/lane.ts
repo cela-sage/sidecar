@@ -13,6 +13,10 @@ import { TaskCaller, type Caller } from "./caller.ts";
 import { TaskFiles, type TaskFile } from "./file.ts";
 import { TaskHistory } from "./history.ts";
 import { TaskShelf } from "./shelf.ts";
+import { TaskTrash } from "./trash.ts";
+import { liveSessions } from "../sessions/index.ts";
+import { removeSession } from "../sessions/removal.ts";
+import type { LiveSession } from "../../../shared/types/session.ts";
 
 export interface StateInput {
   given: string;
@@ -119,6 +123,40 @@ const create = (title: string): TaskFile => {
   const file = TaskFiles.create(title);
   changed(file);
   return file;
+};
+
+const leadsOf = (sessions: LiveSession[], slug: string): LiveSession[] =>
+  sessions.filter((one) => {
+    const title = (!one.archived || one.live) && one.name ? Titles.parse(one.name) : undefined;
+    return title?.role === "TL" && Titles.belongsTo(title, slug);
+  });
+
+// A Task Lead goes the way a conversation's delete takes it, so its process ends while its transcript stays on disk.
+const remove = async ({ given, caller }: { given: string; caller: Caller }): Promise<{ stopped: string[] }> => {
+  const file = TaskFiles.open(given);
+  if (!TaskTrash.holds(file)) throw new Refusal(`${file.slug} lives outside the artifacts, so it stays`, 2);
+  const stopped: string[] = [];
+  for (const lead of leadsOf(liveSessions(), file.slug)) {
+    const outcome = await removeSession(lead.key);
+    const done = stopped.length ? `, after stopping ${stopped.join(", ")}` : "";
+    if (outcome.refused)
+      throw new Refusal(`${lead.name} did not stop: ${outcome.refused}${done}, so the task stays`, 2);
+    stopped.push(lead.name ?? lead.key);
+  }
+  record(file, { ...saidBy(caller), kind: "remove", stopped });
+  TaskTrash.trash(file);
+  return { stopped };
+};
+
+const rename = ({ given, caller, title }: { given: string; caller: Caller; title: string }): TaskFile => {
+  const file = TaskFiles.open(given);
+  const now = title.trim();
+  if (!now || now.includes("\n"))
+    throw new Refusal('rename needs the new title in quotes, on one line: rename "<title>"', 2);
+  if (now === file.title) return file;
+  const next = TaskFiles.retitle(file, now);
+  record(next, { ...saidBy(caller), kind: "rename", was: file.title, now });
+  return next;
 };
 
 const assign = ({ given, caller, project }: { given: string; caller: Caller; project: string }): TaskFile => {
@@ -322,4 +360,19 @@ const read = ({ given, caller }: { given: string; caller: Caller }): Read => {
   return { file, entries, asks: asksOf(Threads.read(file.path).threads) };
 };
 
-export const TaskLane = { asksOf, assign, create, decide, edited, escalate, heard, judge, read, state, tell };
+export const TaskLane = {
+  asksOf,
+  assign,
+  create,
+  decide,
+  edited,
+  escalate,
+  heard,
+  judge,
+  read,
+  leadsOf,
+  remove,
+  rename,
+  state,
+  tell,
+};

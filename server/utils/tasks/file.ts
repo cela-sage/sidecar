@@ -1,4 +1,13 @@
-import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, writeFileSync } from "node:fs";
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { Refusal } from "../../../lib/sidecar/refusal.ts";
 import { Resolve } from "../../../lib/sidecar/resolve.ts";
@@ -42,7 +51,10 @@ const open = (given: string): TaskFile => {
   if (!path.endsWith(".md")) throw new Refusal(`${given} is not a .md, and only a .md is a task`, 2);
   const found = describe(path, readFileSync(path, "utf8"));
   if (!found)
-    throw new Refusal(`${given} is not a task, since its stamp holds no state: artifact stamp ${given} --state unassigned`, 2);
+    throw new Refusal(
+      `${given} is not a task, since its stamp holds no state: artifact stamp ${given} --state unassigned`,
+      2,
+    );
   return found;
 };
 
@@ -65,6 +77,13 @@ const restamp = (file: TaskFile, task: ArtifactTask): TaskFile => {
   const patch = { project: task.project ?? "", state: task.state, updated: localDate(new Date()) };
   writeFileSync(file.path, Stamp.write(readFileSync(file.path, "utf8"), patch));
   return { ...file, task: { ...file.task, ...task } };
+};
+
+// The file name is the slug every link holds, so a new title rewrites the stamp and the heading and never the name.
+const retitle = (file: TaskFile, title: string): TaskFile => {
+  const stamped = Stamp.write(readFileSync(file.path, "utf8"), { title, updated: localDate(new Date()) });
+  writeFileSync(file.path, H1.test(stamped) ? stamped.replace(H1, () => `# ${title}`) : stamped);
+  return { ...file, title };
 };
 
 const slugOf = (title: string): string =>
@@ -93,4 +112,4 @@ const create = (title: string): TaskFile => {
   return { path, slug, title, task: { state: "unassigned" } };
 };
 
-export const TaskFiles = { all, create, open, restamp };
+export const TaskFiles = { all, create, open, restamp, retitle };

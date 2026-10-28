@@ -14,6 +14,7 @@ export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slu
   state <state> [--reason "why"] [--on "who"]
                              set its state, one of ${TaskState.join(", ")}; waiting needs --reason
   assign <project>           put it on a project
+  rename "<title>"           retitle it, keeping its slug, so every link to it holds
   escalate "<question>" [--options "a" --options "b" | --options a,b] [--quote "the text it is about"]
                              ask Marco: a red thread on the task, blocked, and a notification on his Mac
   hire "<who, why, tier>"    propose a specialist, which Marco approves or refuses like an escalation
@@ -114,7 +115,11 @@ const stateOf = (word = ""): TaskState => {
 
 const escalated = async (run: Run, kind: "escalation" | "hire"): Promise<number> => {
   const text = run.words.join(" ").trim();
-  if (!text) throw new Refusal(kind === "hire" ? "hire needs who, why and the tier in quotes" : "escalate needs the question in quotes", 2);
+  if (!text)
+    throw new Refusal(
+      kind === "hire" ? "hire needs who, why and the tier in quotes" : "escalate needs the question in quotes",
+      2,
+    );
   const { file, thread, decisions } = TaskLane.escalate({
     given: run.slug,
     caller: caller(),
@@ -156,6 +161,11 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
     console.log(`${file.slug} is on ${file.task.project}, ${file.task.state}`);
     return 0;
   },
+  rename: async ({ slug, words }) => {
+    const file = TaskLane.rename({ given: slug, caller: caller(), title: words.join(" ") });
+    console.log(`${file.slug} is titled ${file.title}`);
+    return 0;
+  },
   escalate: (run) => escalated(run, "escalation"),
   hire: (run) => escalated(run, "hire"),
   judge: async ({ slug, words, values }) => {
@@ -177,7 +187,9 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
       answer: words.join(" "),
       ...(values.thread ? { thread: values.thread } : {}),
     });
-    console.log(`settled: ${decided.text}\n${decided.file.slug} is ${decided.file.task.state}, and ${await told(decided)}`);
+    console.log(
+      `settled: ${decided.text}\n${decided.file.slug} is ${decided.file.task.state}, and ${await told(decided)}`,
+    );
     return 0;
   },
   done: async ({ slug }) => {
