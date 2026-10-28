@@ -1,13 +1,14 @@
 import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { readTextSafe } from "../../../lib/files.ts";
+import { SidecarConfig } from "../../../lib/sidecar/config.ts";
 import type { Project } from "../../../shared/types/task.ts";
-import { bare } from "../models/bare.ts";
+import { Agent } from "../models/agent.ts";
 import { Projects } from "../projects.ts";
 import type { TaskFile } from "../tasks/file.ts";
 
 const INSTRUCTION =
-  "Each task below waits in the inbox. Pick the one project it belongs to from the projects listed, or none when the task says too little to tell. Answer with one line per task, written as slug: project key or slug: none, and nothing else.";
+  "Each task below waits in the backlog. Pick the one project it belongs to from the projects listed, or none when the task says too little to tell. Answer with one line per task, written as slug: project key or slug: none, and nothing else.";
 const NONE = "none";
 const TASK_CHARS = 900;
 const PROJECT_CHARS = 500;
@@ -29,9 +30,16 @@ const projectLine = (project: Project): string => {
 const taskLine = (file: TaskFile): string =>
   `${file.slug}: ${readFileSync(file.path, "utf8").replace(COMMENTS, "").replace(/\s+/g, " ").trim().slice(0, TASK_CHARS)}`;
 
+// The assistant's home folder holds the map of which project owns which subject, which is what routing needs.
+const guideOf = (projects: Project[]): string => {
+  const home = projects.find((one) => one.key === (SidecarConfig.read().assistant?.project || "meta"));
+  const guide = home ? (readTextSafe(join(home.folder, "CLAUDE.md")) ?? "").replace(COMMENTS, "").trim() : "";
+  return guide ? `${INSTRUCTION}\n\nHow work is routed here:\n\n${guide}` : INSTRUCTION;
+};
+
 const ask = async (files: TaskFile[], projects: Project[]): Promise<void> => {
   const prompt = `Projects\n${projects.map(projectLine).join("\n\n")}\n\nTasks\n${files.map(taskLine).join("\n\n")}`;
-  const text = await bare({ model: "haiku", prompt, system: INSTRUCTION });
+  const text = await Agent.haiku({ prompt, system: guideOf(projects) });
   const keys = [...projects.map((one) => one.key), NONE];
   for (const line of text.split("\n")) {
     const [, slug, key] = /^[\s*-]*`?([\w.-]+)`?\s*:\s*`?([\w-]+)`?/.exec(line) ?? [];

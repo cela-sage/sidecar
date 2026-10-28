@@ -1,4 +1,4 @@
-import { bare, type BareRun } from "./bare";
+import { Agent, type AgentRun } from "./agent";
 import { fast } from "./fast";
 import type {
   FastChatMessage,
@@ -10,12 +10,12 @@ import type {
 } from "../../../shared/types/models";
 
 export const Models = {
-  bare,
+  agent: Agent,
   fast,
 };
 
 export namespace Models {
-  export type Bare = BareRun;
+  export type Run = AgentRun;
   export type Request = FastModelRequest;
   export type Reply = FastModelReply;
   export type Edit = FastModelEdit;

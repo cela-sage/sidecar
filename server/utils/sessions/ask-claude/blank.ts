@@ -2,7 +2,7 @@ import { existsSync } from "node:fs";
 import { homedir, userInfo } from "node:os";
 import { dirname, join } from "node:path";
 import type { AskClaudeExchange, AskClaudeReply } from "../../../../shared/types/ask-claude.ts";
-import { bare } from "../../models/bare";
+import { Agent } from "../../models/agent";
 import { identityOf, transcriptIndex } from "../transcripts.ts";
 
 export interface AskBlank {
@@ -49,18 +49,19 @@ export async function askBlank({ key, question, history, path, signal }: AskBlan
   const canRead = !!cwd && existsSync(cwd);
   const folder = canRead ? folderOf(path) : undefined;
   try {
-    const answer = await bare({
+    const answer = await Agent.sonnet({
       addDirs: folder ? [folder] : [],
       cwd: canRead ? cwd : undefined,
       maxTurns: MAX_TURNS,
-      model: "sonnet",
       prompt: promptOf(question, history),
       signal,
       system: systemOf(canRead),
       timeoutMs: TIMEOUT_MS,
       tools: canRead ? READ_ONLY : [],
     });
-    return answer.trim() ? { answered: true, answer: answer.trim() } : { answered: false, message: "Claude gave no answer." };
+    return answer.trim()
+      ? { answered: true, answer: answer.trim() }
+      : { answered: false, message: "Claude gave no answer." };
   } catch (error) {
     return { answered: false, message: (error as Error).message };
   }

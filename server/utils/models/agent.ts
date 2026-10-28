@@ -7,12 +7,14 @@ const execFileAsync = promisify(execFile);
 
 const TIMEOUT_MS = 60_000;
 
-export interface BareRun {
-  model: string;
+export type Effort = "low" | "medium" | "high" | "xhigh" | "max";
+
+export interface AgentRun {
   prompt: string;
   system: string;
   addDirs?: string[];
   cwd?: string;
+  effort?: Effort;
   maxTurns?: number;
   signal?: AbortSignal;
   timeoutMs?: number;
@@ -32,24 +34,27 @@ function resultOf(stdout: string): Result {
   }
 }
 
-// Not --bare, which skips the keychain and so needs an API key: these flags make the same blank run on Claude Code's own login.
-export async function bare({
+// Safe mode and not --bare, which skips the keychain and so needs an API key: the blank run stays on Claude Code's own login.
+async function run({
   model,
   prompt,
   system,
   addDirs = [],
   cwd = tmpdir(),
+  effort,
   maxTurns,
   signal,
   timeoutMs = TIMEOUT_MS,
   tools = [],
-}: BareRun): Promise<string> {
+}: AgentRun & { model: string }): Promise<string> {
   const pending = execFileAsync(
     claudeBinary(),
     [
       "-p",
+      "--safe-mode",
       "--model",
       model,
+      ...(effort ? ["--effort", effort] : []),
       "--tools",
       tools.join(","),
       ...(maxTurns ? ["--max-turns", String(maxTurns)] : []),
@@ -85,3 +90,8 @@ export async function bare({
   }
   return reply.result;
 }
+
+export const Agent = {
+  haiku: (input: AgentRun): Promise<string> => run({ effort: "low", ...input, model: "haiku" }),
+  sonnet: (input: AgentRun): Promise<string> => run({ ...input, model: "sonnet" }),
+};

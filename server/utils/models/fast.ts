@@ -1,5 +1,5 @@
 import type { FastModelProvider, FastModelReply, FastModelRequest, FastTask } from "../../../shared/types/models";
-import { bare } from "./bare";
+import { Agent } from "./agent";
 
 const SYSTEM_INSTRUCTION =
   "You are a fast editor for a document. For an edit task, return the replacement text for the selection only, keeping the document's register and format, and nothing else. For a tune task, rewrite the whole paragraph following the instruction and focusing on the selection, keep its markdown and register, and return only the new paragraph with no blank line inside it. For answer and chat, reply in two or three short sentences.";
@@ -64,13 +64,13 @@ function promptOf(request: FastModelRequest): string {
 
 export async function fast(request: FastModelRequest): Promise<FastModelReply> {
   const prompt = promptOf(request);
-  const quick = await bare({ model: "haiku", prompt, system: HAIKU_SYSTEM_PROMPT }).catch(() => undefined);
+  const quick = await Agent.haiku({ prompt, system: HAIKU_SYSTEM_PROMPT }).catch(() => undefined);
   if (quick && !isDelegateReply(quick)) {
     return formatReply({ task: request.task, text: quick, by: "haiku" });
   }
 
   try {
-    const text = await bare({ model: "sonnet", prompt, system: SYSTEM_INSTRUCTION });
+    const text = await Agent.sonnet({ prompt, system: SYSTEM_INSTRUCTION });
     return formatReply({ task: request.task, text, by: "sonnet" });
   } catch (error) {
     // The reason goes in message, because h3 strips anything outside ASCII from statusMessage.
