@@ -1,6 +1,9 @@
 <script lang="ts" setup>
 import type { Component } from "vue";
 
+// One page across conversations, so switching one keeps the tree's folds and every face already opened.
+definePageMeta({ key: "conversation" });
+
 const route = useRoute();
 const sc = useSidecar();
 const chrome = useChrome();
