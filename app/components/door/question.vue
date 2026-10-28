@@ -1,7 +1,25 @@
 <script lang="ts" setup>
 import type { Question } from "~~/shared/types/question";
 
-const { question } = defineProps<{ question: Question }>();
+const { question, picked, isAnswering } = defineProps<{
+  question: Question;
+  picked?: string;
+  isAnswering?: boolean;
+}>();
+const emit = defineEmits<{ pick: [answer: string] }>();
+const chosen = ref<string[]>([]);
+
+const isOn = (label: string): boolean => (question.multi ? chosen.value.includes(label) : picked === label);
+
+const press = (label: string): void => {
+  if (!question.multi) return emit("pick", label);
+  chosen.value = isOn(label) ? chosen.value.filter((one) => one !== label) : [...chosen.value, label];
+};
+
+const send = (): void => {
+  const labels = question.options.map((one) => one.label).filter((label) => chosen.value.includes(label));
+  emit("pick", labels.join(", "));
+};
 </script>
 
 <template>
@@ -11,12 +29,30 @@ const { question } = defineProps<{ question: Question }>();
       <span>{{ question.multi ? "pick any" : "pick one" }}</span>
     </span>
     <p class="text">{{ question.question }}</p>
-    <ul :aria-label="question.question" class="options">
-      <li v-for="option in question.options" :key="option.label" class="option">
+    <div :aria-label="question.question" class="options" role="group">
+      <button
+        v-for="option in question.options"
+        :key="option.label"
+        :aria-pressed="isOn(option.label)"
+        class="option plain-button focusable"
+        :disabled="isAnswering"
+        type="button"
+        @click="press(option.label)"
+      >
         <span class="label">{{ option.label }}</span>
         <span v-if="option.description" class="description">{{ option.description }}</span>
-      </li>
-    </ul>
+      </button>
+    </div>
+    <UiButton
+      v-if="question.multi"
+      class="send"
+      :disabled="isAnswering || !chosen.length"
+      size="xs"
+      variant="primary"
+      @click="send"
+    >
+      Send
+    </UiButton>
   </div>
 </template>
 
@@ -34,11 +70,15 @@ const { question } = defineProps<{ question: Question }>();
 }
 
 .options {
-  @apply m-0 flex list-none flex-col overflow-hidden rounded-xl border border-border p-0;
+  @apply flex flex-col overflow-hidden rounded-xl border border-border;
 }
 
 .option {
-  @apply flex flex-col gap-px border-t border-t-border px-2.5 py-1.5 first:border-t-0;
+  @apply flex cursor-pointer flex-col gap-px border-t border-t-border px-2.5 py-1.5 text-left first:border-t-0 hover:bg-sunken disabled:cursor-default disabled:opacity-60;
+
+  &[aria-pressed="true"] {
+    @apply bg-primary-soft;
+  }
 }
 
 .label {
@@ -47,5 +87,9 @@ const { question } = defineProps<{ question: Question }>();
 
 .description {
   @apply typo-caption text-pretty text-muted;
+}
+
+.send {
+  @apply self-start;
 }
 </style>

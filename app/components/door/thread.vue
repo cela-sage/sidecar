@@ -47,9 +47,21 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
       <div v-if="one.step === 'waiting'" class="asks">
         <span class="asks-eyebrow mono-meta"><span class="asks-dot dot" />Waiting on your answer</span>
         <Prose v-if="one.answer" :value="one.answer" />
-        <DoorQuestion v-for="question in one.questions" :key="question.question" :question="question" />
-        <span v-if="one.questions && one.to" class="asks-hint">
-          Answer it in the terminal.
+        <DoorQuestion
+          v-for="question in one.questions"
+          :key="question.question"
+          :is-answering="one.isAnswering"
+          :picked="one.picks?.[question.question]"
+          :question="question"
+          @pick="(answer) => door.pick({ id: one.id, question: question.question, answer })"
+        />
+        <span v-if="one.isAnswering" class="asks-hint" role="status">Answering it</span>
+        <span v-else-if="one.questions && one.to" class="asks-hint">
+          {{
+            one.isMissed
+              ? "It didn't reach the question, so answer it in the terminal."
+              : "or answer it in the terminal"
+          }}
           <button
             class="link plain-button focusable"
             data-tip="Attach in your terminal"

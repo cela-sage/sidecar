@@ -161,7 +161,10 @@ watch(
   () => void nextTick(() => body.value?.scrollTo({ top: body.value.scrollHeight })),
 );
 
-useEvents().on("task.changed", ({ data }) => door.hearChange(data.slug, data.state));
+const events = useEvents();
+events.on("task.changed", ({ data }) => door.hearChange(data.slug, data.state));
+events.on("question.changed", ({ data }) => door.hearQuestion(data));
+events.onReady(() => void door.loadQuestions());
 onMounted(() => {
   window.addEventListener("keydown", onKey);
   onScopeDispose(() => window.removeEventListener("keydown", onKey));
