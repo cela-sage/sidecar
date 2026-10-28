@@ -12,14 +12,12 @@ export type AgentState = "working" | "needs input" | "completed";
 
 export type TaskMeta = ArtifactMeta & { task: ArtifactTask };
 
-export const TaskStatus = ["backlog", "progress", "blocked", "done"] as const;
-export type TaskStatus = (typeof TaskStatus)[number];
-
 export interface TaskStep {
   label: string;
   kind: StepKind;
   joint: StepJoint;
   tip: string;
+  state?: TaskState;
 }
 
 const LOOK: Record<TaskState, TaskLook> = {
@@ -30,23 +28,6 @@ const LOOK: Record<TaskState, TaskLook> = {
   blocked: "needs",
   waiting: "waiting",
   done: "done",
-};
-
-const STATUS: Record<TaskState, TaskStatus> = {
-  unassigned: "backlog",
-  assigned: "backlog",
-  assessed: "backlog",
-  running: "progress",
-  waiting: "progress",
-  blocked: "blocked",
-  done: "done",
-};
-
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  backlog: "Backlog",
-  progress: "In progress",
-  blocked: "Blocked",
-  done: "Done",
 };
 
 const STEP_LABEL: Partial<Record<TaskState, string>> = { unassigned: "Backlog", running: "In progress" };
@@ -70,17 +51,6 @@ const AGENT_ORDER: AgentState[] = ["needs input", "working", "completed"];
 const isTask = (meta: ArtifactMeta): meta is TaskMeta => !!meta.task;
 const capital = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
-const lookOf = (state: TaskState): TaskLook => LOOK[state];
-const statusOf = (state: TaskState): TaskStatus => STATUS[state];
-const chipOf = (state: TaskState): string => STATUS_LABEL[STATUS[state]];
-const statusLabel = (status: TaskStatus): string => STATUS_LABEL[status];
-
-// Backlog keeps a task on its project, so only one with no project goes back to unassigned.
-const stateFor = (status: TaskStatus, { project }: ArtifactTask): TaskState => {
-  if (status === "backlog") return project ? "assigned" : "unassigned";
-  return status === "progress" ? "running" : status;
-};
-
 const of = (catalogue: ArtifactMeta[]): TaskMeta[] => catalogue.filter(isTask);
 
 const tintOf = (key: string | undefined, keys: string[]): string => {
@@ -95,6 +65,7 @@ const stepsOf = (state: TaskState, { resumed, settledBy, waiting }: TaskStory = 
     label: STEP_LABEL[one] ?? capital(one),
     kind: i < reached ? "past" : i === reached ? LOOK[one] : "future",
     tip: TIP[one],
+    state: one,
   }));
   if (resumed)
     steps.splice(-1, 0, {
@@ -111,7 +82,7 @@ const stepsOf = (state: TaskState, { resumed, settledBy, waiting }: TaskStory = 
   if (state === "blocked") steps.push({ label: "Blocked", kind: LOOK[state], tip: TIP[state] });
   if (state === "waiting")
     steps.push({ label: waiting?.on ? `Waiting on ${waiting.on}` : "Waiting", kind: LOOK[state], tip: TIP[state] });
-  steps.push({ label: "Done", kind: state === "done" ? "done" : "future", tip: TIP.done });
+  steps.push({ label: "Done", kind: state === "done" ? "done" : "future", tip: TIP.done, state: "done" });
   return steps.map((step, i) => ({
     ...step,
     joint: !i ? "none" : step.kind === "future" ? "dashed" : step.label === STEP_LABEL.running ? "primary" : "solid",
@@ -145,14 +116,9 @@ const railOf = (sessions: LiveSession[], slug: string): LiveSession[] =>
 export const Tasks = {
   agentOrder,
   agentStateOf,
-  chipOf,
-  lookOf,
   of,
   order,
   railOf,
-  stateFor,
-  statusLabel,
-  statusOf,
   stepsOf,
   tintOf,
 };

@@ -1,7 +1,9 @@
+import { useLocalStorage } from "@vueuse/core";
 import type { ArtifactDetail, ArtifactMeta, ReviewThread } from "~~/shared/types/artifact";
+import type { TaskAssigned } from "~~/shared/types/desk";
 import type { FileContent } from "~~/shared/types/files";
 import type { HistoryEntry, TaskDecided, TaskStands } from "~~/shared/types/history";
-import type { Project } from "~~/shared/types/task";
+import type { Project, TaskState } from "~~/shared/types/task";
 import { Parts, type Part } from "~~/shared/utils/parts";
 
 export type TaskFace = "document" | "history";
@@ -30,6 +32,7 @@ export const $task = defineStore(() => {
   const isStanding = ref(false);
   const picked = ref(-1);
   const onlyDecisions = ref(false);
+  const hasRail = useLocalStorage("sc:task-rail", true);
 
   const loadProjects = async (): Promise<void> => {
     if (projects.value.length) return;
@@ -118,6 +121,11 @@ export const $task = defineStore(() => {
     return decided;
   };
 
+  const move = async (at: string, state: TaskState): Promise<void> => {
+    await $fetch<TaskAssigned>(`/api/tasks/${encodeURIComponent(at)}`, { method: "PATCH", body: { state } });
+    await Promise.all([readTasks(), refresh()]);
+  };
+
   return {
     askTune,
     asks,
@@ -125,9 +133,11 @@ export const $task = defineStore(() => {
     decide,
     entries,
     face,
+    hasRail,
     isEditing,
     isStanding,
     loadProjects,
+    move,
     onlyDecisions,
     open,
     parts,

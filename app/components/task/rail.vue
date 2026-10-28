@@ -64,7 +64,16 @@ const turnAt = (ms?: number): string => {
   <aside class="rail" aria-label="Conversations on this task" data-region="task-rail">
     <header class="head">
       <span class="title">Conversations</span>
-      <span class="meta mono-meta">{{ rows.length }} · claude agents</span>
+      <span class="meta mono-meta">{{ rows.length }}</span>
+      <span
+        class="foot-dot"
+        :data-following="terminal.state.following"
+        :data-tip="
+          terminal.state.following
+            ? 'sidecar terminal is following, so Attach detaches the current conversation and opens the one you pick'
+            : 'sidecar terminal isn\'t running, so Attach copies the claude attach line instead'
+        "
+      />
     </header>
     <div class="rows">
       <p v-if="!rows.length" class="empty">
@@ -106,14 +115,6 @@ const turnAt = (ms?: number): string => {
         </div>
         <TaskMessage v-if="row.key === selected" :conversation="row.key" :name="row.name" :slug="slug" />
       </div>
-      <p class="foot" :data-following="terminal.state.following">
-        <span class="foot-dot" />
-        {{
-          terminal.state.following
-            ? "sidecar terminal is following. Attach detaches the current conversation and opens the one you pick."
-            : "sidecar terminal isn't running, so Attach copies the claude attach line instead."
-        }}
-      </p>
     </div>
   </aside>
 </template>
@@ -144,18 +145,14 @@ const turnAt = (ms?: number): string => {
 }
 
 .row {
-  @apply flex flex-none flex-col gap-2 rounded-xl border border-border py-2.5 pr-2.5 pl-3;
-}
-
-.foot {
-  @apply m-0 mt-auto flex items-start gap-1.75 px-1 pt-2 typo-caption leading-normal text-pretty text-muted;
+  @apply flex flex-none flex-col gap-1.5 rounded-xl border border-border py-2 pr-2 pl-2.5;
 }
 
 .foot-dot {
-  @apply mt-1 dot size-1.5 flex-none bg-subtle;
+  @apply ml-auto dot size-1.5 flex-none bg-subtle;
 }
 
-.foot[data-following="true"] .foot-dot {
+.foot-dot[data-following="true"] {
   @apply breathe bg-primary;
 }
 
@@ -233,7 +230,7 @@ const turnAt = (ms?: number): string => {
 }
 
 .said {
-  @apply typo-body leading-normal text-pretty text-muted;
+  @apply line-clamp-3 typo-caption leading-normal text-pretty text-muted;
 }
 
 .row[data-look="needs"] .said {

@@ -25,12 +25,9 @@ test("the strip passes what is behind, marks where it is, and dashes what is ahe
   assert.equal(strip("unassigned"), "Backlog:waiting Assigned:future Assessed:future In progress:future Done:future");
   assert.equal(strip("done"), "Backlog:past Assigned:past Assessed:past In progress:past Done:done");
   assert.deepEqual(
-    (["unassigned", "assessed", "running", "waiting", "blocked", "done"] as const).map(Tasks.chipOf),
-    ["Backlog", "Backlog", "In progress", "In progress", "Blocked", "Done"],
+    Tasks.stepsOf("blocked").map((step) => step.state),
+    ["unassigned", "assigned", "assessed", "running", undefined, "done"],
   );
-  assert.equal(Tasks.stateFor("backlog", { state: "running", project: "cela" }), "assigned");
-  assert.equal(Tasks.stateFor("backlog", { state: "running" }), "unassigned");
-  assert.equal(Tasks.stateFor("progress", { state: "waiting", project: "cela" }), "running");
   assert.deepEqual(
     Tasks.stepsOf("running").map((step) => step.joint),
     ["none", "solid", "solid", "primary", "dashed"],

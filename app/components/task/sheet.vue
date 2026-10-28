@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Check, ChevronLeft, Maximize2, Pencil } from "@lucide/vue";
+import { Check, Maximize2, PanelRight, Pencil } from "@lucide/vue";
 import { useEventListener } from "@vueuse/core";
 import { isTyping } from "~~/lib/web/page/blocks";
 import type { ReviewThread } from "~~/shared/types/artifact";
@@ -28,6 +28,7 @@ const isFolded = ref(true);
 
 const asking = computed(() => task.asks.filter((thread) => thread.status !== "resolved"));
 const isBlocked = computed(() => asking.value.some((thread) => thread.ask?.kind === "escalation"));
+const isShut = computed(() => isBlocked.value && isFolded.value && !!task.parts.length);
 const story = computed(() => Timeline.story(task.entries, meta.task.state));
 const settled = computed(() => {
   if (!story.value.settledBy) return undefined;
@@ -46,12 +47,6 @@ const faces = computed(() => [
 ]);
 
 const title = computed(() => meta.title || deslug(meta.slug));
-const tint = computed(() =>
-  Tasks.tintOf(
-    project?.key,
-    task.projects.map((one) => one.key),
-  ),
-);
 const updated = computed(() =>
   meta.updated ? new Date(meta.updated).toLocaleDateString([], { day: "numeric", month: "short" }) : "",
 );
@@ -60,10 +55,7 @@ const eyebrow = computed(() =>
     .filter(Boolean)
     .join(" · "),
 );
-const saved = computed(() => {
-  if (task.isEditing) return savedAt.value ? `editing · saved ${savedAt.value}` : "editing · markdown";
-  return updated.value ? `markdown · saved ${updated.value}` : "markdown";
-});
+const saved = computed(() => (savedAt.value ? `editing · saved ${savedAt.value}` : "editing · markdown"));
 
 async function done(): Promise<void> {
   if (!editor.value || (await editor.value.finish())) task.isEditing = false;
@@ -108,20 +100,6 @@ onBeforeUnmount(() => (task.isEditing = false));
   <ArtifactSheet list-name="Tasks" :slug="meta.slug">
     <div class="task" data-region="task-sheet" :data-editing="task.isEditing">
       <header class="bar">
-        <button
-          class="crumb plain-button focusable"
-          data-region="task-back"
-          data-tip="Back to the conversation · {esc}"
-          type="button"
-          @click="task.close()"
-        >
-          <UiIcon :icon="ChevronLeft" size="xs" />Back
-        </button>
-        <span class="square" :data-tint="tint" />
-        <span class="project">{{ project?.name ?? "Backlog" }}</span>
-        <span class="slash">/</span>
-        <span class="name">{{ title }}</span>
-        <TaskStatePick :meta="meta" />
         <UiSegmented
           v-if="!task.isEditing"
           v-model="task.face"
@@ -130,8 +108,8 @@ onBeforeUnmount(() => (task.isEditing = false));
           :options="faces"
           variant="track"
         />
+        <span v-else class="saved mono-meta">{{ saved }}</span>
         <span class="spacer" />
-        <span class="saved mono-meta">{{ saved }}</span>
         <UiButton
           v-if="task.isEditing"
           aria-pressed="true"
@@ -162,17 +140,26 @@ onBeforeUnmount(() => (task.isEditing = false));
           tip="Grow the page over everything · {esc} shrinks it back"
           @click="artifact.isFull = true"
         />
+        <ChromeAction
+          data-region="task-rail-toggle"
+          :icon="PanelRight"
+          :is-pressed="task.hasRail"
+          :label="String(rail.length)"
+          shape="pill"
+          :tip="`${task.hasRail ? 'Hide' : 'Show'} the conversations on this task`"
+          @click="task.hasRail = !task.hasRail"
+        />
       </header>
 
       <TaskEditor v-if="task.isEditing" :key="meta.slug" ref="editor" :slug="meta.slug" @saved="savedAt = $event" />
-      <div v-else class="body">
+      <div v-else class="body" :data-rail="task.hasRail">
         <TaskHistory v-if="task.face === 'history'" :meta="meta" />
-        <div v-else class="doc">
-          <article class="column">
-            <div class="lead">
+        <article v-else class="doc">
+          <div class="lead">
+            <div class="head">
               <span class="eyebrow mono-meta">{{ eyebrow }}</span>
               <h1 class="title">{{ title }}</h1>
-              <TaskStrip :state="meta.task.state" :story="story" />
+              <TaskStrip :meta="meta" :story="story" />
             </div>
             <TaskEscalation
               v-for="thread in asking"
@@ -183,14 +170,20 @@ onBeforeUnmount(() => (task.isEditing = false));
             />
             <TaskSettled v-if="settled" :thread="settled" @history="showHistory(settled)" />
             <TaskNote :story="story" />
-            <TaskFold v-if="isBlocked && isFolded && task.parts.length" :parts="task.parts" @open="isFolded = false" />
-            <template v-else>
-              <ArtifactReader v-if="conversation" :conversation="conversation" :slug="meta.slug" />
-              <ArtifactFrame v-else :slug="meta.slug" />
-            </template>
-          </article>
-        </div>
-        <TaskRail :asking="asking" :conversation="conversation" :sessions="rail" :slug="meta.slug" />
+            <TaskFold v-if="isShut" :parts="task.parts" @open="isFolded = false" />
+          </div>
+          <template v-if="!isShut">
+            <ArtifactReader v-if="conversation" :conversation="conversation" :slug="meta.slug" />
+            <ArtifactFrame v-else :slug="meta.slug" />
+          </template>
+        </article>
+        <TaskRail
+          v-if="task.hasRail"
+          :asking="asking"
+          :conversation="conversation"
+          :sessions="rail"
+          :slug="meta.slug"
+        />
       </div>
     </div>
   </ArtifactSheet>
@@ -205,34 +198,8 @@ onBeforeUnmount(() => (task.isEditing = false));
   @apply flex flex-none items-center gap-2 border-b border-b-border py-2 pr-3 pl-2 whitespace-nowrap;
 }
 
-.crumb {
-  @apply inline-flex h-6.5 flex-none items-center gap-1 rounded-lg border-0 bg-transparent px-1.5 typo-caption font-semibold text-muted transition-colors duration-(--duration-fast) ease-out;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .crumb:hover {
-    @apply bg-sunken text-fg;
-  }
-}
-
 .faces {
-  @apply ml-1.5 flex-none;
-}
-
-.square {
-  @apply size-2.25 flex-none rounded-sm bg-tint;
-}
-
-.project {
-  @apply flex-none typo-caption-strong text-muted;
-}
-
-.slash {
-  @apply flex-none typo-caption text-subtle;
-}
-
-.name {
-  @apply min-w-0 truncate typo-body-strong font-bold;
+  @apply flex-none;
 }
 
 .spacer {
@@ -240,22 +207,26 @@ onBeforeUnmount(() => (task.isEditing = false));
 }
 
 .saved {
-  @apply flex-none text-muted;
+  @apply flex-none pl-1 text-muted;
 }
 
 .body {
-  @apply grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_--spacing(85)];
+  @apply grid min-h-0 flex-1 grid-cols-1;
+}
+
+.body[data-rail="true"] {
+  @apply grid-cols-[minmax(0,1fr)_--spacing(72)];
 }
 
 .doc {
-  @apply flex min-w-0 justify-center overflow-y-auto px-9 pt-6 pb-(--float-clear);
-}
-
-.column {
-  @apply flex w-full max-w-160 flex-col gap-4.5;
+  @apply flex min-w-0 flex-col overflow-y-auto pt-6 pb-(--float-clear);
 }
 
 .lead {
+  @apply mx-auto flex w-full max-w-190 flex-col gap-4.5 px-6;
+}
+
+.head {
   @apply flex flex-col gap-3;
 }
 
