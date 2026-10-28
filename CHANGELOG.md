@@ -7,6 +7,27 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.34.0
+
+### Added
+
+- **Each project shows its image or icon** in the tree and on Route to, set as `image` or `icon` on a project in
+  `~/.claude/sidecar/config.json`, with Moneyfarm's and Cela's app icons and an emoji for the rest by default.
+- **The task tree resizes** from its edge, sharing its width with every other face's pane.
+- **The strip moves a task**: clicking Assigned, Assessed, In progress or Done sets that state through the lane.
+- **The conversations on a task hide behind a toggle** in the sheet's bar, remembered across reloads.
+
+### Changed
+
+- **A task `.md` renders like any other `.md`,** with the house type sizes and page width instead of its own
+  numbered compact style, and the document runs the width of the sheet under the title and strip.
+- **The task sheet's bar keeps Document and History and the actions,** and Back, the breadcrumb, the saved line
+  outside Edit and the status chip go. Esc still closes the task, and Blocked comes from an escalation only.
+- **What a fold of done tasks or done Task Leads holds sits one level under it,** and a selected row's box starts
+  at its indent instead of covering the tree's guides.
+- **A task row offers Attach only while its lead's own row is folded away,** so one conversation shows one Attach.
+- **The conversation rail is narrower,** its rows tighter, and its note on `sidecar terminal` is the dot's tip.
+
 ## 0.33.0
 
 ### Added

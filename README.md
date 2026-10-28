@@ -175,18 +175,22 @@ with its file and history untouched, and it comes back when it moves out of Done
 unless something in it waits on you or it holds the open task or the conversation in front, and a fold you
 open or close stays that way across conversations and reloads, kept in the browser as `sc:org-folds`. Your own
 conversations, whose titles have no role token, list under the project their `[token]` names, after its tasks,
-and only a title with no known project lists under No project at the bottom. Each row carries its mark: a
+and only a title with no known project lists under No project at the bottom. Each project row shows its image
+or icon, and each row carries its mark: a
 spinner while it works, red when a task or
 its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
-else, a check once it is idle. Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead,
-the conversation in front has an ink bar, and clicking a conversation brings it in front on the Tasks face with
-its task open.
+else, a check once it is idle. What a fold of done tasks or done Task Leads holds sits one level under it.
+Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead while the lead's own row is
+folded away, the conversation in front has an ink bar, and clicking a conversation brings it in front on the
+Tasks face with its task open. The tree resizes from its edge like every other face's pane, sharing its width.
 
 With no task open the centre stays on the conversation in front, its page from Artifacts, and a task opens the
-sheet with Document and History in its bar and Back, or esc, closing it. A task shows one of four statuses,
-Backlog for unassigned, assigned or assessed, In progress for running or waiting, Blocked and Done, and its chip
-beside the title sets one by hand through the same lane: Backlog keeps it on its project, In progress runs it.
-Agents move the same statuses through the lane's verbs. Dropping a backlog row on a project, or pressing its Route to, Haiku's suggestion through
+sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in its bar, and esc
+closing it. The document renders like any `.md` in Artifacts, under the task's title and its strip, Backlog,
+Assigned, Assessed, In progress and Done, where clicking a step moves the task there through the same lane once
+it is on a project, and an escalation that settles puts a blocked task back in progress. The conversations on
+the task sit in a rail on the right that the toggle hides, remembered as `sc:task-rail`.
+Agents move the same states through the lane's verbs. Dropping a backlog row on a project, or pressing its Route to, Haiku's suggestion through
 `Agent.haiku`, a `claude -p` in safe mode at low effort with no tools on your Claude Code login, given the
 assistant's home `CLAUDE.md` as the map of what goes where, cached until the task changes and left out when the
 task says too little to tell, assigns it through the lane
@@ -222,7 +226,7 @@ door posts `POST /api/attach {key}`; the follower closes agent view, or writes C
 holds, which detaches it with the session still running, and runs `claude attach <key>` for the next. When an
 attached conversation ends or you detach it, agent view comes back, and quitting agent view stops the follower.
 The row the terminal holds shows its Attach pressed, while a switch you make inside Claude Code with the left
-arrow is not seen. With no follower running, the task's rail explains `sidecar terminal` and Attach copies the
+arrow is not seen. With no follower running, the dot in the task rail's header says so and Attach copies the
 `claude attach` line instead. The stream opens with a `ready`
 event carrying what the sidecar thinks the terminal holds, so the follower corrects the sidecar when the two
 differ.
@@ -277,9 +281,11 @@ Lead's pick marked, or your own words, the four parts fold to one line each, and
 red. Once settled it folds to a row that links to the history, and the strip says it was settled by you. A
 waiting task says what it waits on, nothing for you to do, and a resumed or done one says when.
 
-The projects are the `projects` list in `~/.claude/sidecar/config.json`, each `{ key, name, token, folder }`,
-where `token` is the bracketed prefix its conversations' titles carry. Without one they are Moneyfarm, Cela,
-Nana, madong and meta, under `~/Notes`.
+The projects are the `projects` list in `~/.claude/sidecar/config.json`, each
+`{ key, name, token, folder, image?, icon? }`, where `token` is the bracketed prefix its conversations' titles
+carry, `image` a path to a picture the tree shows for it through `GET /api/projects/:key/image`, and `icon` an
+emoji shown when there is no image. Without one they are Moneyfarm and Cela with their app icons, and Nana,
+madong and meta with an emoji each, under `~/Notes`.
 
 ## Desktop or web
 
