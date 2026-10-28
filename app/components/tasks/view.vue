@@ -4,6 +4,7 @@ import { Titles } from "~~/shared/utils/titles";
 
 const READ_MS = 5000;
 
+const { initial: sideInitial, width: side } = usePaneWidth();
 const sc = useSidecar();
 const task = $task();
 const desk = $desk();
@@ -48,8 +49,9 @@ useIntervalFn(() => shown.value && read(), READ_MS);
 </script>
 
 <template>
-  <section class="tasks" data-region="tasks">
+  <section class="tasks" data-region="tasks" :style="{ '--side-w': `${side}px` }">
     <OrgTree />
+    <PaneResizer v-model="side" :initial="sideInitial" label="Resize the task tree" />
     <TaskSheet v-if="meta" :conversation="conversation" :meta="meta" :project="project" :rail="rail" />
     <ArtifactSheet v-else :conversation="sc.sessionKey.value" :kind="page?.kind" :path="page?.path" :slug="page?.slug">
       <UiStateMessage align="center" class="centered">Pick a task in the tree, or a page in Artifacts.</UiStateMessage>
@@ -59,7 +61,7 @@ useIntervalFn(() => shown.value && read(), READ_MS);
 
 <style scoped>
 .tasks {
-  @apply grid h-full min-h-0 grid-cols-[--spacing(85)_minmax(0,1fr)] gap-x-4;
+  @apply grid h-full min-h-0 grid-cols-pane gap-x-2;
 }
 
 .centered {
