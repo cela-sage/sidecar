@@ -71,8 +71,9 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
   task new "<title>" | task <slug> [state|assign|escalate|hire|judge|decide|done ...]
               a task's lane: a new unassigned task, where it stands, its state and project, an escalation
               or a hire that notifies you, a verdict or a decision, every one kept in its history. sidecar task alone lists the verbs
-  terminal    follow the sidecar in this terminal: Attach on a task's conversation opens it here with
-              claude attach, and the next Attach detaches it with Ctrl+Z first, so it keeps running
+  terminal    follow the sidecar in this terminal: it opens on agent view, Attach on a conversation opens
+              it here with claude attach, the next Attach detaches it with Ctrl+Z first, so it keeps running,
+              and quitting agent view stops following
   setup [desktop|web]
               choose how the sidecar runs and set it up. desktop builds and installs the Electron
               app, so Web artifacts render as real pages signed in with Chrome's cookies; web runs
@@ -344,12 +345,15 @@ function promptSelect<T>(title: string, options: readonly Option<T>[]): Promise<
 }
 
 const SURFACES: readonly Option<Surface>[] = [
-  { value: "desktop", label: "Desktop app", hint: "real pages, signed in with your Chrome cookies, a separate Chromium (heavier)" },
+  {
+    value: "desktop",
+    label: "Desktop app",
+    hint: "real pages, signed in with your Chrome cookies, a separate Chromium (heavier)",
+  },
   { value: "web", label: "Webapp", hint: "a tab in Chrome, light, Web artifacts through the proxy" },
 ];
 
-const chooseSurface = (): Promise<Surface | undefined> =>
-  promptSelect("How do you want to run the sidecar?", SURFACES);
+const chooseSurface = (): Promise<Surface | undefined> => promptSelect("How do you want to run the sidecar?", SURFACES);
 
 async function open({ key = process.env.CLAUDE_CODE_SESSION_ID?.slice(0, 8), slug }: Point): Promise<number> {
   if (slug && !key) {
@@ -419,7 +423,10 @@ function publish(): number {
 }
 
 function buildDesktop(): boolean {
-  return spawnSync(process.execPath, [join(DESKTOP, "build.ts"), "--package"], { cwd: DESKTOP, stdio: "inherit" }).status === 0;
+  return (
+    spawnSync(process.execPath, [join(DESKTOP, "build.ts"), "--package"], { cwd: DESKTOP, stdio: "inherit" }).status ===
+    0
+  );
 }
 
 const desktopRunning = (): boolean => spawnSync("pgrep", ["-f", `${DESKTOP_APP}/Contents/MacOS/`]).status === 0;
@@ -428,7 +435,7 @@ const desktopRunning = (): boolean => spawnSync("pgrep", ["-f", `${DESKTOP_APP}/
 async function quitDesktop(): Promise<void> {
   if (!desktopRunning()) return;
   spawnSync("osascript", ["-e", `tell application "${NAME}" to quit`]);
-  for (const end = Date.now() + 8000; desktopRunning() && Date.now() < end; ) await sleep(200);
+  for (const end = Date.now() + 8000; desktopRunning() && Date.now() < end;) await sleep(200);
   if (desktopRunning()) spawnSync("pkill", ["-f", `${DESKTOP_APP}/Contents/MacOS/`]);
 }
 
@@ -455,7 +462,9 @@ async function installDesktop(): Promise<number> {
     spawnSync(process.execPath, [join(electron, "install.js")], { cwd: DESKTOP, stdio: "inherit" });
   }
   if (!existsSync(join(electron, "dist"))) {
-    console.error(`electron's binary is missing in ${DESKTOP} and could not be fetched; run: (cd ${DESKTOP} && pnpm approve-builds)`);
+    console.error(
+      `electron's binary is missing in ${DESKTOP} and could not be fetched; run: (cd ${DESKTOP} && pnpm approve-builds)`,
+    );
     return 1;
   }
   if (!buildDesktop()) {
@@ -518,10 +527,14 @@ function importCookies(): number {
     return 1;
   }
   if (desktopRunning()) {
-    console.error("quit the desktop app first, since a running one never sees the import, then run sidecar import again");
+    console.error(
+      "quit the desktop app first, since a running one never sees the import, then run sidecar import again",
+    );
     return 1;
   }
-  return spawnSync(join(DESKTOP_APP, "Contents", "MacOS", NAME), ["--import"], { stdio: "inherit" }).status === 0 ? 0 : 1;
+  return spawnSync(join(DESKTOP_APP, "Contents", "MacOS", NAME), ["--import"], { stdio: "inherit" }).status === 0
+    ? 0
+    : 1;
 }
 
 // The app bundle, the Electron userData that holds the imported cookies, and the surface choice, so a fresh setup starts clean.

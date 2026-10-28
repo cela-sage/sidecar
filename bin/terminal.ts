@@ -7,7 +7,7 @@ import z from "zod";
 import { claudeBinary } from "../server/utils/sessions/jobs.ts";
 
 interface Held {
-  key: string;
+  key?: string;
   pty: IPty;
   isLeaving?: boolean;
 }
@@ -71,6 +71,7 @@ const run = (address: string): Promise<number> => {
   let held: Held | undefined;
   let queue = Promise.resolve();
   let said = "";
+  let finish = (_code: number): void => {};
 
   const say = (line: string): void => {
     if (held || line === said) return;
@@ -89,38 +90,49 @@ const run = (address: string): Promise<number> => {
     const current = held;
     if (!current) return;
     current.isLeaving = true;
+    held = undefined;
+    if (!current.key) return current.pty.kill();
     const exited = new Promise<void>((resolve) => current.pty.onExit(() => resolve()));
     current.pty.write(DETACH);
     await Promise.race([exited, sleep(DETACH_MS)]);
     current.pty.kill();
-    held = undefined;
   };
 
-  const attach = async (key: string): Promise<void> => {
-    if (held?.key === key) return;
-    await detach();
-    const pty = spawn(claudeBinary(), ["attach", key], {
+  // Agent view is the page between conversations, so quitting it is how you stop following.
+  const open = (args: string[], key?: string): void => {
+    const pty = spawn(claudeBinary(), args, {
       name: process.env.TERM ?? "xterm-256color",
       cols: stdout.columns,
       rows: stdout.rows,
       cwd: process.cwd(),
       env: process.env,
     });
-    const mine: Held = { key, pty };
+    const mine: Held = { pty, ...(key ? { key } : {}) };
     held = mine;
     said = "";
     pty.onData((data) => stdout.write(data));
     pty.onExit(() => {
       if (held !== mine || mine.isLeaving) return;
       held = undefined;
+      if (!key) return finish(0);
       void report();
-      say("Detached. The sidecar's Attach opens the next one here, q stops following.");
+      queue = queue.then(browse);
     });
+  };
+
+  const browse = async (): Promise<void> => {
+    await detach();
+    open(["agents"]);
+  };
+
+  const attach = async (key: string): Promise<void> => {
+    if (held?.key === key) return;
+    await detach();
+    open(["attach", key], key);
     await report(key);
   };
 
   const greet = (data: string): void => {
-    say(`Following the sidecar at ${address}. Attach a conversation from a task, q stops following.`);
     if (Ready.safeParse(parsed(data)).data?.held?.key !== held?.key) void report(held?.key);
   };
 
@@ -145,16 +157,20 @@ const run = (address: string): Promise<number> => {
   };
 
   return new Promise((resolve) => {
+    finish = (code: number): void => {
+      stdin.setRawMode(false);
+      stdout.write("\r\n");
+      void report();
+      resolve(code);
+    };
     stdin.setRawMode(true);
     stdin.setEncoding("utf8");
     stdin.on("data", (typed: string) => {
       if (held) return held.pty.write(typed);
-      if (!QUIT.includes(typed)) return;
-      stdin.setRawMode(false);
-      stdout.write("\r\n");
-      resolve(0);
+      if (QUIT.includes(typed)) finish(0);
     });
     stdout.on("resize", () => held?.pty.resize(stdout.columns, stdout.rows));
+    queue = queue.then(browse);
     void listen();
   });
 };
