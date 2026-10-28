@@ -18,9 +18,21 @@ test("projects come from the config when it is well formed, and from the default
       ["moneyfarm", "cela", "nana", "madong", "meta"],
     );
     assert.equal(Projects.list()[0]?.folder, join(homedir(), "Notes/projects/Moneyfarm"));
+    assert.equal(
+      Projects.list()[0]?.image,
+      join(homedir(), "Notes/projects/Moneyfarm/mf-app/public/apple-touch-icon.png"),
+    );
 
-    configure([{ key: "acme", name: "Acme", token: "AC", folder: "~/acme" }]);
-    assert.deepEqual(Projects.list(), [{ key: "acme", name: "Acme", token: "AC", folder: join(homedir(), "acme") }]);
+    configure([{ key: "acme", name: "Acme", token: "AC", folder: "~/acme", image: "~/acme/logo.png" }]);
+    assert.deepEqual(Projects.list(), [
+      {
+        key: "acme",
+        name: "Acme",
+        token: "AC",
+        folder: join(homedir(), "acme"),
+        image: join(homedir(), "acme/logo.png"),
+      },
+    ]);
 
     configure([{ key: "acme", name: "", token: "AC", folder: "~/acme" }]);
     assert.equal(Projects.list().length, 5);

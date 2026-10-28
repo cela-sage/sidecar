@@ -8,13 +8,9 @@ const { inbox, projects } = defineProps<{ inbox: TaskMeta[]; projects: OrgProjec
 const task = $task();
 const desk = $desk();
 
-const routeOf = (meta: TaskMeta): OrgProject | undefined =>
-  projects.find((one) => one.project.key === desk.routes[meta.slug]);
-
-const route = (meta: TaskMeta): void => {
-  const to = routeOf(meta);
-  if (to) void desk.place(meta, to.project);
-};
+const rows = computed(() =>
+  inbox.map((meta) => ({ meta, to: projects.find((one) => one.project.key === desk.routes[meta.slug]) })),
+);
 
 const start = (event: DragEvent, meta: TaskMeta): void => {
   event.dataTransfer?.setData("text/plain", meta.slug);
@@ -28,35 +24,35 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
     <span class="section mono-meta">Backlog</span>
     <OrgDraft v-if="desk.isNaming" />
     <div
-      v-for="one in inbox"
-      :key="one.slug"
+      v-for="{ meta, to } in rows"
+      :key="meta.slug"
       class="inbox"
       draggable="true"
       role="treeitem"
-      :aria-selected="one.slug === task.slug"
-      :data-ghost="desk.dragging === one.slug"
-      :data-selected="one.slug === task.slug"
+      :aria-selected="meta.slug === task.slug"
+      :data-ghost="desk.dragging === meta.slug"
+      :data-selected="meta.slug === task.slug"
       @dragend="desk.dragging = undefined"
-      @dragstart="start($event, one)"
+      @dragstart="start($event, meta)"
     >
       <button
         class="inbox-open plain-button focusable"
         type="button"
-        :data-tip="one.title"
-        @click="task.show({ slug: one.slug })"
+        :data-tip="meta.title"
+        @click="task.show({ slug: meta.slug })"
       >
         <OrgMark mark="queued" />
-        <span class="inbox-name">{{ one.title || deslug(one.slug) }}</span>
+        <span class="inbox-name">{{ meta.title || deslug(meta.slug) }}</span>
       </button>
       <UiButton
-        v-if="routeOf(one)"
+        v-if="to"
         class="route"
-        :data-tip="`Route to ${routeOf(one)?.project.name}'s Project Lead`"
+        :data-tip="`Route to ${to.project.name}'s Project Lead`"
         :icon="ArrowRight"
         size="xs"
         variant="outline"
-        @click="route(one)"
-        ><span class="square" :data-tint="routeOf(one)?.tint" />{{ routeOf(one)?.project.name }}</UiButton
+        @click="desk.place(meta, to.project)"
+        ><OrgAvatar :project="to.project" :tint="to.tint" />{{ to.project.name }}</UiButton
       >
       <UiIconButton
         class="delete"
@@ -64,7 +60,7 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
         aria-label="Delete"
         data-tip="Delete it. Undo, or ⌘Z, brings it back"
         size="xs"
-        @click="desk.remove(one)"
+        @click="desk.remove(meta)"
       />
     </div>
   </template>
@@ -112,9 +108,5 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
 .inbox:hover .delete,
 .inbox[data-selected="true"] .delete {
   @apply opacity-100;
-}
-
-.square {
-  @apply size-1.75 flex-none rounded-xs bg-tint;
 }
 </style>

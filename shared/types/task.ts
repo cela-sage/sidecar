@@ -44,4 +44,6 @@ export interface Project {
   name: string;
   token: string;
   folder: string;
+  icon?: string;
+  image?: string;
 }

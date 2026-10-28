@@ -178,12 +178,12 @@ useShortcuts(
           @click="folds.toggle(group.project.key, isOpen(group))"
         >
           <UiIcon class="chevron" :icon="isOpen(group) ? ChevronDown : ChevronRight" size="xs" />
-          <OrgMark v-if="group.mark" :mark="group.mark" />
-          <span v-else class="mark-square"><span class="square" :data-tint="group.tint" /></span>
+          <OrgAvatar :project="group.project" :tint="group.tint" />
           <span class="project-name">{{ group.project.name }}</span>
           <span v-if="hot === group.project.key" class="drop mono-meta">{{
             carried ? `as [${group.project.token}]` : "to its Project Lead"
           }}</span>
+          <OrgMark v-if="group.mark" :mark="group.mark" />
         </button>
 
         <template v-if="isOpen(group)">
@@ -330,10 +330,6 @@ useShortcuts(
   }
 }
 
-.square {
-  @apply size-1.75 flex-none rounded-xs bg-tint;
-}
-
 .group {
   @apply mt-1.5 flex flex-col gap-px rounded-lg outline-2 outline-offset-1 outline-transparent transition-colors duration-(--duration-fast) ease-out;
 }
@@ -348,14 +344,6 @@ useShortcuts(
 
 .chevron {
   @apply flex-none text-muted;
-}
-
-.mark-square {
-  @apply inline-flex size-3 flex-none items-center justify-center;
-}
-
-.mark-square .square {
-  @apply size-2.25 rounded-sm;
 }
 
 .project-name {
