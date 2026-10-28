@@ -28,7 +28,7 @@ const CLI_TIMEOUT_MS = 10000;
 
 const run = promisify(execFile);
 
-let cache: { at: number; root: string; jobs: JobEntry[] } | undefined;
+let cache: { at: number; root: string; jobs: JobEntry[]; view?: Set<string> } | undefined;
 let reading: Promise<JobEntry[]> | undefined;
 
 function text(value: unknown): string | undefined {
@@ -108,6 +108,18 @@ async function fromCli(): Promise<JobEntry[] | undefined> {
   return out;
 }
 
+// Without --all the CLI lists what agent view shows, which is the set the tree mirrors.
+async function viewOfCli(): Promise<Set<string> | undefined> {
+  try {
+    const { stdout } = await run(claudeBinary(), ["agents", "--json"], { encoding: "utf8", timeout: CLI_TIMEOUT_MS });
+    const parsed: unknown = JSON.parse(stdout);
+    if (!Array.isArray(parsed)) return undefined;
+    return new Set(parsed.flatMap((row: { id?: unknown }) => (typeof row?.id === "string" ? [row.id] : [])));
+  } catch {
+    return undefined;
+  }
+}
+
 function liveBySession(): Map<string, Record<string, unknown>> {
   const out = new Map<string, Record<string, unknown>>();
   let names: string[];
@@ -169,14 +181,18 @@ function fromDisk(): JobEntry[] {
 
 export function refreshJobs(): Promise<JobEntry[]> {
   const root = configRoot();
-  reading ??= fromCli()
-    .then((found) => {
+  reading ??= Promise.all([fromCli(), viewOfCli()])
+    .then(([found, view]) => {
       const list = found ?? fromDisk();
-      cache = { at: Date.now(), root, jobs: list };
+      cache = { at: Date.now(), root, jobs: list, ...(found && view ? { view } : {}) };
       return list;
     })
     .finally(() => (reading = undefined));
   return reading;
+}
+
+export function agentView(): Set<string> | undefined {
+  return cache?.view;
 }
 
 // The CLI is a node process per run, so a poll gets the last read at once and a stale one refreshes behind it.

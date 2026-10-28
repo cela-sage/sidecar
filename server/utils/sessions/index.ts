@@ -4,7 +4,7 @@ import { sessionOrder } from "../../../shared/utils/sessions.ts";
 import { agentsOf } from "./agents.ts";
 import { artifactsOf, keysWithArtifacts } from "./artifact-lists.ts";
 import { sessionColor } from "./identity.ts";
-import { jobs, type JobEntry } from "./jobs.ts";
+import { agentView, jobs, type JobEntry } from "./jobs.ts";
 import { conversationsHome, isKey, keyOf } from "./paths.ts";
 import { liveEntries, type RegistryEntry } from "./registry.ts";
 import { cwdFromSlug } from "./slug.ts";
@@ -30,9 +30,10 @@ interface Sources {
   entry?: RegistryEntry;
   job?: JobEntry;
   ref?: TranscriptRef;
+  view?: Set<string>;
 }
 
-function build(key: string, { entry, job, ref }: Sources): LiveSession | undefined {
+function build(key: string, { entry, job, ref, view }: Sources): LiveSession | undefined {
   const id = job?.id || entry?.id || ref?.id;
   // Neither a job, a live process nor a transcript means nothing on disk can say what this session was.
   if (!id) return undefined;
@@ -55,6 +56,7 @@ function build(key: string, { entry, job, ref }: Sources): LiveSession | undefin
     detail: job?.detail,
     archived: job ? undefined : true,
     startedAt: job?.startedAt,
+    ...(view ? { inView: view.has(key) } : {}),
   };
 }
 
@@ -67,13 +69,14 @@ export interface SessionsQuery {
 export function liveSessions({ scope = "all", key }: SessionsQuery = {}): LiveSession[] {
   const entries = new Map(liveEntries().map((entry) => [keyOf(entry.id), entry]));
   const running = new Map(jobs().map((job) => [job.key, job]));
+  const view = agentView();
   const transcripts = transcriptIndex();
   const keys = new Set<string>([...running.keys(), ...entries.keys()]);
   if (key) keys.add(key);
   if (scope === "all") for (const one of [...keysWithArtifacts(), ...seenKeys()]) keys.add(one);
   const out: LiveSession[] = [];
   for (const one of keys) {
-    const session = build(one, { entry: entries.get(one), job: running.get(one), ref: transcripts.get(one) });
+    const session = build(one, { entry: entries.get(one), job: running.get(one), ref: transcripts.get(one), view });
     if (session) out.push(session);
   }
   return out.sort(sessionOrder);

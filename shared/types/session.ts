@@ -29,6 +29,8 @@ export interface LiveSession {
   // No background job owns this key: history the sidecar kept, not a conversation `claude agents` lists.
   archived?: boolean;
   startedAt?: number;
+  // Set only when `claude agents` answered, so its absence means the agent view is unknown, not empty.
+  inView?: boolean;
 }
 
 export interface Retitled {
