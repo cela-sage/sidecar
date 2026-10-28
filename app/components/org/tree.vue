@@ -1,10 +1,7 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
-import { ArrowRight, ChevronDown, ChevronRight, Plus, Trash2, X } from "@lucide/vue";
-import { useLocalStorage } from "@vueuse/core";
+import { ChevronDown, ChevronRight, Plus } from "@lucide/vue";
 import type { Mark, OrgConversation, OrgProject, OrgTask } from "~/utils/org";
-import type { TaskMeta } from "~/utils/tasks";
-import { tintOf as agentTint } from "~/utils/tint";
 
 const sc = useSidecar();
 const chrome = useChrome();
@@ -12,7 +9,7 @@ const task = $task();
 const desk = $desk();
 const artifact = $artifact();
 const shown = useFaceShown();
-const toggled = useLocalStorage<Partial<Record<string, boolean>>>("sc:org-folds", {});
+const folds = useOrgFolds();
 const hot = ref<string>();
 const hotTask = ref<string>();
 
@@ -25,16 +22,6 @@ const tree = computed(() =>
   }),
 );
 
-const keys = computed(() => tree.value.projects.map((one) => one.project.key));
-const tintOf = (key = ""): string => Tasks.tintOf(key, keys.value);
-const routeOf = (meta: TaskMeta): OrgProject | undefined =>
-  tree.value.projects.find((one) => one.project.key === desk.routes[meta.slug]);
-
-const route = (meta: TaskMeta): void => {
-  const to = routeOf(meta);
-  if (to) void desk.place(meta, to.project);
-};
-
 const FOR_YOU: Mark[] = ["needs", "waits"];
 
 const holdsInView = (group: OrgProject): boolean =>
@@ -45,29 +32,9 @@ const holdsInView = (group: OrgProject): boolean =>
   );
 
 const isOpen = (group: OrgProject): boolean =>
-  toggled.value[group.project.key] ?? ((!!group.mark && FOR_YOU.includes(group.mark)) || holdsInView(group));
-const isUnfolded = (key: string): boolean => toggled.value[key] ?? false;
-
-interface Lines<T> {
-  open: T[];
-  done: T[];
-  fold: string;
-  keyOf: (one: T) => string;
-}
-
-type Line<T> = { key: string; item: T } | { key: string; fold: number };
-
-const linesOf = <T,>({ open, done, fold, keyOf }: Lines<T>): Line<T>[] => [
-  ...open.map((item) => ({ key: keyOf(item), item })),
-  ...(done.length ? [{ key: fold, fold: done.length }] : []),
-  ...(isUnfolded(fold) ? done.map((item) => ({ key: keyOf(item), item })) : []),
-];
+  folds.isOpen(group.project.key, (!!group.mark && FOR_YOU.includes(group.mark)) || holdsInView(group));
 
 const slugOf = (one: OrgTask): string => one.meta.slug;
-const keyOfRow = (row: OrgConversation): string => row.key;
-const toggle = (key: string, now: boolean): void => {
-  toggled.value = { ...toggled.value, [key]: !now };
-};
 
 const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value;
 
@@ -79,17 +46,6 @@ const openConversation = (row: OrgConversation): void => {
   void navigateTo(`/c/${row.key}`, { replace: true });
 };
 
-const leadTip = (one: OrgTask): string => {
-  const lead = [...one.leads, ...one.done].find((row) => row.key === one.lead);
-  return lead ? `Attach its lead, ${lead.title}, in your terminal` : "Attach in your terminal";
-};
-
-const start = (event: DragEvent, meta: TaskMeta): void => {
-  event.dataTransfer?.setData("text/plain", meta.slug);
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
-  requestAnimationFrame(() => (desk.dragging = meta.slug));
-};
-
 const dragged = computed(() => tree.value.inbox.find((one) => one.slug === desk.dragging));
 
 const isHome = (group: OrgProject, row: OrgConversation): boolean =>
@@ -97,7 +53,7 @@ const isHome = (group: OrgProject, row: OrgConversation): boolean =>
 
 const over = (event: DragEvent, group: OrgProject): void => {
   const row = carried.value;
-  if (row && !isOpen(group)) toggled.value = { ...toggled.value, [group.project.key]: true };
+  if (row && !isOpen(group)) folds.toggle(group.project.key, false);
   if (row ? isHome(group, row) : !dragged.value || !group.project.folder) return;
   event.preventDefault();
   if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
@@ -190,52 +146,7 @@ useShortcuts(
     </header>
 
     <nav class="scroll" role="tree" aria-label="Who is where">
-      <template v-if="tree.inbox.length || desk.isNaming">
-        <span class="section mono-meta">Backlog</span>
-        <OrgDraft v-if="desk.isNaming" />
-        <div
-          v-for="one in tree.inbox"
-          :key="one.slug"
-          class="inbox"
-          draggable="true"
-          role="treeitem"
-          :aria-selected="one.slug === task.slug"
-          :data-ghost="desk.dragging === one.slug"
-          :data-selected="one.slug === task.slug"
-          @dragend="desk.dragging = undefined"
-          @dragstart="start($event, one)"
-        >
-          <button
-            class="inbox-open plain-button focusable"
-            type="button"
-            :data-tip="one.title"
-            @click="task.show({ slug: one.slug })"
-          >
-            <OrgMark mark="queued" />
-            <span class="inbox-name">{{ one.title || deslug(one.slug) }}</span>
-          </button>
-          <UiButton
-            v-if="routeOf(one)"
-            class="route"
-            :data-tip="`Route to ${routeOf(one)?.project.name}'s Project Lead`"
-            :icon="ArrowRight"
-            size="xs"
-            variant="outline"
-            @click="route(one)"
-            ><span class="square" :data-tint="tintOf(routeOf(one)?.project.key)" />{{
-              routeOf(one)?.project.name
-            }}</UiButton
-          >
-          <UiIconButton
-            class="delete"
-            :icon="Trash2"
-            aria-label="Delete"
-            data-tip="Delete it. Undo, or ⌘Z, brings it back"
-            size="xs"
-            @click="desk.remove(one)"
-          />
-        </div>
-      </template>
+      <OrgBacklog :inbox="tree.inbox" :projects="tree.projects" />
 
       <span class="section mono-meta" data-gap="true">Assistant</span>
       <OrgRow
@@ -264,7 +175,7 @@ useShortcuts(
           class="project plain-button focusable"
           type="button"
           :aria-expanded="isOpen(group)"
-          @click="toggle(group.project.key, isOpen(group))"
+          @click="folds.toggle(group.project.key, isOpen(group))"
         >
           <UiIcon class="chevron" :icon="isOpen(group) ? ChevronDown : ChevronRight" size="xs" />
           <OrgMark v-if="group.mark" :mark="group.mark" />
@@ -290,105 +201,31 @@ useShortcuts(
           />
 
           <template
-            v-for="line in linesOf({
+            v-for="line in folds.linesOf({
               open: group.tasks,
               done: group.done,
               fold: `tasks:${group.project.key}`,
+              depth: 1,
               keyOf: slugOf,
             })"
             :key="line.key"
           >
-            <button
+            <OrgFold
               v-if="'fold' in line"
-              class="fold plain-button focusable"
-              data-depth="1"
-              type="button"
-              :aria-expanded="isUnfolded(line.key)"
-              @click="toggle(line.key, isUnfolded(line.key))"
-            >
-              <span class="guide" aria-hidden="true" />
-              <UiIcon :icon="isUnfolded(line.key) ? ChevronDown : ChevronRight" size="xs" />
-              <span class="mono-meta">{{ plural(line.fold, "done task") }}</span>
-            </button>
-            <template v-else>
-              <OrgRow
-                class="landing"
-                :attach="line.item.lead"
-                :attach-tip="leadTip(line.item)"
-                :data-hot="hotTask === line.item.meta.slug"
-                :depth="1"
-                is-task
-                :is-selected="line.item.meta.slug === task.slug"
-                :mark="line.item.mark"
-                :name="line.item.meta.title || deslug(line.item.meta.slug)"
-                @dragleave="hotTask = undefined"
-                @dragover="overTask($event, line.item)"
-                @drop="dropOnTask($event, line.item)"
-                @open="task.show({ slug: line.item.meta.slug })"
-              >
-                <span v-if="hotTask === line.item.meta.slug" class="drop mono-meta">as its Task Lead</span>
-                <template v-if="line.item.meta.task.state === 'done'" #after>
-                  <UiIconButton
-                    :icon="X"
-                    aria-label="Remove from the list"
-                    data-tip="Remove from the list. It goes by itself a day after Done"
-                    size="xs"
-                    @click.stop="desk.hide(line.item.meta)"
-                  />
-                </template>
-              </OrgRow>
-              <template
-                v-for="lead in linesOf({
-                  open: line.item.leads,
-                  done: line.item.done,
-                  fold: `done:${line.item.meta.slug}`,
-                  keyOf: keyOfRow,
-                })"
-                :key="lead.key"
-              >
-                <button
-                  v-if="'fold' in lead"
-                  class="fold plain-button focusable"
-                  data-depth="2"
-                  type="button"
-                  :aria-expanded="isUnfolded(lead.key)"
-                  @click="toggle(lead.key, isUnfolded(lead.key))"
-                >
-                  <span class="guide" aria-hidden="true" />
-                  <span class="guide deep" aria-hidden="true" />
-                  <UiIcon :icon="isUnfolded(lead.key) ? ChevronDown : ChevronRight" size="xs" />
-                  <span class="mono-meta">{{ lead.fold }} done</span>
-                </button>
-                <template v-else>
-                  <OrgRow
-                    :attach="lead.item.key"
-                    :depth="2"
-                    :is-front="front(lead.item)"
-                    :mark="lead.item.mark"
-                    :name="lead.item.name"
-                    :role="lead.item.role"
-                    :tip="lead.item.title"
-                    @open="openConversation(lead.item)"
-                  />
-                  <div
-                    v-if="lead.item.agents?.length"
-                    class="hired"
-                    role="group"
-                    :aria-label="`Specialists ${lead.item.name} hired`"
-                  >
-                    <span class="guide" aria-hidden="true" />
-                    <span class="guide deep" aria-hidden="true" />
-                    <span
-                      v-for="agent in lead.item.agents"
-                      :key="agent.name"
-                      class="hire mono-meta"
-                      :data-tip="`A specialist ${lead.item.name} hired`"
-                      ><span class="square" :data-tint="agentTint(agent.color, agent.name)" />{{ agent.name }}</span
-                    >
-                  </div>
-                </template>
-              </template>
-            </template>
+              :depth="line.depth"
+              :fold="line.key"
+              :label="plural(line.fold, 'done task')"
+            />
+            <OrgTaskRow
+              v-else
+              :depth="line.depth"
+              :is-hot="hotTask === line.item.meta.slug"
+              :one="line.item"
+              @drop="dropOnTask($event, line.item)"
+              @leave="hotTask = undefined"
+              @open="openConversation"
+              @over="overTask($event, line.item)"
+            />
           </template>
 
           <OrgRow
@@ -479,15 +316,6 @@ useShortcuts(
   @apply m-0 px-1.5 py-1 typo-caption text-pretty text-muted;
 }
 
-.inbox {
-  @apply box-border flex h-7 cursor-grab items-center gap-1.75 rounded-lg border border-transparent pr-0.5 pl-1;
-}
-
-.inbox[data-selected="true"] {
-  @apply border-border-strong bg-sunken;
-}
-
-.inbox[data-ghost="true"],
 .carry[data-ghost="true"] {
   @apply border-dashed border-border-strong opacity-50;
 }
@@ -496,37 +324,10 @@ useShortcuts(
   @apply cursor-grab;
 }
 
-.landing[data-hot="true"] {
-  @apply bg-primary-soft outline-2 outline-offset-1 outline-primary outline-dashed;
-}
-
 @media (hover: hover) and (pointer: fine) {
-  .inbox:not([data-selected="true"]):hover,
-  .project:hover,
-  .fold:hover {
+  .project:hover {
     @apply bg-sunken;
   }
-}
-
-.inbox-open {
-  @apply flex h-6.5 min-w-0 flex-1 items-center gap-1.75 border-0 bg-transparent px-1 text-left text-fg;
-}
-
-.inbox-name {
-  @apply min-w-0 flex-1 truncate typo-caption font-medium;
-}
-
-.route {
-  @apply flex-none text-muted;
-}
-
-.delete {
-  @apply flex-none opacity-0 transition-opacity duration-(--duration-fast) ease-out focus-visible:opacity-100;
-}
-
-.inbox:hover .delete,
-.inbox[data-selected="true"] .delete {
-  @apply opacity-100;
 }
 
 .square {
@@ -563,34 +364,5 @@ useShortcuts(
 
 .drop {
   @apply flex-none text-primary-deep normal-case;
-}
-
-.fold {
-  @apply relative box-border flex h-6 items-center gap-1.5 self-start rounded-lg border-0 bg-transparent pr-2 pl-7 text-muted;
-}
-
-.fold[data-depth="2"] {
-  @apply pl-14;
-}
-
-.fold .guide {
-  @apply absolute -top-px -bottom-px left-2.25 w-px origin-left scale-x-50 bg-border;
-}
-
-.fold .guide.deep,
-.hired .guide.deep {
-  @apply left-10;
-}
-
-.hired {
-  @apply relative flex flex-wrap items-center gap-1 pt-0.5 pr-1 pb-1 pl-17;
-}
-
-.hired .guide {
-  @apply absolute -top-px -bottom-px left-2.25 w-px origin-left scale-x-50 bg-border;
-}
-
-.hire {
-  @apply inline-flex items-center gap-1 rounded-full border border-border px-1.75 py-px text-muted normal-case;
 }
 </style>

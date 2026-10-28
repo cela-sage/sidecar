@@ -18,7 +18,7 @@ const {
 } = defineProps<{
   attach?: string;
   attachTip?: string;
-  depth?: 0 | 1 | 2;
+  depth?: number;
   id?: string;
   isFront?: boolean;
   isSelected?: boolean;
@@ -45,8 +45,7 @@ const isHeld = computed(() => !!attach && terminal.state.held?.key === attach);
     :data-selected="isSelected"
     :data-task="isTask"
   >
-    <span v-if="depth >= 1" class="guide" aria-hidden="true" />
-    <span v-if="depth >= 2" class="guide deep" aria-hidden="true" />
+    <OrgGuides :depth="depth" />
     <span v-if="isFront" class="bar" aria-hidden="true" />
     <button class="open plain-button focusable" type="button" :data-tip="tip ?? name" @click="emit('open')">
       <OrgMark :mark="mark" />
@@ -92,14 +91,6 @@ const isHeld = computed(() => !!attach && terminal.state.held?.key === attach);
   .row:not([data-selected="true"]):hover {
     @apply bg-sunken;
   }
-}
-
-.guide {
-  @apply absolute -top-0.5 -bottom-px left-2.25 w-px origin-left scale-x-50 bg-border;
-}
-
-.guide.deep {
-  @apply left-10;
 }
 
 .bar {

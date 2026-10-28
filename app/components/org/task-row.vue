@@ -1,0 +1,112 @@
+<script lang="ts" setup>
+import { X } from "@lucide/vue";
+import type { OrgConversation, OrgTask } from "~/utils/org";
+import { tintOf as agentTint } from "~/utils/tint";
+
+const { depth, isHot = false, one } = defineProps<{ depth: number; isHot?: boolean; one: OrgTask }>();
+const emit = defineEmits<{ open: [row: OrgConversation]; over: [event: DragEvent]; drop: [event: DragEvent]; leave: [] }>();
+
+const sc = useSidecar();
+const task = $task();
+const desk = $desk();
+const folds = useOrgFolds();
+
+const lines = computed(() =>
+  folds.linesOf({
+    open: one.leads,
+    done: one.done,
+    fold: `done:${one.meta.slug}`,
+    depth: depth + 1,
+    keyOf: (row) => row.key,
+  }),
+);
+
+const leadTip = computed(() => {
+  const lead = [...one.leads, ...one.done].find((row) => row.key === one.lead);
+  return lead ? `Attach its lead, ${lead.title}, in your terminal` : "Attach in your terminal";
+});
+
+const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value;
+</script>
+
+<template>
+  <OrgRow
+    class="landing"
+    :attach="one.lead"
+    :attach-tip="leadTip"
+    :data-hot="isHot"
+    :depth="depth"
+    is-task
+    :is-selected="one.meta.slug === task.slug"
+    :mark="one.mark"
+    :name="one.meta.title || deslug(one.meta.slug)"
+    @dragleave="emit('leave')"
+    @dragover="emit('over', $event)"
+    @drop="emit('drop', $event)"
+    @open="task.show({ slug: one.meta.slug })"
+  >
+    <span v-if="isHot" class="drop mono-meta">as its Task Lead</span>
+    <template v-if="one.meta.task.state === 'done'" #after>
+      <UiIconButton
+        :icon="X"
+        aria-label="Remove from the list"
+        data-tip="Remove from the list. It goes by itself a day after Done"
+        size="xs"
+        @click.stop="desk.hide(one.meta)"
+      />
+    </template>
+  </OrgRow>
+  <template v-for="line in lines" :key="line.key">
+    <OrgFold v-if="'fold' in line" :depth="line.depth" :fold="line.key" :label="`${line.fold} done`" />
+    <template v-else>
+      <OrgRow
+        :attach="line.item.key"
+        :depth="line.depth"
+        :is-front="front(line.item)"
+        :mark="line.item.mark"
+        :name="line.item.name"
+        :role="line.item.role"
+        :tip="line.item.title"
+        @open="emit('open', line.item)"
+      />
+      <div
+        v-if="line.item.agents?.length"
+        class="hired"
+        role="group"
+        :aria-label="`Specialists ${line.item.name} hired`"
+        :data-depth="line.depth"
+      >
+        <OrgGuides :depth="line.depth" />
+        <span
+          v-for="agent in line.item.agents"
+          :key="agent.name"
+          class="hire mono-meta"
+          :data-tip="`A specialist ${line.item.name} hired`"
+          ><span class="square" :data-tint="agentTint(agent.color, agent.name)" />{{ agent.name }}</span
+        >
+      </div>
+    </template>
+  </template>
+</template>
+
+<style scoped>
+.landing[data-hot="true"] {
+  @apply bg-primary-soft outline-2 outline-offset-1 outline-primary outline-dashed;
+}
+
+.drop {
+  @apply flex-none text-primary-deep normal-case;
+}
+
+.hired {
+  @apply relative flex flex-none flex-wrap items-center gap-1 pt-0.5 pr-1 pb-1 pl-17;
+}
+
+.hire {
+  @apply inline-flex items-center gap-1 rounded-full border border-border px-1.75 py-px text-muted normal-case;
+}
+
+.square {
+  @apply size-1.75 flex-none rounded-xs bg-tint;
+}
+</style>
