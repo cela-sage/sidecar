@@ -28,7 +28,7 @@ export const useOrgFolds = createSharedComposable((): OrgFolds => {
   const linesOf = <T>({ open, done, fold, depth, keyOf }: OrgLines<T>): OrgLine<T>[] => [
     ...open.map((item) => ({ key: keyOf(item), depth, item })),
     ...(done.length ? [{ key: fold, depth, fold: done.length }] : []),
-    ...(isOpen(fold) ? done.map((item) => ({ key: keyOf(item), depth, item })) : []),
+    ...(isOpen(fold) ? done.map((item) => ({ key: keyOf(item), depth: depth + 1, item })) : []),
   ];
 
   return { isOpen, toggle, linesOf };

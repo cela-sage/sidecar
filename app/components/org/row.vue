@@ -72,7 +72,11 @@ const isHeld = computed(() => !!attach && terminal.state.held?.key === attach);
 
 <style scoped>
 .row {
-  @apply relative box-border flex min-h-7 items-center gap-1 rounded-lg border border-transparent pr-0.5 pl-1.5;
+  @apply relative isolate box-border flex min-h-7 items-center gap-1 rounded-lg border border-transparent pr-0.5 pl-1.5;
+}
+
+.row::before {
+  @apply pointer-events-none absolute inset-y-0 right-0 left-0 -z-1 rounded-lg border border-transparent content-[''];
 }
 
 .row[data-depth="1"] {
@@ -83,12 +87,36 @@ const isHeld = computed(() => !!attach && terminal.state.held?.key === attach);
   @apply pl-14;
 }
 
-.row[data-selected="true"] {
+.row[data-depth="3"] {
+  @apply pl-21;
+}
+
+.row[data-depth="4"] {
+  @apply pl-28;
+}
+
+.row[data-depth="1"]::before {
+  @apply left-5;
+}
+
+.row[data-depth="2"]::before {
+  @apply left-12;
+}
+
+.row[data-depth="3"]::before {
+  @apply left-19;
+}
+
+.row[data-depth="4"]::before {
+  @apply left-26;
+}
+
+.row[data-selected="true"]::before {
   @apply border-border-strong bg-sunken;
 }
 
 @media (hover: hover) and (pointer: fine) {
-  .row:not([data-selected="true"]):hover {
+  .row:not([data-selected="true"]):hover::before {
     @apply bg-sunken;
   }
 }
@@ -103,6 +131,14 @@ const isHeld = computed(() => !!attach && terminal.state.held?.key === attach);
 
 .row[data-depth="2"] .bar {
   @apply left-12.5;
+}
+
+.row[data-depth="3"] .bar {
+  @apply left-19.5;
+}
+
+.row[data-depth="4"] .bar {
+  @apply left-26.5;
 }
 
 .open {

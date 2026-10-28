@@ -4,7 +4,12 @@ import type { OrgConversation, OrgTask } from "~/utils/org";
 import { tintOf as agentTint } from "~/utils/tint";
 
 const { depth, isHot = false, one } = defineProps<{ depth: number; isHot?: boolean; one: OrgTask }>();
-const emit = defineEmits<{ open: [row: OrgConversation]; over: [event: DragEvent]; drop: [event: DragEvent]; leave: [] }>();
+const emit = defineEmits<{
+  open: [row: OrgConversation];
+  over: [event: DragEvent];
+  drop: [event: DragEvent];
+  leave: [];
+}>();
 
 const sc = useSidecar();
 const task = $task();
@@ -21,6 +26,10 @@ const lines = computed(() =>
   }),
 );
 
+const attach = computed(() =>
+  lines.value.some((line) => "item" in line && line.item.key === one.lead) ? undefined : one.lead,
+);
+
 const leadTip = computed(() => {
   const lead = [...one.leads, ...one.done].find((row) => row.key === one.lead);
   return lead ? `Attach its lead, ${lead.title}, in your terminal` : "Attach in your terminal";
@@ -32,7 +41,7 @@ const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value
 <template>
   <OrgRow
     class="landing"
-    :attach="one.lead"
+    :attach="attach"
     :attach-tip="leadTip"
     :data-hot="isHot"
     :depth="depth"
@@ -100,6 +109,14 @@ const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value
 
 .hired {
   @apply relative flex flex-none flex-wrap items-center gap-1 pt-0.5 pr-1 pb-1 pl-17;
+}
+
+.hired[data-depth="3"] {
+  @apply pl-24;
+}
+
+.hired[data-depth="4"] {
+  @apply pl-31;
 }
 
 .hire {
