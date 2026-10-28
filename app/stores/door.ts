@@ -165,6 +165,17 @@ export const $door = defineStore(() => {
     for (const one of open) hearQuestion(one);
   };
 
+  // A receipt draws from the catalogue, and keeps the last title it saw for a task that leaves it.
+  watch(
+    () => sc.catalogue.value,
+    (catalogue) => {
+      const titles = new Map(Tasks.of(catalogue).map((one) => [one.slug, one.title]));
+      for (const receipt of exchanges.value.flatMap((one) => one.receipts)) {
+        receipt.title = titles.get(receipt.slug) || receipt.title;
+      }
+    },
+  );
+
   const hearChange = (slug: string, now: TaskState): void => {
     for (const one of following.values()) one.heard(slug, now);
   };

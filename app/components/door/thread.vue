@@ -1,12 +1,9 @@
 <script lang="ts" setup>
-import type { DoorExchange, DoorReceipt } from "~/stores/door";
+import type { DoorExchange } from "~/stores/door";
 
 const { step } = defineProps<{ step?: string }>();
 const door = $door();
 const terminal = $terminal();
-
-const canUndo = (receipt: DoorReceipt): boolean =>
-  !receipt.isUndone && receipt.was === "unassigned" && receipt.now !== "unassigned";
 
 const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id;
 </script>
@@ -17,24 +14,7 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
       <p class="you">{{ one.text }}</p>
 
       <div v-if="one.receipts.length" class="receipts">
-        <div v-for="receipt in one.receipts" :key="`${receipt.slug}-${receipt.now}`" class="receipt">
-          <OrgMark :mark="receipt.isUndone ? 'queued' : 'completed'" />
-          <span class="what">
-            <span class="title">{{ receipt.title }}</span>
-            <span class="note mono-meta">{{
-              receipt.isUndone ? "back in the backlog" : `${receipt.was} to ${receipt.now}`
-            }}</span>
-          </span>
-          <button
-            v-if="canUndo(receipt)"
-            class="link plain-button focusable"
-            data-tip="Put it back in the backlog"
-            type="button"
-            @click="door.undo(receipt)"
-          >
-            Undo
-          </button>
-        </div>
+        <DoorReceipt v-for="receipt in one.receipts" :key="`${receipt.slug}-${receipt.now}`" :receipt="receipt" />
       </div>
 
       <p v-if="one.step === 'working'" class="busy" role="status">
@@ -98,22 +78,6 @@ const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id
 
 .receipts {
   @apply flex flex-col overflow-hidden rounded-xl border border-border;
-}
-
-.receipt {
-  @apply box-border flex min-h-9.5 items-center gap-2 border-t border-t-border py-1.5 pr-2 pl-2.5 first:border-t-0;
-}
-
-.what {
-  @apply flex min-w-0 flex-1 flex-col gap-px;
-}
-
-.title {
-  @apply truncate typo-caption;
-}
-
-.note {
-  @apply truncate text-muted normal-case;
 }
 
 .link {
