@@ -66,7 +66,7 @@ const send = (): void => {
 }
 
 .text {
-  @apply m-0 typo-body leading-normal text-pretty;
+  @apply m-0 typo-body leading-normal wrap-break-word text-pretty whitespace-pre-wrap;
 }
 
 .options {

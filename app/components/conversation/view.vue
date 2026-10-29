@@ -59,6 +59,10 @@ const blocks = computed<Block[]>(() => {
     } else if (turn.role === "system") out.push({ kind: "note", key: id, turn });
     else out.push({ kind: "said", key: id, turn });
   }
+  const claimed = new Set(out.flatMap((block) => (block.kind === "asking" ? [block.ask.ref] : [])));
+  for (const ask of Object.values(questions.open)) {
+    if (ask.key === key.value && !claimed.has(ask.ref)) out.push({ kind: "asking", key: ask.ref, ask });
+  }
   return out;
 });
 
