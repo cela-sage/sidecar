@@ -17,7 +17,6 @@ export interface Conversation {
   step: MaybeComputed<string>;
   isBusy: ComputedRef<boolean>;
   stream: ShallowRef<ConversationTurn[]>;
-  results: ShallowRef<Map<string, ConversationTurn>>;
   model: Maybe<string>;
   mode: Maybe<string>;
 }
@@ -38,7 +37,6 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     stream.value.push(turn);
     triggerRef(stream);
   };
-  const results = shallowRef(new Map<string, ConversationTurn>());
   const model = ref<string>();
   const mode = ref<string>();
   const doing = ref<ConversationTurn>();
@@ -151,10 +149,6 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     // A tool result carries no words and is not a note: it only reports that the call it names closed.
     if (turn.kind === "done") {
       finish(turn.ref);
-      if (turn.ref) {
-        results.value.set(turn.ref, turn);
-        triggerRef(results);
-      }
       return;
     }
     if (turn.kind === "end") {
@@ -224,7 +218,6 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     stream.value = [];
     received.clear();
     commands.clear();
-    results.value = new Map();
     model.value = undefined;
     mode.value = undefined;
     candidate = undefined;
@@ -273,5 +266,5 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     });
   });
 
-  return { isBusy, mascot, mode, model, results, step, stream };
+  return { isBusy, mascot, mode, model, step, stream };
 }

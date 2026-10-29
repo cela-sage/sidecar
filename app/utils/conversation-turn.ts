@@ -14,19 +14,6 @@ const Kind = z.enum([
   "end",
 ]);
 
-const Call = z.discriminatedUnion("kind", [
-  z.object({ kind: z.literal("read"), path: z.string(), from: z.number().optional(), to: z.number().optional() }),
-  z.object({ kind: z.literal("edit"), path: z.string() }),
-  z.object({ kind: z.literal("run"), command: z.string() }),
-]);
-
-const Diff = z.object({
-  add: z.number(),
-  del: z.number(),
-  hunks: z.array(z.object({ oldStart: z.number(), newStart: z.number(), lines: z.array(z.string()) })),
-  isClipped: z.literal(true).optional(),
-});
-
 // A field the client cannot read drops alone, so a newer server never costs the whole turn.
 const Turn = z.object({
   at: z.number(),
@@ -35,14 +22,10 @@ const Turn = z.object({
   kind: Kind.optional().catch(undefined),
   tool: z.string().min(1).optional().catch(undefined),
   arg: z.string().min(1).optional().catch(undefined),
-  call: Call.optional().catch(undefined),
   ref: z.string().min(1).optional().catch(undefined),
   bg: z.literal(true).optional().catch(undefined),
   queued: z.literal(true).optional().catch(undefined),
   joined: z.literal(true).optional().catch(undefined),
-  out: z.string().optional().catch(undefined),
-  diff: Diff.optional().catch(undefined),
-  failed: z.literal(true).optional().catch(undefined),
   via: z.literal("terminal").optional().catch(undefined),
   model: z.string().min(1).optional().catch(undefined),
   mode: z.string().min(1).optional().catch(undefined),
