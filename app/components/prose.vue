@@ -2,10 +2,13 @@
 import { createMarkdownParser } from "comark";
 import taskList from "comark/plugins/task-list";
 import type { MarkdownDocument as Tree } from "comark";
+import { proseConversation } from "~/utils/prose-keys";
 import ProseCode from "./prose-code.vue";
 import ProseConversation from "./prose-conversation.vue";
 import ProseLine from "./prose-line.vue";
 import ProseLink from "./prose-link.vue";
+import ProseMediaRef from "./prose-media-ref.vue";
+import ProseMediaSet from "./prose-media-set.vue";
 
 const parse = createMarkdownParser({
   // Turns arrive whole over SSE; autoClose only mangles multi-line emphasis into a stray `**`.
@@ -15,20 +18,30 @@ const parse = createMarkdownParser({
   registerDefaultPlugins: false,
 });
 
-const COMPONENTS = { a: ProseLink, "conversation-ref": ProseConversation, "line-ref": ProseLine, pre: ProseCode };
+const COMPONENTS = {
+  a: ProseLink,
+  "conversation-ref": ProseConversation,
+  "line-ref": ProseLine,
+  "media-ref": ProseMediaRef,
+  "media-set": ProseMediaSet,
+  pre: ProseCode,
+};
 </script>
 
 <script lang="ts" setup>
-const { lineRefsOf, value } = defineProps<{ lineRefsOf?: string; value: string }>();
+const { conversation, lineRefsOf, value } = defineProps<{ conversation?: string; lineRefsOf?: string; value: string }>();
 
 const tree = shallowRef<Tree>();
+
+if (conversation) provide(proseConversation, conversation);
 
 watch(
   () => value,
   async (next) => {
     const parsed = await parse(next);
     if (next !== value) return;
-    const nodes = ConversationRefs.withRefs(parsed.nodes);
+    const refs = ConversationRefs.withRefs(parsed.nodes);
+    const nodes = conversation ? MediaRefs.withMedia(refs) : refs;
     tree.value = { ...parsed, nodes: lineRefsOf ? SideQuestion.withLineRefs(nodes, lineRefsOf) : nodes };
   },
   { immediate: true },

@@ -8,7 +8,15 @@ export interface ConversationRef {
 
 // The @ keeps a short git hash in prose from reading as a conversation, and the long form is the door's own.
 const REF = /(?<![\w@])@(?:([^@()\n]{1,120}?) \(([0-9a-f]{8})\)|([0-9a-f]{8}))(?![\w-])/g;
+const KEY = /^[0-9a-f]{8}$/;
 const VERBATIM = new Set(["a", "code", "pre", "line-ref", "conversation-ref"]);
+
+// A key in backticks is the rule's own form; the chip keeps the code as its fallback, so an unknown key stays code.
+const keyOf = (node: Node): string | undefined => {
+  if (typeof node === "string") return undefined;
+  const [tag, , only, ...rest] = node;
+  return tag === "code" && !rest.length && typeof only === "string" && KEY.test(only) ? only : undefined;
+};
 
 const of = (text: string): ConversationRef[] =>
   [...text.matchAll(REF)].map((hit) => ({
@@ -32,6 +40,8 @@ const split = (text: string): Node[] => {
 const withRefs = (nodes: Node[]): Node[] =>
   nodes.flatMap((node): Node[] => {
     if (typeof node === "string") return split(node);
+    const key = keyOf(node);
+    if (key) return [["conversation-ref", { conversation: key }, node]];
     const [tag, attrs, ...children] = node;
     if (!tag || VERBATIM.has(tag)) return [node];
     return [[tag, attrs, ...withRefs(children as Node[])]];

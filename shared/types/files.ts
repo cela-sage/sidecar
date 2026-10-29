@@ -27,6 +27,11 @@ export type FileUnshown = "not-touched" | "missing" | "too-large" | "binary";
 // `hash` is what a save names as its base, so a write never lands over text the editor did not open.
 export type FileContent = { path: string; text: string; hash: string } | { path: string; reason: FileUnshown };
 
+export interface FileStat {
+  path: string;
+  size?: number;
+}
+
 export type FileSave = { saved: true; hash: string } | { saved: false; reason: FileUnshown | "changed-on-disk" };
 
 export type FileOpenReply = { at: "artifacts"; slug: string } | { at: "files"; path: string };
