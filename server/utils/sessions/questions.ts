@@ -53,6 +53,8 @@ const close = (ref: string): void => {
   if (![...asked.values()].some((one) => one.key === question.key)) TurnBus.ask(question.key, false);
 };
 
+const has = (ref: string): boolean => asked.has(ref);
+
 const open = (): AskedQuestion[] => [...asked.values()];
 
 const wait = (ref: string, { holdMs = HOLD_MS, signal }: WaitOptions = {}): Promise<QuestionAnswers | undefined> =>
@@ -94,4 +96,4 @@ const give = (ref: string, answers: QuestionAnswers, graceMs = GRACE_MS): Promis
     });
   });
 
-export const OpenQuestions = { ask, close, give, open, release, wait };
+export const OpenQuestions = { ask, close, give, has, open, release, wait };

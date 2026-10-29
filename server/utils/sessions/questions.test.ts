@@ -27,8 +27,10 @@ test("an open question is published with its key, marks the conversation asking,
     OpenQuestions.open().map((one) => one.ref),
     ["call-open"],
   );
+  assert.equal(OpenQuestions.has("call-open"), true);
   OpenQuestions.close("call-open");
   OpenQuestions.close("call-open");
+  assert.equal(OpenQuestions.has("call-open"), false);
   assert.deepEqual(TurnBus.snapshot().abcd1234, { doing: true, asking: false });
   assert.deepEqual(OpenQuestions.open(), []);
   const frames = read().events.filter((one) => one.topic === "question.changed");
