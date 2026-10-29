@@ -7,7 +7,6 @@ export interface ChatMedia {
 }
 
 const UNITS = [
-  { unit: "byte", from: 1 },
   { unit: "kilobyte", from: 1024 },
   { unit: "megabyte", from: 1024 * 1024 },
   { unit: "gigabyte", from: 1024 * 1024 * 1024 },
@@ -31,6 +30,8 @@ const isPlaying = ref(false);
 const bars = ref<number[]>([]);
 
 const meta = computed(() => {
+  const type = FileKind.extensionOf(media.path).toUpperCase();
+  if (media.size < 1024) return `${type} · ${media.size} B`;
   const { unit, from } = UNITS.findLast((one) => media.size >= one.from) ?? UNITS[0];
   const amount = new Intl.NumberFormat(undefined, {
     maximumFractionDigits: from >= 1024 * 1024 ? 1 : 0,
@@ -38,7 +39,7 @@ const meta = computed(() => {
     unit,
     unitDisplay: "short",
   }).format(media.size / from);
-  return `${FileKind.extensionOf(media.path).toUpperCase()} · ${amount}`;
+  return `${type} · ${amount}`;
 });
 const progress = computed(() => (duration.value ? time.value / duration.value : 0));
 const played = computed(() => Math.round(progress.value * bars.value.length));

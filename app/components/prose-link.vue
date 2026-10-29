@@ -26,15 +26,18 @@ const isLocal = computed(
   () => !!host.value && /^(localhost|127\.0\.0\.1|\[::1\])$|\.localhost$/.test(host.value),
 );
 
+// Linkify reads a bare name such as README.md as a host, so a link that is only its own text and ends like a file is a path.
+const bareFileOf = (event: MouseEvent): string | undefined => {
+  const text = event.currentTarget instanceof HTMLElement ? (event.currentTarget.textContent?.trim() ?? "") : "";
+  return href && FILE.test(text) && href.replace(/^https?:\/\//i, "").replace(/\/$/, "") === text ? text : undefined;
+};
+
 // The href stays real so Copy link still gives it, and only the click is taken over.
 function onClick(event: MouseEvent): void {
   if (!href || !links.owns(href)) return;
   event.preventDefault();
   card.value = undefined;
-  const text = (event.currentTarget as HTMLElement).textContent?.trim() ?? "";
-  // Linkify reads a bare name such as README.md as a host, so a link that is only its own text and ends like a file is a path.
-  const isBareFile = FILE.test(text) && href.replace(/^https?:\/\//i, "").replace(/\/$/, "") === text;
-  void links.open(isBareFile ? text : href);
+  void links.open(bareFileOf(event) ?? href);
 }
 
 const lookUp = async (link: string): Promise<LinkPreview | undefined> => {
@@ -56,9 +59,10 @@ const show = async (): Promise<void> => {
   card.value = got ?? (isLocal.value ? { site: host.value, url: link } : undefined);
 };
 
-const enter = (): void => {
+const enter = (event: MouseEvent): void => {
   clearTimeout(leave);
-  if (!host.value || card.value || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  if (!host.value || card.value || bareFileOf(event)) return;
+  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
   dwell = setTimeout(() => void show(), DWELL_MS);
 };
 
