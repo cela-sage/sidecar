@@ -151,7 +151,7 @@ useShortcuts(
 }
 
 /* Never :global() here: Vue's scoped compiler keeps only what is inside it, which made the whole shell the drag region. */
-.shell[data-shell="true"] .lights {
+.shell[data-shell="true"]:not([data-fullscreen="true"]) .lights {
   @apply block;
 }
 

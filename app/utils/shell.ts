@@ -8,6 +8,8 @@ export interface PopupOpen {
 
 export interface SidecarShell {
   closePopup(id: number): void;
+  isFullScreen: boolean;
+  onFullScreen(cb: (full: boolean) => void): () => void;
   onPopupClosed(cb: (id: number) => void): () => void;
   onPopupOpen(cb: (open: PopupOpen) => void): () => void;
   openInChrome(url: string): void;

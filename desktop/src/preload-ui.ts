@@ -2,6 +2,7 @@ import { contextBridge, ipcRenderer } from "electron";
 import { sendPinches } from "./pinch.ts";
 
 interface ShellInfo {
+  fullScreen: boolean;
   partition: string;
 }
 
@@ -19,6 +20,8 @@ const subscribe = <T>(channel: string, cb: (payload: T) => void): (() => void) =
 contextBridge.exposeInMainWorld("sidecarShell", {
   closePopup: (id: number): void => ipcRenderer.send("popup:close", id),
   importCookies: (): Promise<{ failed: number; set: number; skipped: number }> => ipcRenderer.invoke("shell:import-cookies"),
+  isFullScreen: info.fullScreen,
+  onFullScreen: (cb: (full: boolean) => void): (() => void) => subscribe("window:full-screen", cb),
   onPopupClosed: (cb: (id: number) => void): (() => void) => subscribe("popup:closed", cb),
   onPopupOpen: (cb: (open: PopupOpen) => void): (() => void) => subscribe("popup:open", cb),
   openInChrome: (url: string): Promise<void> => ipcRenderer.invoke("shell:open-external", url),

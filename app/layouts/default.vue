@@ -14,7 +14,15 @@ const boardEl = useTemplateRef<HTMLElement>("boardEl");
 const dockHeight = ref(0);
 const isDown = computed(() => !!sc.failure.value);
 const onShell = ref(false);
-onMounted(() => (onShell.value = !!(window as unknown as { sidecarShell?: unknown }).sidecarShell));
+const isFullScreen = ref(false);
+onMounted(() => {
+  const shell = sidecarShell();
+  onShell.value = !!shell;
+  if (!shell) return;
+  isFullScreen.value = shell.isFullScreen ?? false;
+  const off = shell.onFullScreen?.((full) => (isFullScreen.value = full));
+  if (off) onScopeDispose(off);
+});
 
 // A restarted server has forgotten what it followed, so the page waits on Listening for whatever is in front.
 watch(isDown, (down) => {
@@ -54,6 +62,7 @@ useResizeObserver(boardEl, ([entry]) => {
   <div
     class="shell"
     :data-full="artifact.isFull"
+    :data-fullscreen="isFullScreen"
     :data-shell="onShell"
     :style="dockHeight ? { '--dock-h': `${dockHeight}px` } : undefined"
   >

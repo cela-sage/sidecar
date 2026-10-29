@@ -189,6 +189,8 @@ function createWindow(): void {
   });
   // Hidden until the page reports their place, so they never flash at Electron's default inset first.
   win.setWindowButtonVisibility(false);
+  win.on("enter-full-screen", () => win.webContents.send("window:full-screen", true));
+  win.on("leave-full-screen", () => win.webContents.send("window:full-screen", false));
   win.once("ready-to-show", () => win.show());
   win.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url);
@@ -267,7 +269,12 @@ if (process.argv.includes("--import")) {
     });
 
     ipcMain.on("shell:info", (event) => {
-      event.returnValue = { partition: PARTITION, preload: WEBVIEW_PRELOAD, userAgent: chromeUserAgent() };
+      event.returnValue = {
+        fullScreen: BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false,
+        partition: PARTITION,
+        preload: WEBVIEW_PRELOAD,
+        userAgent: chromeUserAgent(),
+      };
     });
     ipcMain.handle("shell:open-external", (_event, url: unknown) => openExternal(url));
     ipcMain.handle("shell:import-cookies", () => importCookies());
