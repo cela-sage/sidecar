@@ -9,17 +9,33 @@ import {
   writeFileSync,
   existsSync,
 } from "node:fs";
+import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
+import { isAlive } from "./registry.ts";
 import { removeSession } from "./removal.ts";
 
 const KEY = "ffff0001";
 const ID = "ffff0001-1111-2222-3333-444444444444";
 
+const FAKE_DAEMON = `#!/bin/sh
+case "$1" in
+  agents) if [ -f "$CLAUDE_CONFIG_DIR/daemon.json" ]; then cat "$CLAUDE_CONFIG_DIR/daemon.json"; else echo "[]"; fi ;;
+  stop) echo "stop $2" >> "$CLAUDE_CONFIG_DIR/calls" ;;
+  rm)
+    echo "rm $2" >> "$CLAUDE_CONFIG_DIR/calls"
+    if [ -f "$CLAUDE_CONFIG_DIR/rm-fails" ]; then echo "Session $2 is still running" >&2; exit 1; fi
+    echo "[]" > "$CLAUDE_CONFIG_DIR/daemon.json"
+    rm -rf "$CLAUDE_CONFIG_DIR/jobs/$2" ;;
+esac
+`;
+
 let root: string;
 let had: boolean;
 let was: string | undefined;
+let hadBin: boolean;
+let wasBin: string | undefined;
 
 function put(path: string, body: string): void {
   mkdirSync(join(path, ".."), { recursive: true });
@@ -52,6 +68,11 @@ beforeEach(() => {
   had = "CLAUDE_CONFIG_DIR" in process.env;
   was = process.env.CLAUDE_CONFIG_DIR;
   process.env.CLAUDE_CONFIG_DIR = root;
+  hadBin = "CLAUDE_BIN" in process.env;
+  wasBin = process.env.CLAUDE_BIN;
+  process.env.CLAUDE_BIN = join(root, "bin", "claude");
+  put(process.env.CLAUDE_BIN, FAKE_DAEMON);
+  chmodSync(process.env.CLAUDE_BIN, 0o755);
   seed(KEY, ID);
   seed("ffff0002", "ffff0002-1111-2222-3333-444444444444");
   const mode = join(root, "mode-plugin", "bin", "mode");
@@ -63,8 +84,15 @@ beforeEach(() => {
 afterEach(() => {
   if (had) process.env.CLAUDE_CONFIG_DIR = was ?? "";
   else delete process.env.CLAUDE_CONFIG_DIR;
+  if (hadBin) process.env.CLAUDE_BIN = wasBin ?? "";
+  else delete process.env.CLAUDE_BIN;
   rmSync(root, { recursive: true, force: true });
 });
+
+const listed = (extra: Record<string, unknown> = {}): void =>
+  put(join(root, "daemon.json"), JSON.stringify([{ id: KEY, sessionId: ID, kind: "background", state: "done", ...extra }]));
+
+const calls = (): string => (existsSync(join(root, "calls")) ? readFileSync(join(root, "calls"), "utf8") : "");
 
 test("every place the session kept state goes, and the transcript and the neighbour stay", async () => {
   const outcome = await removeSession(KEY);
@@ -102,6 +130,38 @@ test("a state file that does not key to its own directory is refused", async () 
   const outcome = await removeSession(KEY);
   assert.match(outcome.refused ?? "", /does not key to this session/);
   assert.equal(existsSync(join(root, "artifacts", `session-${KEY}`)), true);
+});
+
+test("a background job the daemon owns ends through claude stop then rm, never a signal, and goes once unlisted", async () => {
+  const sleeper = spawn("sleep", ["30"]);
+  listed({ pid: sleeper.pid });
+  try {
+    const outcome = await removeSession(KEY);
+    assert.equal(outcome.refused, undefined);
+    assert.equal(outcome.killed, true);
+    assert.equal(calls(), `stop ${KEY}\nrm ${KEY}\n`);
+    assert.equal(isAlive(sleeper.pid ?? 0), true);
+    assert.equal(existsSync(join(root, "artifacts", `session-${KEY}`)), false);
+    assert.equal(existsSync(join(root, "projects", "-tmp", `${ID}.jsonl`)), true);
+  } finally {
+    sleeper.kill();
+  }
+});
+
+test("a background job claude rm refuses keeps everything the sidecar holds for it", async () => {
+  listed();
+  put(join(root, "rm-fails"), "");
+  const outcome = await removeSession(KEY);
+  assert.match(outcome.refused ?? "", /claude rm ffff0001 failed: Session ffff0001 is still running/);
+  assert.equal(existsSync(join(root, "artifacts", `session-${KEY}`)), true);
+});
+
+test("a job in worktree isolation the daemon lists is removed through it too", async () => {
+  put(join(root, "jobs", KEY, "state.json"), JSON.stringify({ sessionId: ID, bgIsolation: "worktree" }));
+  listed();
+  const outcome = await removeSession(KEY);
+  assert.equal(outcome.refused, undefined);
+  assert.equal(calls(), `stop ${KEY}\nrm ${KEY}\n`);
 });
 
 test("a job in worktree isolation is left to the CLI", async () => {

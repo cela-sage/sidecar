@@ -1,12 +1,13 @@
-import { execFileSync } from "node:child_process";
+import { execFile, execFileSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { readTextSafe } from "../../../lib/files.ts";
 import { Sidecar, configRoot } from "../../../lib/sidecar/paths.ts";
 import { artifactListsHome, canvasHome, conversationsHome, isKey, jobsHome, keyOf, teamsHome } from "./paths.ts";
 import { Links } from "./links.ts";
 import { isAlive, liveEntries } from "./registry.ts";
-import { jobStateOf, refreshJobs } from "./jobs.ts";
+import { claudeBinary, jobStateOf, refreshJobs } from "./jobs.ts";
 
 export interface Removal {
   key: string;
@@ -17,6 +18,11 @@ export interface Removal {
 
 const KILL_DEADLINE_MS = 3000;
 const KILL_POLL_MS = 100;
+const CLI_TIMEOUT_MS = 15_000;
+const UNLISTED_DEADLINE_MS = 5000;
+const UNLISTED_POLL_MS = 250;
+
+const run = promisify(execFile);
 
 function commandOf(pid: number): string {
   try {
@@ -67,6 +73,21 @@ async function kill(pid: number): Promise<boolean> {
   return !isAlive(pid);
 }
 
+const claude = (verb: "stop" | "rm", key: string): Promise<string | undefined> =>
+  run(claudeBinary(), [verb, key], { encoding: "utf8", timeout: CLI_TIMEOUT_MS }).then(
+    () => undefined,
+    (error: Error & { stderr?: string }) => (error.stderr || error.message).trim(),
+  );
+
+async function unlisted(key: string): Promise<boolean> {
+  const until = Date.now() + UNLISTED_DEADLINE_MS;
+  while (Date.now() < until) {
+    if (!(await refreshJobs()).some((one) => one.key === key)) return true;
+    await wait(UNLISTED_POLL_MS);
+  }
+  return false;
+}
+
 function targets(key: string): string[] {
   return [
     join(jobsHome(), key),
@@ -99,19 +120,20 @@ export async function removeSession(key: string): Promise<Removal> {
   if (state && (!id || keyOf(id) !== key)) {
     return { key, removed: [], refused: "the job's state file does not key to this session" };
   }
+  const job = (await refreshJobs()).find((one) => one.key === key);
+  const dir = join(jobsHome(), key);
   const isolation = state?.bgIsolation;
-  if (isolation && isolation !== "none") {
+  let killed: boolean | undefined;
+  // The daemon resumes a background session it owns after a signal, so only its own stop and rm end one.
+  if (job?.background) {
+    killed = !(await claude("stop", key));
+  } else if (isolation && isolation !== "none") {
     return {
       key,
       removed: [],
       refused: `the job runs in ${String(isolation)} isolation; remove it with \`claude agents\``,
     };
-  }
-
-  const job = (await refreshJobs()).find((one) => one.key === key);
-  const dir = join(jobsHome(), key);
-  let killed: boolean | undefined;
-  if (job?.pid && isAlive(job.pid)) {
+  } else if (job?.pid && isAlive(job.pid)) {
     if (!ours(job.pid)) {
       return { key, removed: [], refused: `pid ${job.pid} is not a Claude process; refusing to signal it` };
     }
@@ -121,6 +143,12 @@ export async function removeSession(key: string): Promise<Removal> {
 
   const held = existsSync(dir) ? holder(dir) : undefined;
   if (held) return { key, removed: [], killed, refused: `pid ${held} is running inside the job directory` };
+
+  if (job?.background) {
+    const failed = await claude("rm", key);
+    if (failed) return { key, removed: [], killed, refused: `claude rm ${key} failed: ${failed}` };
+    if (!(await unlisted(key))) return { key, removed: [], killed, refused: "claude agents still lists it" };
+  }
 
   const root = configRoot();
   const removed: string[] = [];

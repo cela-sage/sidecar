@@ -19,6 +19,7 @@ export interface JobEntry {
   pid?: number;
   status?: SessionStatus;
   startedAt?: number;
+  background?: boolean;
 }
 
 const LANES = ["review", "blocked", "working", "done"] as const;
@@ -103,6 +104,7 @@ async function fromCli(): Promise<JobEntry[] | undefined> {
       pid: num(record.pid),
       status: statusOf(record.status),
       startedAt: num(record.startedAt),
+      background: record.kind === "background",
     });
   }
   return out;
