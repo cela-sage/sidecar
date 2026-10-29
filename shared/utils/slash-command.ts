@@ -21,6 +21,13 @@ const isName = (name: string): boolean => NAME.test(name);
 const needsTerminal = ({ screen }: Pick<SessionCommand, "screen">, args: string): boolean =>
   screen === "always" || (screen === "bare" && !args);
 
+const TYPING = /^\/([^\s/]*)$/;
+
+const typing = (text: string): { query: string } | undefined => {
+  const hit = TYPING.exec(text);
+  return hit ? { query: hit[1] ?? "" } : undefined;
+};
+
 const MATCHES_MAX = 30;
 
 const matching = (list: SessionCommand[], query: string): SessionCommand[] => {
@@ -30,4 +37,4 @@ const matching = (list: SessionCommand[], query: string): SessionCommand[] => {
   return [...starts, ...names.filter((one) => !starts.includes(one))].slice(0, MATCHES_MAX);
 };
 
-export const SlashCommand = { isName, line, matching, needsTerminal, parse };
+export const SlashCommand = { isName, line, matching, needsTerminal, parse, typing };

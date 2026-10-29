@@ -19,6 +19,14 @@ test("a path or a slash later in the text is a message", () => {
   assert.equal(SlashCommand.parse("/"), undefined);
 });
 
+test("the menu opens on a lone slash and closes once a space or a second slash follows", () => {
+  assert.deepEqual(SlashCommand.typing("/"), { query: "" });
+  assert.deepEqual(SlashCommand.typing("/mode:i"), { query: "mode:i" });
+  assert.equal(SlashCommand.typing("/compact "), undefined);
+  assert.equal(SlashCommand.typing("/Users/me"), undefined);
+  assert.equal(SlashCommand.typing("say /compact"), undefined);
+});
+
 test("typing after the slash lists the names that start with it first, then the ones that contain it", () => {
   const list = ["batch", "decode", "compact", "context"].map((name) => ({
     name,

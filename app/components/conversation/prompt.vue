@@ -17,31 +17,16 @@ const picker = useTemplateRef<HTMLInputElement>("picker");
 
 const canStop = computed(() => isBusy && prompt.isEmpty);
 
-const cursor = ref(0);
-const isDismissed = ref(false);
-const typing = computed(() => (isDismissed.value ? undefined : /^\/(?<query>[^\s/]*)$/.exec(prompt.text)?.groups));
-const rows = computed(() => (typing.value ? SlashCommand.matching(prompt.commands, typing.value.query ?? "") : []));
-
 const complete = (row: SessionCommand): void => {
   prompt.text = `/${row.name} `;
   box.value?.focus();
 };
 
-const STEPS: Partial<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 };
-
-const isPlainEnter = (event: KeyboardEvent): boolean =>
-  event.key === "Enter" && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey;
-
-const onListing = (event: KeyboardEvent): boolean => {
-  const step = STEPS[event.key];
-  const row = rows.value[cursor.value];
-  if (step) cursor.value = Math.min(Math.max(cursor.value + step, 0), rows.value.length - 1);
-  else if (row && (event.key === "Tab" || (isPlainEnter(event) && typing.value?.query !== row.name))) complete(row);
-  else if (event.key === "Escape") isDismissed.value = true;
-  else return false;
-  event.preventDefault();
-  return true;
-};
+const { cursor, onKey: onListing, rows } = useSlashMenu({
+  text: () => prompt.text,
+  commands: () => prompt.commands,
+  complete,
+});
 
 const uploadAll = (files: File[]): void => {
   for (const file of files) void prompt.upload(file);
@@ -49,7 +34,7 @@ const uploadAll = (files: File[]): void => {
 
 const onKey = (event: KeyboardEvent): void => {
   if (event.isComposing) return;
-  if (rows.value.length && onListing(event)) return;
+  if (onListing(event)) return;
   if (isPlainEnter(event)) {
     event.preventDefault();
     void prompt.send();
@@ -83,13 +68,6 @@ watch(
   () => void nextTick(() => box.value?.focus()),
 );
 
-watch(
-  () => prompt.text,
-  () => {
-    isDismissed.value = false;
-    cursor.value = 0;
-  },
-);
 </script>
 
 <template>
