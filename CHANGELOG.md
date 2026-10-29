@@ -7,6 +7,23 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.44.0
+
+### Added
+
+- **Run configurations per project** in the conversation header's run widget, whose menu lists the `package.json`
+  scripts and `Makefile` targets of every repo under the project's folder, grouped by repo and file, with a
+  filter, and the ones written for the project. Run (⌃R), Restart (⌘R) and Stop (⌘F2) act on the picked one.
+- **Runs in the dock's Run tool,** a tab per configuration with a live dot while it runs. A run that ends keeps
+  its screen, marked passed, stopped or failed, and a failed one shows the lines that name the failure with Send
+  to Claude, which adds them to the prompt.
+- **`sidecar run <project> [add|remove]`,** which Ask the Assistant for one leads to, and the `runs.changed`
+  event that shows a new one in every open sidecar at once.
+- **`GET /api/runs/<project>`, `POST /api/runs/<project>` and `POST /api/dock/<id>/stop`,** which refuse every
+  origin but the sidecar's own, and `dock.changed` tabs carry a run's configuration, status and failing lines.
+- **`$door().compose(text)`** opens the door on a draft with its field focused, for any part of the sidecar that
+  writes one for you to finish.
+
 ## 0.43.0
 
 ### Added

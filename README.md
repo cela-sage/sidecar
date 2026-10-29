@@ -35,6 +35,7 @@ sidecar open --artifact <slug|url>  # the same, showing that page or address in 
 sidecar comments <slug>  # a page's threads; --reply <n> "..." answers one, --resolve <n> "..." closes it
 sidecar task new "<title>"  # a new unassigned task, printing its slug
 sidecar task <slug> [verb]  # a task's lane: state, assign, escalate, hire, judge, decide, done; bare prints where it stands
+sidecar run <project> [add|remove]  # a project's run configurations, and the ones written for it
 sidecar terminal    # run once in the terminal you use for Claude Code, so Attach opens a conversation there while the dock is hidden
 sidecar setup [desktop|web]  # choose how it runs and set it up; prompts on first run
 sidecar publish <topic> <json>  # append an event every open sidecar hears
@@ -163,7 +164,7 @@ Every screen is the tree on the left and the main panel on the right, with the a
 right. The tree's header is Follow terminal with the switching mode named beside it, then New task and the theme
 toggle, and the tree resizes from its edge, remembered as `sc:tree`. The main panel holds the conversation in
 front: its header names it with the project's image, the role, the title without its role token, the full title
-in the tip, and the session key, which a click copies, then the run widget, drawn but not wired yet, and the
+in the tip, and the session key, which a click copies, then the run widget, and the
 terminal toggle, which opens the terminal dock at the bottom of the panel. Under it the faces sit in one row, Conversation first, then Artifacts, Review,
 Files and History, switched in place so Back never leaves the conversation, with a count beside Artifacts and,
 once Review has read it, Review. `?face=review` picks a face and `?task=<slug>` opens a task, and there is no
@@ -303,8 +304,8 @@ another project's conversation shows its tabs, while the shells you left keep ru
 their last screens, and they end when you `exit` them or the server stops. Attach while the dock is open runs
 `claude attach <key>` in a tab of its own, Ctrl+Z there detaches it, and a conversation in another project
 takes the sidecar there, the way any pick does. The terminal draws on the dark tokens in both themes, through
-`data-theme="dark"` on its body, which `@cela/design` honours on any element. Run waits for run
-configurations, so it says nothing is running.
+`data-theme="dark"` on its body, which `@cela/design` honours on any element. Run holds the project's runs,
+described under Run configurations.
 
 ```
 GET  /api/dock                                                               ->  DockTab[]
@@ -316,6 +317,43 @@ WS   /api/dock/<id>     up: {"kind":"input","data":"…"} | {"kind":"resize","co
 A browser lets any site post JSON or open a websocket to `localhost`, and these type into live shells, so every
 one of them refuses an origin that is not the sidecar's own. The websocket replays the tab's last 256 KB first,
 and closing it leaves the shell running.
+
+### Run configurations
+
+The run widget in the conversation's header runs the project's commands without leaving the workspace. Its menu
+lists the `package.json` scripts and `Makefile` targets of every repo one level under the project's folder,
+grouped by repo and then by file, followed by the ones written for the project, with a filter at the top whose
+Enter runs the first match. A script runs through the runner its lockfile names, pnpm, bun or yarn, else npm, and
+a target through `make`. The widget shows the picked configuration, remembered per project as `sc:run-picked`,
+with a breathing dot while it runs and a red mark when its last run failed. Run (⌃R) starts it, and while it runs
+Restart (⌘R) and Stop (⌘F2) take its place. ⌃R and ⌘R step aside while an artifact is in front, where ⌘R reloads
+the artifact, and ⌃R stays the shell's history search inside the terminal.
+
+Each run is a tab in the dock's Run tool, one per configuration, running `$SHELL -l -c "<command>"` in the repo's
+folder. Restart waits for the old run to end, so a dev server's port is free again, and keeps the tab, which starts
+clean. Stop sends Ctrl+C to the run's process group and kills it after three seconds. A run that ends keeps its tab
+and its screen, marked passed, stopped or failed, and a failed one shows the lines that name the failure under its
+screen, or its last 15 lines when none does, and Send to Claude adds them to the prompt of the conversation in
+front as a block labelled with the run.
+
+Ask the Assistant for one opens the door with a draft for the project, and the Assistant writes the
+configuration with the CLI, which keeps it in `~/.claude/sidecar/runs.json` by project and tells every open
+sidecar through `runs.changed`:
+
+```sh
+sidecar run <project>                                            # its configurations, by repo and file
+sidecar run <project> add "<name>" "<command>" [--folder <dir>]  # one of its own, run in <dir> under the project's folder
+sidecar run <project> remove "<name>"
+```
+
+```
+GET  /api/runs/<project>                                            ->  RunGroup[]
+POST /api/runs/<project>  {"config":"<id>","cols":<n>,"rows":<n>}   ->  DockTab
+POST /api/dock/<id>/stop                                            ->  {"stopped":true}
+```
+
+Both POSTs refuse an origin that is not the sidecar's own, and a run's command comes from the configuration the
+server reads, never from the request.
 
 ### The task lane
 
@@ -423,7 +461,8 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
 | `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the open task             | Settles the escalation on the task          |
 | `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | Every Attach, pressed on the one it holds   |
-| `dock.changed`     | `tabs`                  | the server, when a dock tab opens, ends or its running program changes          | The dock's tabs and the shells still running |
+| `dock.changed`     | `tabs`                  | the server, when a dock tab opens, ends or its running program changes          | The dock's tabs and the shells still running, and each run's status and failing lines |
+| `runs.changed`     | `project`               | `sidecar run <project> add` and `remove`                                        | The run widget's menu reads the project again |
 | `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
 | `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion and again, without `questions`, when it settles | The door draws the question and its options |
 
