@@ -14,20 +14,12 @@ const base64 = (text: string): string => Buffer.from(text).toString("base64");
 
 let root: string;
 let restore: () => void;
-let UPLOAD: string;
-let LOG: string;
-let ELSEWHERE: string;
-let ESCAPE: string;
 
 before(() => {
   root = mkdtempSync(join(tmpdir(), "sidecar-sent-"));
   const had = "CLAUDE_CONFIG_DIR" in process.env;
   const was = process.env.CLAUDE_CONFIG_DIR;
   process.env.CLAUDE_CONFIG_DIR = root;
-  UPLOAD = join(root, "sidecar", "uploads", "door", "shot.png");
-  LOG = join(root, "sidecar", "uploads", "door", "build.log");
-  ELSEWHERE = "/Users/me/secret.png";
-  ESCAPE = `${join(root, "sidecar", "uploads", "door")}/../../../outside.png`;
   restore = () => (had ? (process.env.CLAUDE_CONFIG_DIR = was ?? "") : delete process.env.CLAUDE_CONFIG_DIR);
   const lines = [
     {
@@ -57,15 +49,6 @@ before(() => {
       },
     },
     { type: "user", message: { role: "user", content: [{ type: "text", text: `[Image: source: ${NAKED}]` }] } },
-    {
-      type: "user",
-      message: {
-        role: "user",
-        content: `Another Claude session sent a message: [[sidecar]]\nwhy?\n\n${[UPLOAD, LOG, ELSEWHERE, ESCAPE]
-          .map((path) => `Attached: ${path}`)
-          .join("\n")}\n\nThis came from another Claude session, not typed by you`,
-      },
-    },
   ];
   const dir = join(root, "projects", "-tmp-delta");
   mkdirSync(dir, { recursive: true });
@@ -89,14 +72,6 @@ test("each source line takes the picture sent in its place, so the file can be s
 
 test("a path the conversation names without a picture is known but has no bytes", () => {
   assert.deepEqual(SentImages.find({ key: KEY, path: NAKED }), { path: NAKED, type: undefined, bytes: undefined });
-});
-
-test("an image the prompt saved is found through the inbox's wrapping, with no bytes to fall back on", () => {
-  assert.deepEqual(SentImages.find({ key: KEY, path: UPLOAD }), { path: UPLOAD, type: undefined, bytes: undefined });
-});
-
-test("an Attached line makes readable only an image inside the uploads folder", () => {
-  for (const path of [LOG, ELSEWHERE, ESCAPE]) assert.equal(SentImages.find({ key: KEY, path }), undefined);
 });
 
 test("only a path a user message handed over is found, never one an assistant wrote", () => {

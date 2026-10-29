@@ -8,6 +8,7 @@ import { Mentioned } from "./mentioned.ts";
 const KEY = "dddddddd";
 const NAMED = "/srv/notes/plan.md";
 const LATER = "/srv/notes/later.md";
+const SENT = "/srv/up/shot.png";
 
 let root: string;
 let transcript: string;
@@ -32,7 +33,11 @@ before(() => {
   writeFileSync(
     transcript,
     `${[
-      turn("user", "read it", 1),
+      turn(
+        "user",
+        `Another Claude session sent a message: [[sidecar]]\nwhy?\n\nAttached: ${SENT}\n\nThis came from another Claude session`,
+        1,
+      ),
       turn("assistant", [{ type: "text", text: `I wrote \`${NAMED}\`. Also ~/kept.md and /srv/notes/plan.md.bak` }], 2),
       turn("assistant", [{ type: "tool_use", id: "t1", name: "Bash", input: { command: "cat /srv/secret.md" } }], 3),
     ].join("\n")}\n`,
@@ -46,6 +51,7 @@ after(() => {
 
 test("a path a reply names is readable, with a full stop after it or in its home form", () => {
   assert.equal(Mentioned.has({ key: KEY, path: NAMED }), true);
+  assert.equal(Mentioned.has({ key: KEY, path: SENT }), true);
   assert.equal(Mentioned.has({ key: KEY, path: join(homedir(), "kept.md") }), true);
 });
 
