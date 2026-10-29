@@ -7,6 +7,22 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.60.0
+
+### Changed
+
+- **The window is laid out like an IDE.** A 44px bar runs across the top with the traffic lights at its left and
+  the run widget and the terminal toggle at its right, the tree sits flat under it with a hairline, and the two raised
+  cards on a gutter are gone. The conversation header is gone too, since the tree's row names the conversation, so
+  the faces are tabs atop the main panel. Follow terminal is one compact control, the mode's short name with the full
+  one in the tip, with New task and the theme toggle as 28px buttons beside it.
+- **A face's list docks on the right as a tool window,** so the tree is the only sidebar on the left. Under 1100 it
+  folds to a stripe that opens it over the content; over a grown sheet it floats at the right edge.
+- **The window reads its own width** and narrows the tree, the list and the faces' counts down to 760 by 560, the
+  smallest the desktop app now opens. A fresh install starts the tree at 320px and the list at 280px, while a width
+  you already dragged keeps its place. The lights move to the bar with the page alone, while the desktop app's
+  minimum size takes `sidecar update` and one reopen.
+
 ## 0.59.2
 
 ### Fixed

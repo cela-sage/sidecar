@@ -161,15 +161,22 @@ Comment, and holding C comments in either.
 
 ### The workspace
 
-Every screen is the tree on the left and the main panel on the right, with the assistant's door at the bottom
-right. The tree's header is Follow terminal with the switching mode named beside it, then New task and the theme
-toggle, and the tree resizes from its edge, remembered as `sc:tree`. The main panel holds the conversation in
-front: its header names it with the project's image, the role, the title without its role token, the full title
-in the tip, and the session key, which a click copies, then the run widget, and the
-terminal toggle, which opens the terminal dock at the bottom of the panel. Under it the faces sit in one row, Conversation first, then Artifacts, Review,
-Files and History, switched in place so Back never leaves the conversation, with a count beside Artifacts and,
-once Review has read it, Review. `?face=review` picks a face and `?task=<slug>` opens a task, and there is no
-jump palette and no `/desk` or `/tasks/<slug>` route any more, so an old link lands on Listening.
+Every screen is one window, laid out like an IDE: a 44px bar across the top, the tree flat on the left under it and
+the main panel on the right, with the assistant's door at the bottom right. The bar holds the traffic lights at its
+left in the desktop app and, for the conversation in front, the run widget and the terminal toggle at its right,
+which opens the terminal dock at the bottom of the panel. The tree's header is Follow terminal as one compact
+control, the mode's short name with the full one and what it does in the tip, then New task and the theme toggle,
+and the tree resizes from its edge, remembered as `sc:tree`. There is no conversation header, since the tree's row
+already names it: the faces sit as tabs atop the main panel, Conversation first, then Artifacts, Review, Files and
+History, switched in place so Back never leaves the conversation, with a count beside Artifacts and, once Review
+has read it, Review. A face's list, the artifacts, the files to review, the turns or the file tree, docks on the
+right as a tool window, resized from its edge as `sc:pane`. `?face=review` picks a face and `?task=<slug>` opens a
+task, and there is no jump palette and no `/desk` or `/tasks/<slug>` route any more, so an old link lands on Listening.
+
+The window reads its own width, so it fits a narrow browser tab as well as a desktop window, down to 760 by 560:
+the tree is at most 296px under 1280 and 264px under 1100, the faces drop their counts under 1320, a face's list
+is at most 232px under 1200, and under 1100 it folds to a 36px stripe with its icon, its name and its count, which
+opens it over the content until a click outside or esc.
 
 Under the tree sits your plan's usage, two rows, 5h and 7d, each with when its window resets and the share used over
 a thin bar, read from `GET /api/usage`. The limits are the account's, so it answers with the newest reading any
@@ -413,7 +420,7 @@ same way an Attach to the follower detaches the dock's tab for that conversation
 ### The terminal dock
 
 Each project has its own terminal, docked at the bottom of the conversation's main panel and opened with the
-header's terminal button or ⌥F12. Its header switches between Terminal and Run, names the project in front,
+bar's terminal button or ⌥F12. Its header switches between Terminal and Run, names the project in front,
 and lists that project's tabs: each shell is your login shell in the project's folder, named after what runs
 in it, New terminal (⌘T in the desktop app) opens another, and Hide puts the dock away. A tab shows an × while you
 hover it and while it is selected: closing a shell ends it, closing a run that still runs stops it first as Stop
@@ -442,7 +449,7 @@ and closing it leaves the shell running.
 
 ### Run configurations
 
-The run widget in the conversation's header runs the project's commands without leaving the workspace. Its menu
+The run widget in the window's bar runs the project's commands without leaving the workspace. Its menu
 lists the `package.json` scripts and `Makefile` targets of every repo one level under the project's folder,
 grouped by repo and then by file, followed by the ones written for the project, with a filter at the top whose
 Enter runs the first match. The repo the conversation runs in heads the list when its folder is inside one, and
@@ -564,10 +571,10 @@ own, ⌘F there turns the title island into one for any artifact, searching the 
 ⌘G for the next match and ⇧↵ or ⇧⌘G for the previous; a site with its own ⌘F, such as Docs, keeps it, and the
 web surface leaves ⌘F to Chrome. ⌘+, ⌘− and ⌘0, or a trackpad pinch, zoom the whole app the way a Chrome tab
 zooms, the page inside it included, and the zoom is kept across launches, while a file preview keeps its own
-pinch and zoom pill. The top edge of the app is its title bar, so it drags the window and a double click there
-zooms or minimises it as System Settings says. The traffic lights sit at the left of the tree's header, on the
-room the page reserves for them and reports to the shell, which moves them with the zoom, and that room goes while
-the window is fullscreen, where macOS hides the lights. On first launch the shell copies
+pinch and zoom pill. The bar across the top of the app is its title bar, so it drags the window and a double click
+there zooms or minimises it as System Settings says, and the window keeps at least 760 by 560. The traffic lights
+sit at the bar's left, on the room the page reserves for them and reports to the shell, which moves them with the
+zoom, and that room goes while the window is fullscreen, where macOS hides the lights. On first launch the shell copies
 your Chrome cookies into its own session, decrypting them with a key it reads from the login Keychain once
 (the one macOS prompt you will see), so you arrive signed in to the same accounts as in Chrome.
 `sidecar import` re-reads them later, with the app closed. The cookies are a copy rather than shared live,
