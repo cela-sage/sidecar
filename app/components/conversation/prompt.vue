@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ArrowUp, Paperclip, TextQuote, X } from "@lucide/vue";
+import { ArrowUp, Paperclip, TextQuote } from "@lucide/vue";
 
 const {
   hasHistory = false,
@@ -59,32 +59,22 @@ watch(
   <div class="dock" data-region="conversation-prompt" :data-docked="dock.isOpen && dock.isReady">
     <div class="box" @dragover.prevent @drop="onDrop">
       <div v-if="prompt.blocks.length || prompt.files.length" class="attached">
-        <span v-for="one in prompt.blocks" :key="one.id" class="piece" :data-tip="one.text.slice(0, 400)">
-          <UiIcon class="piece-icon" :icon="TextQuote" size="xs" />
-          <span class="piece-label">{{ one.label }}</span>
-          <button
-            class="remove plain-button focusable"
-            aria-label="Remove"
-            data-tip="Remove"
-            type="button"
-            @click="prompt.unattach(one.id)"
-          >
-            <UiIcon :icon="X" size="xs" />
-          </button>
-        </span>
-        <span v-for="one in prompt.files" :key="one.path" class="piece" :data-tip="one.path">
-          <UiIcon class="piece-icon" :icon="Paperclip" size="xs" />
-          <span class="piece-label">{{ one.name }}</span>
-          <button
-            class="remove plain-button focusable"
-            aria-label="Remove"
-            data-tip="Remove"
-            type="button"
-            @click="prompt.unattach(one.path)"
-          >
-            <UiIcon :icon="X" size="xs" />
-          </button>
-        </span>
+        <ComposerPiece
+          v-for="one in prompt.blocks"
+          :key="one.id"
+          :icon="TextQuote"
+          :label="one.label"
+          :tip="one.text.slice(0, 400)"
+          @remove="prompt.unattach(one.id)"
+        />
+        <ComposerPiece
+          v-for="one in prompt.files"
+          :key="one.path"
+          :icon="Paperclip"
+          :label="one.name"
+          :tip="one.path"
+          @remove="prompt.unattach(one.path)"
+        />
       </div>
       <textarea
         ref="box"
@@ -154,28 +144,6 @@ watch(
 
 .attached {
   @apply flex flex-wrap gap-1.5;
-}
-
-.piece {
-  @apply inline-flex h-7 max-w-full items-center gap-1.75 rounded-lg border border-border bg-sunken pr-1 pl-2.25;
-}
-
-.piece-icon {
-  @apply flex-none text-muted;
-}
-
-.piece-label {
-  @apply min-w-0 truncate typo-caption font-semibold;
-}
-
-.remove {
-  @apply inline-flex size-5 flex-none items-center justify-center rounded-md border-0 bg-transparent p-0 text-muted;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .remove:hover {
-    @apply bg-raised text-fg;
-  }
 }
 
 .field {
