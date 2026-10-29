@@ -35,7 +35,7 @@ const copyId = async (): Promise<void> => {
       {{ session.key }}
     </button>
     <span class="spacer" />
-    <RunWidget v-if="where.project" :project="where" />
+    <RunWidget v-if="where.project" :cwd="session.cwd" :project="where" />
     <button
       class="terminal plain-button focusable"
       aria-label="Terminal"

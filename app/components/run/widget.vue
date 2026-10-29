@@ -4,7 +4,7 @@ import { ChevronDown, Play, Plus, RotateCcw, Square } from "@lucide/vue";
 import type { RunConfig, RunGroup } from "~~/shared/types/runs";
 import type { DockProject } from "~/stores/dock";
 
-const { project } = defineProps<{ project: DockProject }>();
+const { cwd, project } = defineProps<{ cwd?: string; project: DockProject }>();
 
 const runs = $runs();
 const door = $door();
@@ -13,7 +13,7 @@ const field = useTemplateRef<{ $el: HTMLInputElement }>("field");
 
 watch(field, (now) => now?.$el.focus());
 
-const config = computed(() => runs.pickedOf(project.key));
+const config = computed(() => runs.pickedOf(project.key, cwd));
 const tab = computed(() => (config.value ? runs.tabOf(project.key, config.value.id) : undefined));
 const isRunning = computed(() => tab.value?.status === "running");
 
@@ -22,7 +22,8 @@ const labelOf = (group: RunGroup): string =>
 
 const shown = computed(() => {
   const words = filter.value.trim().toLowerCase();
-  return (runs.groups[project.key] ?? [])
+  return runs
+    .groupsOf(project.key, cwd)
     .map((group) => ({
       ...group,
       configs: group.configs.filter(

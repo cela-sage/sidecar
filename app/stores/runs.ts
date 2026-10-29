@@ -13,10 +13,10 @@ export const $runs = defineStore(() => {
     if (got) groups.value = { ...groups.value, [project]: got };
   };
 
-  const configsOf = (project: string): RunConfig[] => (groups.value[project] ?? []).flatMap((group) => group.configs);
+  const groupsOf = (project: string, cwd?: string): RunGroup[] => RunOrder.frontFirst(groups.value[project] ?? [], cwd);
 
-  const pickedOf = (project: string): RunConfig | undefined => {
-    const configs = configsOf(project);
+  const pickedOf = (project: string, cwd?: string): RunConfig | undefined => {
+    const configs = groupsOf(project, cwd).flatMap((group) => group.configs);
     return (
       configs.find((one) => one.id === picked.value[project]) ??
       configs.find((one) => one.name === "dev") ??
@@ -45,5 +45,5 @@ export const $runs = defineStore(() => {
     );
   };
 
-  return { configsOf, groups, load, pickedOf, start, stop, tabOf };
+  return { groupsOf, load, pickedOf, start, stop, tabOf };
 });
