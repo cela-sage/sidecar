@@ -11,8 +11,15 @@ export interface Topics {
   "dock.changed": { tabs: DockTab[] };
   "runs.changed": { project: string };
   "conversation.changed": { key: string; doing: boolean; asking: boolean };
+  "conversation.unseen": ConversationUnseen;
   "question.changed": QuestionChanged;
   "message.landed": { key: string; text: string };
+}
+
+/** Unseen since the turn that ended at `endedAt`, seen once a frame comes without it. */
+export interface ConversationUnseen {
+  key: string;
+  endedAt?: number;
 }
 
 /** Open while `questions` is there, settled once a frame comes without it. */

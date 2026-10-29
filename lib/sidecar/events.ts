@@ -88,6 +88,12 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const { doing, asking } = data;
     return key && typeof doing === "boolean" && typeof asking === "boolean" ? { key, doing, asking } : undefined;
   },
+  "conversation.unseen": (data) => {
+    const key = text(data.key);
+    const { endedAt } = data;
+    if (!key) return undefined;
+    return typeof endedAt === "number" && Number.isFinite(endedAt) ? { key, endedAt } : { key };
+  },
   "question.changed": (data) => {
     const [key, ref] = [text(data.key), text(data.ref)];
     const questions = Questions.of(data.questions);

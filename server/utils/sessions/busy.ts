@@ -1,13 +1,17 @@
 import * as Events from "../../../lib/sidecar/events.ts";
 import { BusyRules, type Busy, type BusyTurn } from "../../../shared/utils/busy.ts";
+import { Seen } from "./seen.ts";
 
 const states = new Map<string, Busy>();
 const quiet = new Map<string, ReturnType<typeof setTimeout>>();
 
 const set = (key: string, now: Busy): void => {
-  if (BusyRules.same(states.get(key) ?? BusyRules.IDLE, now)) return;
+  const was = states.get(key) ?? BusyRules.IDLE;
+  if (BusyRules.same(was, now)) return;
   if (now.doing || now.asking) states.set(key, now);
   else states.delete(key);
+  // Before the change goes out, so the working mark gives way to the dot and never to a check in between.
+  if (was.doing && !now.doing) Seen.ended(key);
   Events.publish({ topic: "conversation.changed", key, data: { key, ...now } });
 };
 
