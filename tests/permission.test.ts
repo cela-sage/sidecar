@@ -42,14 +42,20 @@ test('only a recognised allow lets the tool run, and Allow always writes the sug
 const sidecar = async ($: Engine, on: On, pick: () => string | undefined) => {
   const calls: string[] = []
   const asked: unknown[] = []
+  const rests: (readonly string[])[] = []
   const server = { knows: true }
-  const clock = mock.clock(on)
+  mock.clock(on)
   mock.env(on, { HOME: '/home' })
   on('session.id', () => ({ value: 'abcdef0123456789' }))
   on('command.register', () => ({ value: { command: 'sidecar' } }))
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   on('classic.PermissionRequest', () => ({}))
   on('classic.PostToolUse', () => ({}))
+  on('process.run', async (_, e) => {
+    rests.push(e.argv)
+    await new Promise(done => setTimeout(done, 5))
+    return { value: { exitCode: 0, stdout: '', stderr: '', isStdoutTruncated: false, isStderrTruncated: false } }
+  })
   on('http.fetch', async (_, e) => {
     const method = e.init?.method ?? 'GET'
     calls.push(`${method} ${new URL(e.url).pathname.split('/').slice(2).join('/')}`)
@@ -65,7 +71,7 @@ const sidecar = async ($: Engine, on: On, pick: () => string | undefined) => {
     }
   })
   await $.session.start({ cwd: '/r', surface: null, isInteractive: false })
-  return { calls, asked, clock, server }
+  return { calls, asked, rests, server }
 }
 
 test("a pick in the sidecar's chat answers the dialog, and the question closes", async ($, on) => {
@@ -82,17 +88,17 @@ test("a pick in the sidecar's chat answers the dialog, and the question closes",
 
 test('a sidecar that restarted and forgot the ask is told again, and a pick then answers it', async ($, on) => {
   let pick: string | undefined
-  const { asked, calls, clock, server } = await sidecar($, on, () => pick)
+  const { asked, calls, rests, server } = await sidecar($, on, () => pick)
   const waiting = $.classic.PermissionRequest(PUSH)
   await new Promise(done => setTimeout(done, 12))
 
   server.knows = false
-  await new Promise(done => setTimeout(done, 12))
-  await clock.advance(5000)
+  await new Promise(done => setTimeout(done, 24))
   pick = 'Allow once'
 
   expect(await waiting).toEqual({ decision: { behavior: 'allow' } })
   expect(asked).toHaveLength(2)
+  expect(rests).toEqual([['sleep', '5']])
   expect(calls.at(-1)).toMatch(/^DELETE questions\/permission-/)
 })
 

@@ -69,7 +69,7 @@ export const register: Register = (on, options) => {
     door = Door.create(api, {
       id: () => $.session.id(),
       fetch: (url, init) => $.http.fetch(url, init),
-      sleep: (ms, options) => $.clock.sleep(ms, options),
+      rest: async ms => void (await $.process.run(['sleep', String(ms / 1000)], { timeoutMs: 2 * ms })),
     })
     await $.command.register({
       name: 'sidecar',

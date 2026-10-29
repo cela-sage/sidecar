@@ -5,11 +5,11 @@ import type { QuestionPort } from './question'
 
 const SIDECAR_DOWN_RETRY_MS = 5000
 
-// `$` may only be spelled at a call site, so the session.start hook hands these over as closures.
+// Closures, since `$` is spelled only at a call site; the rest is a `$` call because a clock wait spends the hook's 10s budget.
 export type DoorHost = {
   id: EngineInterface['session']['id']
   fetch: EngineInterface['http']['fetch']
-  sleep: EngineInterface['clock']['sleep']
+  rest: (ms: number) => Promise<void>
 }
 
 export type DoorAsk = { ref: string; questions: unknown; signal: AbortSignal }
@@ -50,7 +50,7 @@ const create = (api: string, host: DoorHost): Door => ({
           if (!res?.ok) return 'down'
           return (res.status === 200 && Question.answersOf(res.text)) || 'idle'
         },
-        rest: () => host.sleep(SIDECAR_DOWN_RETRY_MS, { signal }).catch(() => undefined),
+        rest: () => host.rest(SIDECAR_DOWN_RETRY_MS).catch(() => undefined),
         isGone: () => signal.aborted,
       },
     }
