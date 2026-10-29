@@ -4,6 +4,7 @@ import type { Register } from 'claude-code'
 import { Commands } from './commands'
 import { Control } from './control'
 import { Door } from './door'
+import { OWN_FLOW, Permission } from './permission'
 import { Question } from './question'
 import { Relay } from './relay'
 import { receiveReview, registerReview, startReview, stopTurn } from './review/hooks'
@@ -183,6 +184,40 @@ export const register: Register = (on, options) => {
     if (raced.from === 'dialog') return raced.result
     if (raced.from === 'gone') return { deny: 'The question was dismissed.' }
     return { result: { questions: e.questions, answers: raced.answers } }
+  })
+
+  // The engine runs this beside the terminal's dialog and ignores it once the dialog is answered, so it only waits.
+  on('classic.PermissionRequest', async ($, e, next) => {
+    if (!door || OWN_FLOW.has(e.tool_name)) return next(e)
+    const beneath = await next(e)
+    if (beneath.decision) return beneath
+    const answered = new AbortController()
+    next.signal.addEventListener('abort', () => answered.abort(), { once: true })
+    const forget = Permission.wait(e, () => answered.abort())
+    const opened = await door.open({
+      ref: `permission-${crypto.randomUUID()}`,
+      questions: [Permission.askOf(e)],
+      signal: answered.signal,
+    })
+    const answers = await Question.hear(opened.port)
+    opened.close()
+    forget()
+    return answers ? { decision: Permission.decide(e, answers) } : beneath
+  })
+
+  on('classic.PostToolUse', async ($, e, next) => {
+    Permission.ran(e)
+    return next(e)
+  })
+
+  on('classic.PostToolUseFailure', async ($, e, next) => {
+    Permission.ran(e)
+    return next(e)
+  })
+
+  on('classic.Stop', async ($, e, next) => {
+    Permission.turnEnded()
+    return next(e)
   })
 
   on('command.run', { command: 'sidecar' }, async ($, e) => ({
