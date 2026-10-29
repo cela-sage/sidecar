@@ -127,6 +127,16 @@ export const register: Register = (on, options) => {
     }
     if (await receiveReview({ text: body, sessionId: () => $.session.id() })) return { consumed: 'sidecar review action' }
     await update($, relayed, list => [...list, body])
+    void $.session
+      .id()
+      .then(id =>
+        $.http.fetch(`${api}/api/sessions/${id.slice(0, 8)}/landed`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ text: body }),
+        }),
+      )
+      .catch(() => undefined)
     return next({ ...e, text: body })
   })
 

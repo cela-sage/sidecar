@@ -45,6 +45,10 @@ export type ConversationTurn = z.infer<typeof Turn>;
 
 const ECHO_MS = 60_000;
 const LONG_MS = 10_000;
+const RECEIPT_MS = 5_000;
+
+const isReceiptOf = (receipt: ConversationTurn, row: ConversationTurn): boolean =>
+  receipt.text === row.text && Math.abs(receipt.at - row.at) < RECEIPT_MS;
 
 export interface Conversation {
   /** What the mascot acts out: the newest tool call, or thinking while nothing has come back yet. */
@@ -104,6 +108,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
   let ageing: ReturnType<typeof setTimeout> | undefined;
   let quiet: ReturnType<typeof setTimeout> | undefined;
   const open = new Map<string, number>();
+  const received = new Set<ConversationTurn>();
 
   // Timed from the call's own start and cancelled by its result, so silence in the transcript proves nothing.
   function block(turn: ConversationTurn): void {
@@ -164,6 +169,21 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     candidate = undefined;
   }
 
+  // A message that joins a running turn never gets a user row, only a queued_command attachment the turns skip.
+  function receive({ text, at }: { text: string; at: number }): void {
+    const turn: ConversationTurn = { role: "user", text, at };
+    if (turns.some((row) => row.role === "user" && !row.queued && isReceiptOf(turn, row))) return;
+    received.add(turn);
+    show(turn);
+  }
+
+  function dropReceipt(row: ConversationTurn): void {
+    const receipt = [...received].find((turn) => isReceiptOf(turn, row));
+    if (!receipt) return;
+    received.delete(receipt);
+    stream.value = stream.value.filter((turn) => turn !== receipt);
+  }
+
   function append(turn: ConversationTurn): void {
     // A withdrawn or delivered queue entry: drop the pending copy rather than leaving it standing.
     if (turn.kind === "drop") {
@@ -187,6 +207,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     if (turn.role === "user" && !turn.queued) {
       const pending = turns.findIndex((row) => row.queued && row.text === turn.text);
       if (pending >= 0) turns.splice(pending, 1);
+      dropReceipt(turn);
     }
     if (held(turn)) return;
     busy.value = BusyRules.next(busy.value, turn).now;
@@ -247,6 +268,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     disconnect();
     turns = [];
     stream.value = [];
+    received.clear();
     results.value = new Map();
     model.value = undefined;
     candidate = undefined;
@@ -273,6 +295,10 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
       // An unreadable snapshot leaves the mascot at rest rather than acting out a guess.
     }
   }
+
+  useEvents().on("message.landed", ({ data, at }) => {
+    if (data.key === keyOf()) receive({ text: data.text, at: Date.parse(at) });
+  });
 
   onMounted(() => {
     watch(keyOf, (key) => void follow(key), { immediate: true });

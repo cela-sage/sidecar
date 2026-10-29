@@ -97,6 +97,24 @@ test('a commands control tells the sidecar what the session can run, and which o
   ])
 })
 
+test('a delivery the session takes is told to the sidecar as it lands, and a control or a real peer is not', async ($, on) => {
+  const posted: { url: string; body: unknown }[] = []
+  on('session.receive', ($, e) => ({ text: e.text }))
+  on('session.id', () => ({ value: 'abcdef0123456789' }))
+  on('ui.toast', () => ({ value: undefined }))
+  on('http.fetch', (_, e) => {
+    posted.push({ url: e.url, body: JSON.parse(String(e.init?.body)) })
+    return { value: { status: 200, ok: true, headers: {}, text: '' } }
+  })
+
+  await $.session.receive({ origin: { kind: 'peer' }, text: `[[sidecar]]\n${said}` })
+  await $.session.receive({ origin: { kind: 'peer' }, text: '[[sidecar]]\n{"do":"command","name":"config","args":""}' })
+  await $.session.receive({ origin: { kind: 'peer' }, text: teammate })
+  await new Promise(done => setTimeout(done, 10))
+
+  expect(posted).toEqual([{ url: 'http://localhost:4747/api/sessions/abcdef01/landed', body: { text: said } }])
+})
+
 test('the row Claude Code stores for a sidecar delivery loses its peer frame, and a real peer keeps it', async ($, on) => {
   on('session.receive', ($, e) => ({ text: e.text }))
   const session = mock.session(on)

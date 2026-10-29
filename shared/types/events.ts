@@ -12,6 +12,7 @@ export interface Topics {
   "runs.changed": { project: string };
   "conversation.changed": { key: string; doing: boolean; asking: boolean };
   "question.changed": QuestionChanged;
+  "message.landed": { key: string; text: string };
 }
 
 /** Open while `questions` is there, settled once a frame comes without it. */

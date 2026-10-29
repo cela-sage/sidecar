@@ -78,12 +78,9 @@ const landedOf = (one: PromptSent): boolean =>
 const pending = computed(() => prompt.sent.filter((one) => one.key === key.value && !landedOf(one)));
 const refusal = computed(() => prompt.refused[key.value]);
 
-watch(
-  () => live.stream.value.length,
-  () => {
-    for (const one of prompt.sent) if (one.key === key.value && landedOf(one)) prompt.landed(one);
-  },
-);
+watch([() => live.stream.value.length, () => prompt.sent.length], () => {
+  for (const one of prompt.sent) if (one.key === key.value && landedOf(one)) prompt.landed(one);
+});
 </script>
 
 <template>
