@@ -7,6 +7,16 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.59.1
+
+### Fixed
+
+- **The context meter follows a compaction and agrees with its popover.** The engine reports nothing after a compaction
+  until the next response, so the meter kept its old share; the mod now says when a compaction starts and the size it
+  ended at, which covers one the threshold starts and one typed in the terminal too. The ring and the popover read
+  against the model's window, where the popover had counted the smaller compaction window. A conversation started on
+  0.59.0 keeps its old mod until it restarts.
+
 ## 0.59.0
 
 ### Added

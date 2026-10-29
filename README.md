@@ -368,7 +368,10 @@ yours to name. Compact is off while Claude works, and while it runs the meter re
 Stop, which is the chat's. The mod posts `$.session.usage()` to `POST /api/sessions/:key/usage` at `session.start`
 and on each `session.measure`, the server keeps the last reading per conversation in
 `~/.claude/sidecar/usage/<key>.json` and announces a change as `usage.changed`, and a window no response has measured
-yet, a new one or one just compacted, takes its figure from the breakdown's own estimate. The breakdown is asked when
+yet takes its figure from the breakdown's own estimate. The engine measures nothing again after a compaction until the
+next response, so the mod's `session.compact` hook posts `isCompacting` as one starts, whoever starts it, and the size
+it ended at as it finishes. Every share is against the model's window, as the status line reads it, though the
+breakdown counts the smaller compaction window. The breakdown is asked when
 the popover opens, through `GET /api/sessions/:key/usage?breakdown=1`, which has the mod post it on a
 `{"do":"breakdown"}` control. Only a conversation that has posted usage is asked, since a mod older than 0.59.0 would
 read the control as a message to Claude, so a conversation started before it shows no meter until it restarts.
