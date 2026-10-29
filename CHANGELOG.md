@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.59.2
+
+### Fixed
+
+- **The context meter reads the whole window right after a compaction,** where it read 2% against the 10% the next
+  response measured, because a compaction counts the messages it kept alone. The mod adds back the tools, memory files
+  and system prompt it counts apart. The Compacted note still shows the transcript's own count, which has the same
+  gap. A conversation started before 0.59.2 keeps its old mod until it restarts.
+
 ## 0.59.1
 
 ### Fixed

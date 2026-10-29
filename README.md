@@ -370,7 +370,8 @@ and on each `session.measure`, the server keeps the last reading per conversatio
 `~/.claude/sidecar/usage/<key>.json` and announces a change as `usage.changed`, and a window no response has measured
 yet takes its figure from the breakdown's own estimate. The engine measures nothing again after a compaction until the
 next response, so the mod's `session.compact` hook posts `isCompacting` as one starts, whoever starts it, and the size
-it ended at as it finishes. Every share is against the model's window, as the status line reads it, though the
+it ended at as it finishes, which the compaction counts for the messages it kept alone, so the tools, memory files and
+system prompt are added back. The Compacted note keeps the transcript's own count. Every share is against the model's window, as the status line reads it, though the
 breakdown counts the smaller compaction window. The breakdown is asked when
 the popover opens, through `GET /api/sessions/:key/usage?breakdown=1`, which has the mod post it on a
 `{"do":"breakdown"}` control. Only a conversation that has posted usage is asked, since a mod older than 0.59.0 would
