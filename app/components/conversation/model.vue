@@ -1,18 +1,40 @@
 <script lang="ts" setup>
 import { Check, ChevronDown, ChevronRight } from "@lucide/vue";
 
-const { current } = defineProps<{ current?: string }>();
+const { current, hasHistory = false } = defineProps<{ current?: string; hasHistory?: boolean }>();
 
+const sc = useSidecar();
 const prompt = $prompt();
+const terminal = $terminal();
 const popover = useTemplateRef<{ close: () => void }>("popover");
 const isOlder = ref(false);
+const asking = ref<string>();
 
 const name = computed(() => (current ? SessionModels.nameOf(current) : "Model"));
 
-const pick = (id: string): void => {
+const close = (): void => {
   popover.value?.close();
   isOlder.value = false;
-  if (id !== current) void prompt.pick(id);
+  asking.value = undefined;
+};
+
+// With history to re-read, Claude Code confirms the switch in a dialog only its terminal shows, so the pick warns first.
+const pick = (id: string): void => {
+  if (id === current) return close();
+  if (!hasHistory) {
+    close();
+    void prompt.pick(id);
+    return;
+  }
+  isOlder.value = false;
+  asking.value = id;
+};
+
+const confirm = async (): Promise<void> => {
+  const id = asking.value;
+  const key = sc.sessionKey.value;
+  close();
+  if (id && key && (await prompt.pick(id))) void terminal.attach(key);
 };
 </script>
 
@@ -25,11 +47,29 @@ const pick = (id: string): void => {
         :aria-expanded="open"
         data-tip="Model for this session · /model"
         type="button"
+        @click="asking = undefined"
       >
         {{ name }}<UiIcon class="chevron" :icon="ChevronDown" size="xs" />
       </button>
     </template>
-    <div class="menu" role="menu" aria-label="Model">
+    <div v-if="asking" class="confirm" role="alertdialog" :aria-label="`Switch to ${SessionModels.nameOf(asking)}?`">
+      <span class="title">Switch to {{ SessionModels.nameOf(asking) }}?</span>
+      <span class="about">
+        The next reply re-reads the whole history, so it is slower and uses more tokens, and Claude Code asks you to
+        confirm it in your terminal.
+      </span>
+      <span class="actions">
+        <UiButton size="xs" variant="ghost" @click="asking = undefined">Back</UiButton>
+        <UiButton
+          data-tip="Sends the switch and opens this session in your terminal, where Claude Code asks"
+          size="xs"
+          variant="primary"
+          @click="confirm"
+          >Confirm in your terminal</UiButton
+        >
+      </span>
+    </div>
+    <div v-else class="menu" role="menu" aria-label="Model">
       <div class="head">
         <span class="title">Model</span>
         <span class="mono-meta">this session</span>
@@ -105,6 +145,14 @@ const pick = (id: string): void => {
 
 .menu {
   @apply relative flex flex-col gap-0.5 p-1;
+}
+
+.confirm {
+  @apply flex flex-col gap-2 p-3.5;
+}
+
+.actions {
+  @apply mt-1 flex justify-end gap-1.5;
 }
 
 .head {

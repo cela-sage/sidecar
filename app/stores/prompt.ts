@@ -133,12 +133,16 @@ export const $prompt = defineStore(() => {
     if (!reply.delivered) chrome.toast(FAILED[reply.reason], "destructive");
   };
 
-  const pick = async (model: string): Promise<void> => {
+  const pick = async (model: string): Promise<boolean> => {
     const key = sc.sessionKey.value;
-    if (!key) return;
+    if (!key) return false;
     const reply = await post(key, "model", { model });
-    if (!reply.delivered) return chrome.toast(FAILED[reply.reason], "destructive");
+    if (!reply.delivered) {
+      chrome.toast(FAILED[reply.reason], "destructive");
+      return false;
+    }
     chosen.value = { ...chosen.value, [key]: model };
+    return true;
   };
 
   return {

@@ -1,7 +1,12 @@
 <script lang="ts" setup>
 import { ArrowUp, Paperclip, TextQuote, X } from "@lucide/vue";
 
-const { isBusy, model, name } = defineProps<{ isBusy: boolean; model?: string; name: string }>();
+const {
+  hasHistory = false,
+  isBusy,
+  model,
+  name,
+} = defineProps<{ hasHistory?: boolean; isBusy: boolean; model?: string; name: string }>();
 
 const prompt = $prompt();
 const dock = $dock();
@@ -100,7 +105,7 @@ watch(
           @click="picker?.click()"
         />
         <input ref="picker" class="picker" multiple type="file" @change="onPicked" />
-        <ConversationModel :current="model" />
+        <ConversationModel :current="model" :has-history="hasHistory" />
         <span class="spacer" />
         <button
           v-if="canStop"
