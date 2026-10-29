@@ -68,12 +68,15 @@ follow.listen();
   <NuxtLayout>
     <template v-if="session" #bar>
       <RunWidget v-if="where.project" :cwd="session.cwd" :project="where" />
-      <DockToggle />
     </template>
 
     <!-- Claude Code is the chat, so the dock carries only the notes waiting to go to it. -->
     <template #dock>
       <ComposerNotes v-if="!gone" />
+    </template>
+
+    <template v-if="!gone" #strip>
+      <DockStrip />
     </template>
 
     <UiSurface v-if="gone" class="gone" pad="md" shape="island" variant="raised">

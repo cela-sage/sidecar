@@ -94,24 +94,31 @@ useResizeObserver(boardEl, ([entry]) => {
       <PaneResizer v-model="tree" :initial="TREE_W" label="Resize the tree" :max="480" />
 
       <div class="column">
-        <!-- Covered rather than unmounted, so Listening keeps its stream and opens what is in front once the server is back. -->
-        <div v-show="!task.slug" class="page" :inert="isDown">
-          <slot />
+        <div class="body">
+          <!-- Covered rather than unmounted, so Listening keeps its stream and opens what is in front once the server is back. -->
+          <div v-show="!task.slug" class="page" :inert="isDown">
+            <slot />
+          </div>
+          <TaskFront v-if="task.slug" :inert="isDown" />
+
+          <!-- One row, so the notes take whatever width the board leaves rather than
+               the two hugging opposite corners and colliding in the middle. -->
+          <div class="foot" data-region="dock-row">
+            <div ref="boardEl" class="foot-board" data-region="board-corner">
+              <slot name="board" />
+            </div>
+
+            <div ref="dockEl" class="foot-dock" data-region="dock-corner">
+              <slot name="dock" />
+            </div>
+
+            <ChromeAskDoor v-if="!isDown" />
+          </div>
         </div>
-        <TaskFront v-if="task.slug" :inert="isDown" />
 
-        <!-- One row, so the notes take whatever width the board leaves rather than
-             the two hugging opposite corners and colliding in the middle. -->
-        <div class="foot" data-region="dock-row">
-          <div ref="boardEl" class="foot-board" data-region="board-corner">
-            <slot name="board" />
-          </div>
-
-          <div ref="dockEl" class="foot-dock" data-region="dock-corner">
-            <slot name="dock" />
-          </div>
-
-          <ChromeAskDoor v-if="!isDown" />
+        <!-- Under the body rather than over it, so the notes and the door ride above it on the prompt's line. -->
+        <div v-if="!task.slug" class="contents" :inert="isDown">
+          <slot name="strip" />
         </div>
       </div>
     </div>
@@ -140,8 +147,12 @@ useResizeObserver(boardEl, ([entry]) => {
 
 /* The notes and the door float over the panes, so a pane's last row pads by --float-clear to stay clickable above them. */
 .column {
-  @apply relative min-h-0 min-w-0 bg-raised;
+  @apply relative flex min-h-0 min-w-0 flex-col bg-raised;
   --float-clear: calc(max(var(--dock-h, 0px), var(--island-row-h)) + var(--gutter));
+}
+
+.body {
+  @apply relative min-h-0 flex-1;
 }
 
 .page {
