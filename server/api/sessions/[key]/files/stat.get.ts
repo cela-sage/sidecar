@@ -1,7 +1,7 @@
 import { statSync } from "node:fs";
 import type { FileStat } from "~~/shared/types/files";
 import { isReachable } from "~~/server/utils/sessions/files";
-import { Pasted } from "~~/server/utils/sessions/pasted";
+import { SentImages } from "~~/server/utils/sessions/sent-images";
 
 // Always a 200, so a chat naming a file that is not there draws nothing and logs no failed request.
 export default defineEventHandler((event): FileStat => {
@@ -9,7 +9,7 @@ export default defineEventHandler((event): FileStat => {
   const path = String(getQuery(event).path ?? "");
   const isReached = isReachable({ key, path });
   const found = statSync(path, { throwIfNoEntry: false });
-  const pasted = isReached && found?.isFile() ? undefined : Pasted.find({ key, path });
+  const pasted = isReached && found?.isFile() ? undefined : SentImages.find({ key, path });
   if (found?.isFile() && (isReached || pasted)) return { path, size: found.size };
   return pasted?.bytes ? { path, size: pasted.bytes.length } : { path };
 });

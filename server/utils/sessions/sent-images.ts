@@ -16,7 +16,7 @@ interface Named {
   data?: string;
 }
 
-export interface PastedImage {
+export interface SentImage {
   path: string;
   type?: string;
   bytes?: Buffer;
@@ -47,11 +47,11 @@ const namedIn = (text: string): Named[] => {
 };
 
 // Only a path the conversation was handed as a pasted image, never an arbitrary file the page names.
-const find = ({ key, path }: { key: string; path: string }): PastedImage | undefined => {
+const find = ({ key, path }: { key: string; path: string }): SentImage | undefined => {
   const transcript = transcriptIndex().get(key)?.path;
   const text = transcript && readRange(transcript, 0, Number.POSITIVE_INFINITY)?.text;
   const hit = text ? namedIn(text).find((one) => one.path === path) : undefined;
   return hit && { path, type: hit.type, bytes: hit.data ? Buffer.from(hit.data, "base64") : undefined };
 };
 
-export const Pasted = { find };
+export const SentImages = { find };

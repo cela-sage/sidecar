@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
-import { Pasted } from "./pasted.ts";
+import { SentImages } from "./sent-images.ts";
 
 const KEY = "dddddddd";
 const SHOT = "/private/tmp/claude-501/-tmp-delta/dddddddd/images/2.png";
@@ -64,17 +64,17 @@ after(() => {
 });
 
 test("each source line takes the picture sent in its place, so the file can be served after it is gone", () => {
-  const first = Pasted.find({ key: KEY, path: SHOT });
-  const next = Pasted.find({ key: KEY, path: NEXT });
+  const first = SentImages.find({ key: KEY, path: SHOT });
+  const next = SentImages.find({ key: KEY, path: NEXT });
   assert.deepEqual([first?.type, first?.bytes?.toString()], ["image/jpeg", "pixels"]);
   assert.deepEqual([next?.type, next?.bytes?.toString()], ["image/png", "more"]);
 });
 
 test("a path the conversation names without a picture is known but has no bytes", () => {
-  assert.deepEqual(Pasted.find({ key: KEY, path: NAKED }), { path: NAKED, type: undefined, bytes: undefined });
+  assert.deepEqual(SentImages.find({ key: KEY, path: NAKED }), { path: NAKED, type: undefined, bytes: undefined });
 });
 
 test("only a path a user message handed over is found, never one an assistant wrote", () => {
-  assert.equal(Pasted.find({ key: KEY, path: "/etc/passwd" }), undefined);
-  assert.equal(Pasted.find({ key: "eeeeeeee", path: SHOT }), undefined);
+  assert.equal(SentImages.find({ key: KEY, path: "/etc/passwd" }), undefined);
+  assert.equal(SentImages.find({ key: "eeeeeeee", path: SHOT }), undefined);
 });
