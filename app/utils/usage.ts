@@ -1,4 +1,4 @@
-import type { RateLimit } from "~~/shared/types/usage";
+import type { MeasuredCompaction, RateLimit } from "~~/shared/types/usage";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -88,9 +88,19 @@ const kilo = (tokens: number): string => {
   return tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens);
 };
 
+// The mod's record and the transcript's summary row are written within moments of each other.
+const MEASURED_WITHIN_MS = MINUTE;
+
 const compacted = (
   { at, sizes, text }: { at: number; sizes?: { before: number; after: number }; text: string },
   time: Intl.DateTimeFormat,
-): string => (sizes ? `${text} · ${kilo(sizes.before)} → ${kilo(sizes.after)} · ${time.format(at)}` : text);
+  measured: MeasuredCompaction[] = [],
+): string => {
+  const [own] = measured
+    .filter((one) => Math.abs(one.at - at) <= MEASURED_WITHIN_MS)
+    .toSorted((a, b) => Math.abs(a.at - at) - Math.abs(b.at - at));
+  const shown = own ?? sizes;
+  return shown ? `${text} · ${kilo(shown.before)} → ${kilo(shown.after)} · ${time.format(at)}` : text;
+};
 
 export const Usage = { compacted, kilo, note, reset, rows };

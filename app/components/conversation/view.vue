@@ -14,6 +14,7 @@ type Block =
 
 const sc = useSidecar();
 const prompt = $prompt();
+const usage = $usage();
 const questions = $questions();
 const terminal = $terminal();
 const busy = $busy();
@@ -128,7 +129,7 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
             v-else-if="block.kind === 'summary'"
             :at="block.turn.at"
             :conversation="key"
-            :label="Usage.compacted(block.turn, clock)"
+            :label="Usage.compacted(block.turn, clock, usage.front?.compactions)"
           />
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
           <QuestionAsk v-else-if="block.kind === 'asking'" :ask="block.ask" />

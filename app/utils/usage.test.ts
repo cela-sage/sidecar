@@ -53,3 +53,16 @@ test("a compaction reads its sizes in thousands", () => {
   assert.equal(Usage.compacted(turn, time), "Compacted");
   assert.equal(Usage.kilo(1_000_000), "1M");
 });
+
+test("the note reads what the mod measured when it has the compaction, and the transcript's count when it has not", () => {
+  const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  const turn = { at: at(10, 52), text: "Compacted", sizes: { before: 106_000, after: 23_000 } };
+  const measured = [
+    { at: at(9, 0), before: 50_000, after: 45_000 },
+    { at: at(10, 52) + 2000, before: 106_000, after: 90_000 },
+  ];
+
+  assert.equal(Usage.compacted(turn, time, measured), "Compacted · 106k → 90k · 10:52");
+  assert.equal(Usage.compacted(turn, time, measured.slice(0, 1)), "Compacted · 106k → 23k · 10:52");
+  assert.equal(Usage.compacted(turn, time), "Compacted · 106k → 23k · 10:52");
+});
