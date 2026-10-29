@@ -1,8 +1,9 @@
 import { createConnection } from "node:net";
 import { readTextSafe } from "../../../lib/files.ts";
 import { keyOf } from "./paths.ts";
-import { entryOf, keyFileOf } from "./registry.ts";
+import { entryOf, keyFileOf, type RegistryEntry } from "./registry.ts";
 import { marked } from "./relay.ts";
+import { wake } from "./wake.ts";
 
 const HANG_BUDGET_MS = 2000;
 
@@ -15,13 +16,23 @@ export type SendOptions = {
 
 export type SendResult = { ok: true } | { ok: false };
 
-export type DeliverOptions = { key: string; text: string; slug?: string };
+export type DeliverOptions = { key: string; text: string; slug?: string; canWake?: boolean };
 
+// no-live-session means no process ran under the key and none could be woken.
 export type DeliverResult =
   { delivered: true; session: string } | { delivered: false; reason: "no-live-session" | "refused-by-inbox" };
 
-export async function deliver({ key, text, slug }: DeliverOptions): Promise<DeliverResult> {
-  const entry = entryOf(key);
+const woken = async (key: string): Promise<RegistryEntry | undefined> => {
+  const isUp = await wake(key).catch((error: unknown) => {
+    console.error(`[wake] could not resume ${key}`, error);
+    return false;
+  });
+  return isUp ? entryOf(key) : undefined;
+};
+
+// A passive ask, such as the command list or a stop, passes canWake: false so it never starts a process.
+export async function deliver({ key, text, slug, canWake = true }: DeliverOptions): Promise<DeliverResult> {
+  const entry = entryOf(key) ?? (canWake ? await woken(key) : undefined);
   if (!entry) return { delivered: false, reason: "no-live-session" };
   const token = readTextSafe(keyFileOf(entry.pid))?.trim();
   if (!entry.messagingSocketPath || !token) return { delivered: false, reason: "refused-by-inbox" };

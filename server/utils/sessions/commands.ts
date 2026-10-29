@@ -21,7 +21,7 @@ const answers = new EventEmitter<Record<string, [SessionCommand[]]>>();
 const ask = async (key: string): Promise<SessionCommand[] | undefined> => {
   const stop = new AbortController();
   const answered = once(answers, key, { signal: AbortSignal.any([stop.signal, AbortSignal.timeout(ANSWER_MS)]) });
-  const sent = await deliver({ key, text: JSON.stringify({ do: "commands" }) });
+  const sent = await deliver({ key, text: JSON.stringify({ do: "commands" }), canWake: false });
   if (!sent.delivered) stop.abort();
   const [commands] = await answered.catch(() => []);
   return commands;
