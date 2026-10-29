@@ -1,6 +1,7 @@
 export type ControlAction =
   | { do: 'stop' }
   | { do: 'commands' }
+  | { do: 'breakdown' }
   | { do: 'model'; model: string }
   | { do: 'command'; name: string; args: string }
 
@@ -9,7 +10,7 @@ const COMMAND = /^[A-Za-z0-9][\w:.-]{0,63}$/
 
 const isAction = (value: unknown): value is ControlAction => {
   if (typeof value !== 'object' || !value || !('do' in value)) return false
-  if (value.do === 'stop' || value.do === 'commands') return Object.keys(value).length === 1
+  if (value.do === 'stop' || value.do === 'commands' || value.do === 'breakdown') return Object.keys(value).length === 1
   if (value.do === 'model') return 'model' in value && typeof value.model === 'string' && MODEL.test(value.model)
   return (
     value.do === 'command' &&

@@ -24,6 +24,8 @@ test('a sidecar delivery comes out as only what Marco wrote, and anything else i
 test('only a bare action runs as the sidecar\'s own, never one quoted in a message', () => {
   expect(Control.parse('{"do":"stop"}')).toEqual({ do: 'stop' })
   expect(Control.parse('{"do":"commands"}')).toEqual({ do: 'commands' })
+  expect(Control.parse('{"do":"breakdown"}')).toEqual({ do: 'breakdown' })
+  expect(Control.parse('{"do":"breakdown","detail":"full"}')).toBeUndefined()
   expect(Control.parse('{"do":"model","model":"claude-sonnet-5-5"}')).toEqual({ do: 'model', model: 'claude-sonnet-5-5' })
   expect(Control.parse('{"do":"command","name":"mode:ic","args":"new nav\\nglass"}')).toEqual({
     do: 'command',
@@ -131,6 +133,100 @@ test('a session with a person at its prompt tells the sidecar what it can run as
 
 test('a -p run tells the sidecar nothing as it starts, so its narrower list never stands in for a conversation', async ($, on) => {
   expect(await commandsPosted($, on, { surface: null, isInteractive: false })).toEqual([])
+})
+
+const row = (name: string, tokens: number, kind: 'used' | 'free' | 'buffer' = 'used') => ({
+  name,
+  tokens,
+  kind,
+  color: 'inactive',
+  isDeferred: false,
+})
+
+const breakdown = {
+  categories: [
+    row('System prompt', 6000),
+    row('System tools', 9000),
+    row('MCP tools', 5000),
+    row('Memory files', 3000),
+    row('Messages', 40_000),
+    row('Free space', 130_000, 'free'),
+    row('Autocompact buffer', 7000, 'buffer'),
+  ],
+  totalTokens: 63_000,
+  rawMaxTokens: 200_000,
+  percentage: 32,
+  model: 'claude-opus-5-5',
+  autoCompactThreshold: 190_000,
+}
+
+const usageTold = async ($: Engine, on: On, context: { tokens?: number; percent?: number }) => {
+  const posted: unknown[] = []
+  on('session.measure', (_, e) => ({ changed: e.changed }))
+  on('session.id', () => ({ value: 'abcdef0123456789' }))
+  on('session.usage', (_, e) => ({
+    value: {
+      startedAt: 0,
+      rateLimits: [{ kind: 'five_hour', percentUsed: 42, resetsAt: '2026-01-01T14:20:00Z' }],
+      context: { window: 200_000, ...context, ...(e.breakdown ? { breakdown } : {}) },
+    },
+  }))
+  on('http.fetch', (_, e) => {
+    if (new URL(e.url).pathname.endsWith('/usage')) posted.push(JSON.parse(String(e.init?.body)))
+    return { value: { status: 204, ok: true, headers: {}, text: '' } }
+  })
+  await $.session.measure({ context: { window: 200_000, ...context }, rateLimits: [], changed: ['context'] })
+  await new Promise(done => setTimeout(done, 10))
+  return posted
+}
+
+test('a measure tells the sidecar the window and the plan', async ($, on) => {
+  const plan = [{ kind: 'five_hour', percentUsed: 42, resetsAt: '2026-01-01T14:20:00Z' }]
+  expect(await usageTold($, on, { tokens: 124_000, percent: 62 })).toEqual([
+    { context: { window: 200_000, tokens: 124_000, percent: 62 }, rateLimits: plan },
+  ])
+})
+
+test('a window just compacted tells the sidecar its estimate, folded into the rows the popover draws', async ($, on) => {
+  const [report] = await usageTold($, on, {})
+  expect(report).toEqual({
+    context: { window: 200_000, tokens: 63_000, percent: 32 },
+    rateLimits: [{ kind: 'five_hour', percentUsed: 42, resetsAt: '2026-01-01T14:20:00Z' }],
+    breakdown: {
+      model: 'claude-opus-5-5',
+      tokens: 63_000,
+      window: 200_000,
+      parts: [
+        { label: 'Messages', tokens: 40_000 },
+        { label: 'Memory files', tokens: 3000 },
+        { label: 'Tools', tokens: 14_000 },
+        { label: 'System', tokens: 6000 },
+      ],
+      autoCompactPercent: 95,
+    },
+  })
+})
+
+test('a breakdown control tells the sidecar the window broken down, though the figures were measured', async ($, on) => {
+  const posted: { breakdown?: { parts: unknown[] } }[] = []
+  on('session.receive', ($, e) => ({ text: e.text }))
+  on('session.id', () => ({ value: 'abcdef0123456789' }))
+  on('session.usage', (_, e) => ({
+    value: {
+      startedAt: 0,
+      rateLimits: [],
+      context: { window: 200_000, tokens: 124_000, percent: 62, ...(e.breakdown ? { breakdown } : {}) },
+    },
+  }))
+  on('http.fetch', (_, e) => {
+    if (new URL(e.url).pathname.endsWith('/usage')) posted.push(JSON.parse(String(e.init?.body)))
+    return { value: { status: 204, ok: true, headers: {}, text: '' } }
+  })
+
+  const result = await $.session.receive({ origin: { kind: 'peer' }, text: '[[sidecar]]\n{"do":"breakdown"}' })
+
+  expect(result).toEqual({ consumed: 'sidecar breakdown' })
+  expect(posted.map(one => one.breakdown?.parts.length)).toEqual([4])
 })
 
 test('a delivery the session takes is told to the sidecar as it lands, and a control or a real peer is not', async ($, on) => {

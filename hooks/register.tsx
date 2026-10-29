@@ -9,6 +9,7 @@ import { Question } from './question'
 import { Relay } from './relay'
 import { receiveReview, registerReview, startReview, stopTurn } from './review/hooks'
 import { EMPTY_LEDGER } from './review/ledger'
+import { Usage } from './usage'
 
 const reviewLedger = atom({ plugin: 'sidecar', key: 'review' } as const, EMPTY_LEDGER)
 // Held by the host rather than the module, since a reload between a delivery and its row resets module variables.
@@ -42,6 +43,12 @@ const tell = async ($: EngineInterface, api: string, path: string, body: unknown
 
 const tellCommands = async ($: EngineInterface, api: string): Promise<void> =>
   tell($, api, 'commands', Commands.describe(await $.command.list()))
+
+const tellUsage = async ($: EngineInterface, api: string, { breakdown = false } = {}): Promise<void> => {
+  const figures = await $.session.usage()
+  const usage = breakdown || !figures.context.tokens ? await $.session.usage({ breakdown: 'summary' }) : figures
+  await tell($, api, 'usage', Usage.describe(usage))
+}
 
 export const register: Register = (on, options) => {
   const url = String(options.url ?? 'http://sidecar.localhost:4747').replace(/\/$/, '')
@@ -105,7 +112,15 @@ export const register: Register = (on, options) => {
         toast: text => $.ui.toast(text),
       },
     })
-    if (e.isInteractive) void tellCommands($, api).catch(() => undefined)
+    if (e.isInteractive) {
+      void tellCommands($, api).catch(() => undefined)
+      void tellUsage($, api).catch(() => undefined)
+    }
+    return next(e)
+  })
+
+  on('session.measure', async ($, e, next) => {
+    void tellUsage($, api).catch(() => undefined)
     return next(e)
   })
 
@@ -139,6 +154,10 @@ export const register: Register = (on, options) => {
     if (control?.do === 'commands') {
       await tellCommands($, api)
       return { consumed: 'sidecar commands' }
+    }
+    if (control?.do === 'breakdown') {
+      await tellUsage($, api, { breakdown: true })
+      return { consumed: 'sidecar breakdown' }
     }
     if (await receiveReview({ text: body, sessionId: () => $.session.id() })) return { consumed: 'sidecar review action' }
     await update($, relayed, list => [...list, body])
