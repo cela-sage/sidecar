@@ -1,5 +1,7 @@
 import { splitLines } from "../../../lib/text.ts";
+import type { ToolCall, ToolDiff } from "../../../shared/types/conversation.ts";
 import type { Question, QuestionOption } from "../../../shared/types/question.ts";
+import { ToolCalls } from "./calls.ts";
 import { plain } from "./relay.ts";
 import { argOf, readOut } from "./speaker.ts";
 import { readRange, transcriptIndex, type TranscriptGrowth } from "./transcripts.ts";
@@ -14,6 +16,7 @@ export type ConversationTurn = {
   kind?: TurnKind;
   tool?: string;
   arg?: string;
+  call?: ToolCall;
   /** AskUserQuestion only, so the chat can offer the options instead of an opaque tool row. */
   ask?: Question[];
   /** The provider's tool_use id, so a result pairs back to its call. */
@@ -22,6 +25,12 @@ export type ConversationTurn = {
   bg?: true;
   /** Typed but not yet delivered, so the turn it belongs to has not started. */
   queued?: boolean;
+  out?: string;
+  diff?: ToolDiff;
+  failed?: true;
+  /** Typed at the session's own prompt; a message from the sidecar arrives through the inbox and carries none. */
+  via?: "terminal";
+  model?: string;
 };
 
 export type ConversationSlice = {
@@ -78,7 +87,7 @@ function queuedOf(entry: Record<string, unknown>): ConversationTurn[] {
   if (!at) return [];
   const { content } = entry;
   const said = typeof content === "string" ? content : "";
-  if (entry.operation === "enqueue") return said.trim() ? spoke(said, at, true) : [];
+  if (entry.operation === "enqueue") return said.trim() ? spoke({ text: said, at, queued: true }) : [];
   // Cancelled, or handed to the model as a real turn: either way the queued copy stops standing.
   if (entry.operation === "remove") return [{ role: "system", kind: "drop", text: plain(said), at }];
   if (entry.operation === "dequeue" || entry.operation === "popAll") {
@@ -87,14 +96,23 @@ function queuedOf(entry: Record<string, unknown>): ConversationTurn[] {
   return [];
 }
 
+type Spoken = { text: string; at: number; queued?: boolean; via?: "terminal" };
+
 // One entry can hold a withdrawn ask, an interruption and a live ask, and all three keep their order.
-function spoke(text: string, at: number, queued = false): ConversationTurn[] {
+function spoke({ text, at, queued = false, via }: Spoken): ConversationTurn[] {
   return readOut(text).map((piece) =>
     piece.kind === "note"
       ? { role: "system" as const, text: piece.label, at, kind: "note" as const }
-      : { role: "user" as const, text: plain(piece.text), at, queued: queued || undefined },
+      : { role: "user" as const, text: plain(piece.text), at, queued: queued || undefined, ...(via ? { via } : {}) },
   );
 }
+
+const viaOf = ({ origin }: Record<string, unknown>): "terminal" | undefined =>
+  typeof origin === "object" && !!origin && "kind" in origin && origin.kind === "human" ? "terminal" : undefined;
+
+// A turn the harness wrote itself, such as an API error, names no real model.
+const modelOf = (message: Record<string, unknown>): string | undefined =>
+  typeof message.model === "string" && message.model.startsWith("claude-") ? message.model : undefined;
 
 function turnOf(line: string): ConversationTurn[] {
   const entry = record(line);
@@ -113,12 +131,13 @@ function turnOf(line: string): ConversationTurn[] {
   const content = (message as Record<string, unknown>).content;
   // A result-only entry has no text, thinking or tool_use block, so saidOf below would drop it.
   if (entry.type === "user") {
-    const ref = resultRefOf(content);
-    if (ref) return [{ role: "system", text: "", at, kind: "done", ref }];
+    const result = ToolCalls.resultOf(entry.toolUseResult, content);
+    if (result) return [{ role: "system", text: "", at, kind: "done", ...result }];
   }
   const said = saidOf(content);
   if (!said) return [];
-  if (entry.type === "user") return spoke(said.text, at);
+  if (entry.type === "user") return spoke({ text: said.text, at, via: viaOf(entry) });
+  const model = modelOf(message as Record<string, unknown>);
   return [
     {
       role: "assistant",
@@ -127,21 +146,25 @@ function turnOf(line: string): ConversationTurn[] {
       kind: said.kind,
       tool: said.tool,
       arg: said.arg,
+      call: said.call,
       ref: said.ref,
       bg: said.bg,
       ask: said.ask,
+      ...(model ? { model } : {}),
     },
   ];
 }
 
-function resultRefOf(content: unknown): string | undefined {
-  const first = Array.isArray(content) ? content[0] : undefined;
-  if (typeof first !== "object" || !first) return undefined;
-  const rec = first as Record<string, unknown>;
-  return rec.type === "tool_result" && typeof rec.tool_use_id === "string" ? rec.tool_use_id : undefined;
-}
-
-type Said = { text: string; kind: TurnKind; tool?: string; arg?: string; ref?: string; bg?: true; ask?: Question[] };
+type Said = {
+  text: string;
+  kind: TurnKind;
+  tool?: string;
+  arg?: string;
+  call?: ToolCall;
+  ref?: string;
+  bg?: true;
+  ask?: Question[];
+};
 
 function optionsOf(raw: unknown): QuestionOption[] {
   if (!Array.isArray(raw)) return [];
@@ -179,6 +202,7 @@ function saidOf(content: unknown): Said | undefined {
   const thought: string[] = [];
   let tool: string | undefined;
   let arg: string | undefined;
+  let call: ToolCall | undefined;
   let ref: string | undefined;
   let bg: true | undefined;
   let ask: Question[] | undefined;
@@ -190,7 +214,8 @@ function saidOf(content: unknown): Said | undefined {
     else if (rec.type === "tool_use" && typeof rec.name === "string" && !tool) {
       tool = rec.name;
       arg = argOf(rec.name, rec.input);
-      ask = rec.name === "AskUserQuestion" ? asksOf(rec.input) : undefined;
+      call = ToolCalls.callOf(rec.name, rec.input);
+      ask =rec.name === "AskUserQuestion" ? asksOf(rec.input) : undefined;
       ref = typeof rec.id === "string" ? rec.id : undefined;
       const input = rec.input as Record<string, unknown> | undefined;
       bg = input?.run_in_background === true ? true : undefined;
@@ -200,7 +225,7 @@ function saidOf(content: unknown): Said | undefined {
   if (say.trim()) return { text: say, kind: "narration" };
   const think = thought.join("");
   if (think.trim()) return { text: think, kind: "thinking" };
-  return tool ? { text: tool, kind: "acting", tool, arg, ref, bg, ask } : undefined;
+  return tool ? { text: tool, kind: "acting", tool, arg, call, ref, bg, ask } : undefined;
 }
 
 // Nothing marks an answer at the time it is written; it is the last thing said before the turn ends or the user speaks.

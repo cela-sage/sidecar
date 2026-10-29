@@ -1,25 +1,47 @@
 import type { ComputedRef, ShallowRef } from "vue";
+import z from "zod";
 import type { MascotState } from "~/components/claude/mascot.vue";
-import type { MaybeComputed } from "~/composables/useSidecar";
+import type { Maybe, MaybeComputed } from "~/composables/useSidecar";
 import { BusyRules, type Busy } from "~~/shared/utils/busy";
 
-type TurnRole = "assistant" | "user" | "system";
+const Kind = z.enum(["thinking", "narration", "answer", "acting", "note", "drop", "done", "end"]);
 
-export type TurnKind = "thinking" | "narration" | "answer" | "acting" | "note" | "drop" | "done" | "end";
+const Call = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("read"), path: z.string(), from: z.number().optional(), to: z.number().optional() }),
+  z.object({ kind: z.literal("edit"), path: z.string() }),
+  z.object({ kind: z.literal("run"), command: z.string() }),
+]);
 
-export interface ConversationTurn {
-  at: number;
-  role: TurnRole;
-  text: string;
-  kind?: TurnKind;
-  tool?: string;
-  arg?: string;
+const Diff = z.object({
+  add: z.number(),
+  del: z.number(),
+  hunks: z.array(z.object({ oldStart: z.number(), newStart: z.number(), lines: z.array(z.string()) })),
+  isClipped: z.literal(true).optional(),
+});
+
+// A field the client cannot read drops alone, so a newer server never costs the whole turn.
+const Turn = z.object({
+  at: z.number(),
+  role: z.enum(["assistant", "user", "system"]),
+  text: z.string(),
+  kind: Kind.optional().catch(undefined),
+  tool: z.string().min(1).optional().catch(undefined),
+  arg: z.string().min(1).optional().catch(undefined),
+  call: Call.optional().catch(undefined),
   /** The provider's tool_use id, so a result pairs back to its call. */
-  ref?: string;
+  ref: z.string().min(1).optional().catch(undefined),
   /** Started with run_in_background, so it is long-running by construction. */
-  bg?: true;
-  queued?: boolean;
-}
+  bg: z.literal(true).optional().catch(undefined),
+  queued: z.literal(true).optional().catch(undefined),
+  out: z.string().optional().catch(undefined),
+  diff: Diff.optional().catch(undefined),
+  failed: z.literal(true).optional().catch(undefined),
+  via: z.literal("terminal").optional().catch(undefined),
+  model: z.string().min(1).optional().catch(undefined),
+});
+
+export type TurnKind = z.infer<typeof Kind>;
+export type ConversationTurn = z.infer<typeof Turn>;
 
 const ECHO_MS = 60_000;
 const LONG_MS = 10_000;
@@ -30,38 +52,17 @@ export interface Conversation {
   step: MaybeComputed<string>;
   isBusy: ComputedRef<boolean>;
   stream: ShallowRef<ConversationTurn[]>;
+  results: ShallowRef<Map<string, ConversationTurn>>;
+  model: Maybe<string>;
 }
 
 interface ConversationSnapshot {
   offset: number;
-  turns: ConversationTurn[];
+  turns: unknown[];
 }
 
 export function asTurn(value: unknown): ConversationTurn | undefined {
-  if (typeof value !== "object" || !value) return undefined;
-  if (!("at" in value) || !("role" in value) || !("text" in value)) return undefined;
-  const { at, role, text } = value;
-  if (typeof at !== "number" || typeof text !== "string") return undefined;
-  if (role !== "assistant" && role !== "user" && role !== "system") return undefined;
-  const kind = "kind" in value ? value.kind : undefined;
-  const tool = "tool" in value ? value.tool : undefined;
-  const arg = "arg" in value ? value.arg : undefined;
-  const ref = "ref" in value ? value.ref : undefined;
-  return {
-    at,
-    role,
-    text,
-    kind: isKind(kind) ? kind : undefined,
-    tool: typeof tool === "string" && tool ? tool : undefined,
-    arg: typeof arg === "string" && arg ? arg : undefined,
-    ref: typeof ref === "string" && ref ? ref : undefined,
-    bg: "bg" in value && value.bg === true ? true : undefined,
-    queued: "queued" in value && value.queued === true ? true : undefined,
-  };
-}
-
-function isKind(value: unknown): value is TurnKind {
-  return ["thinking", "narration", "answer", "acting", "note", "drop", "done", "end"].includes(String(value));
+  return Turn.safeParse(value).data;
 }
 
 export function parseTurn(raw: string): ConversationTurn | undefined {
@@ -83,6 +84,8 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     stream.value.push(turn);
     triggerRef(stream);
   };
+  const results = shallowRef(new Map<string, ConversationTurn>());
+  const model = ref<string>();
   const doing = ref<ConversationTurn>();
   const awaiting = ref(false);
   const wrote = ref(false);
@@ -170,6 +173,10 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     // A tool result carries no words and is not a note: it only reports that the call it names closed.
     if (turn.kind === "done") {
       finish(turn.ref);
+      if (turn.ref) {
+        results.value.set(turn.ref, turn);
+        triggerRef(results);
+      }
       return;
     }
     if (turn.kind === "end") {
@@ -202,6 +209,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
       return;
     }
     awaiting.value = false;
+    if (turn.model) model.value = turn.model;
     if (turn.kind === "acting") {
       if (turn.ref) open.set(turn.ref, turn.at);
       block(turn);
@@ -239,6 +247,8 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     disconnect();
     turns = [];
     stream.value = [];
+    results.value = new Map();
+    model.value = undefined;
     candidate = undefined;
     doing.value = undefined;
     awaiting.value = false;
@@ -281,5 +291,5 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     });
   });
 
-  return { isBusy, mascot, step, stream };
+  return { isBusy, mascot, model, results, step, stream };
 }

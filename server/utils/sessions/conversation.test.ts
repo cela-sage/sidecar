@@ -177,3 +177,68 @@ test("a tool that is not a question carries no ask", () => {
 
   assert.equal(conversationOf({ key }).turns[0]?.ask, undefined);
 });
+
+test("a call carries what the chat unfolds, and its result the diff or the output, never a read's file", () => {
+  const key = "abababab";
+  const at = (second: number): string => `2026-01-01T09:00:0${second}.000Z`;
+  const result = (id: string, second: number, extra: Record<string, unknown>): Record<string, unknown> => ({
+    type: "user",
+    cwd: "/tmp/eps",
+    timestamp: at(second),
+    message: { role: "user", content: [{ type: "tool_result", tool_use_id: id, content: "ok", ...extra }] },
+  });
+  writeTranscript(key, "-tmp-eps", [
+    {
+      type: "user",
+      cwd: "/tmp/eps",
+      origin: { kind: "human" },
+      timestamp: at(0),
+      message: { role: "user", content: "rename it" },
+    },
+    {
+      type: "assistant",
+      cwd: "/tmp/eps",
+      timestamp: at(1),
+      message: {
+        role: "assistant",
+        model: "claude-opus-5-5",
+        content: [{ type: "tool_use", id: "t_read", name: "Read", input: { file_path: "/tmp/eps/a.ts", offset: 3, limit: 5 } }],
+      },
+    },
+    { ...result("t_read", 2, {}), toolUseResult: { type: "text", file: { filePath: "/tmp/eps/a.ts" } } },
+    {
+      type: "assistant",
+      cwd: "/tmp/eps",
+      timestamp: at(3),
+      message: {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "t_edit", name: "Edit", input: { file_path: "/tmp/eps/a.ts" } }],
+      },
+    },
+    {
+      ...result("t_edit", 4, {}),
+      toolUseResult: { structuredPatch: [{ oldStart: 4, newStart: 4, lines: [" a", "-b", "+c", "+d"] }] },
+    },
+    {
+      type: "assistant",
+      cwd: "/tmp/eps",
+      timestamp: at(5),
+      message: {
+        role: "assistant",
+        content: [{ type: "tool_use", id: "t_run", name: "Bash", input: { command: "pnpm test" } }],
+      },
+    },
+    result("t_run", 6, { content: "1 failed", is_error: true }),
+  ]);
+
+  const turns = conversationOf({ key }).turns;
+  assert.equal(turns[0]?.via, "terminal");
+  assert.deepEqual(turns[1]?.call, { kind: "read", path: "/tmp/eps/a.ts", from: 3, to: 7 });
+  assert.equal(turns[1]?.model, "claude-opus-5-5");
+  assert.equal(turns[2]?.out, undefined);
+  assert.deepEqual(turns[4]?.diff, { add: 2, del: 1, hunks: [{ oldStart: 4, newStart: 4, lines: [" a", "-b", "+c", "+d"] }] });
+  assert.deepEqual(
+    { call: turns[5]?.call, out: turns[6]?.out, failed: turns[6]?.failed },
+    { call: { kind: "run", command: "pnpm test" }, out: "1 failed", failed: true },
+  );
+});
