@@ -38,6 +38,7 @@ const isDirty = ref(false);
 const isStale = ref(false);
 const isSaving = ref(false);
 const preview = $preview();
+const fileLines = useFileLines();
 const zoom = ref(1);
 const marks = ref<FrameMark[]>([]);
 const anchors = ref<FrameAnchor[]>([]);
@@ -89,6 +90,19 @@ function show(got: Extract<FileContent, { text: string }>): void {
   if (previous && previous !== model && !unsaved.has(previous.uri.fsPath)) previous.dispose();
   markDirty();
   paintNotes();
+  revealAsked();
+}
+
+// Taken once, so reopening the file later lands where the reader left it rather than on the old ask.
+function revealAsked(): void {
+  const asked = fileLines.value;
+  const model = editor?.getModel();
+  if (!editor || !api || !model || asked?.path !== path) return;
+  fileLines.value = undefined;
+  const last = model.getLineCount();
+  const [from = 1, to = 1] = asked.lines.map((line) => Math.min(Math.max(line, 1), last));
+  editor.revealLinesInCenter(from, to);
+  editor.setSelection(new api.Range(from, 1, to, model.getLineMaxColumn(to)));
 }
 
 async function pull(): Promise<void> {
@@ -240,6 +254,7 @@ watch(
 );
 
 watch(noted, paintNotes);
+watch(fileLines, revealAsked);
 
 onBeforeUnmount(() => {
   clearTimeout(slow);

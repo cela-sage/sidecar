@@ -1,9 +1,18 @@
+import type { Ref } from "vue";
 import type { FileOpenReply } from "~~/shared/types/files";
 
 export interface LinkOpenOptions {
   /** The folder a relative link is read against: the page's own, else the conversation's. */
   base?: string;
+  lines?: [number, number];
 }
+
+export interface FileLines {
+  path: string;
+  lines: [number, number];
+}
+
+export const useFileLines = (): Ref<FileLines | undefined> => useState<FileLines | undefined>("fl:lines");
 
 export interface Links {
   describe: (href: string, options?: LinkOpenOptions) => string | undefined;
@@ -27,6 +36,7 @@ export function useLinks(): Links {
   const web = $web();
   const follow = $follow();
   const filesPick = useConversationPick("fl:picks");
+  const fileLines = useFileLines();
 
   const owns = (href: string): boolean => {
     const raw = href.trim();
@@ -43,7 +53,7 @@ export function useLinks(): Links {
     return homePath(decodeURIComponent(new URL(path, `file://${base ?? cwd() ?? ""}/`).pathname));
   }
 
-  async function open(href: string, { base }: LinkOpenOptions = {}): Promise<void> {
+  async function open(href: string, { base, lines }: LinkOpenOptions = {}): Promise<void> {
     const raw = href.trim();
     const key = sc.sessionKey.value;
     if (!owns(raw) || !key) return;
@@ -57,6 +67,7 @@ export function useLinks(): Links {
         method: "POST",
       });
       if (got.at === "files") {
+        fileLines.value = lines ? { path: got.path, lines } : undefined;
         filesPick.value = got.path;
         chrome.view.set("files");
         return;
