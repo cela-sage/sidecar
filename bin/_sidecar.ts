@@ -10,6 +10,7 @@ import { SidecarConfig } from "../lib/sidecar/config.ts";
 import { Sidecar } from "../lib/sidecar/paths.ts";
 import * as Events from "../lib/sidecar/events.ts";
 import type { Topics } from "../shared/types/events.ts";
+import { RunCommand } from "./run.ts";
 import { TaskCommand } from "./task.ts";
 import { TerminalCommand } from "./terminal.ts";
 
@@ -17,6 +18,7 @@ type Command =
   | "open"
   | "comments"
   | "task"
+  | "run"
   | "terminal"
   | "publish"
   | "status"
@@ -71,7 +73,10 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
   task new "<title>" | task <slug> [state|assign|escalate|hire|judge|decide|done ...]
               a task's lane: a new unassigned task, where it stands, its state and project, an escalation
               or a hire that notifies you, a verdict or a decision, every one kept in its history. sidecar task alone lists the verbs
-  terminal    follow the sidecar in this terminal: it opens on agent view, Attach on a conversation opens
+  run <project> [add "<name>" "<command>" [--folder <dir>] | remove "<name>"]
+              a project's run configurations: its repos' package.json scripts and Makefile targets,
+              plus its own, which add and remove change and every open sidecar picks up
+  terminal   follow the sidecar in this terminal: it opens on agent view, Attach on a conversation opens
               it here with claude attach, the next Attach detaches it with Ctrl+Z first, so it keeps running,
               and quitting agent view stops following
   setup [desktop|web]
@@ -557,6 +562,7 @@ const COMMANDS = {
   },
   comments: async () => Commands.comments(process.argv.slice(3)),
   task: () => TaskCommand.run(process.argv.slice(3), ADDRESS),
+  run: async () => RunCommand.run(process.argv.slice(3)),
   terminal: () => TerminalCommand.run(ADDRESS),
   publish: async () => publish(),
   status,
