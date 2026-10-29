@@ -19,7 +19,13 @@ const key = computed(() => sc.sessionKey.value ?? "");
 const isBusy = computed(() => !!busy.keys[key.value]?.doing || live.isBusy.value);
 const session = computed(() => sc.sessions.value.find((one) => one.key === key.value));
 const name = computed(() => Org.placeOf(tree.value, key.value)?.row.name ?? (session.value ? nameOf(session.value) : ""));
-const model = computed(() => prompt.chosen[key.value] ?? live.model.value);
+// A pick stands in until a turn lands after it, which names the model the session really runs, switched or refused.
+const model = computed(() => {
+  const pick = prompt.chosen[key.value];
+  if (!pick) return live.model.value;
+  const newest = live.stream.value.findLast((turn) => turn.model);
+  return newest && newest.at > pick.at ? live.model.value : pick.model;
+});
 
 const blocks = computed<Block[]>(() => {
   const out: Block[] = [];
@@ -47,10 +53,6 @@ watch(
     for (const one of prompt.sent) if (one.key === key.value && landedOf(one)) prompt.landed(one);
   },
 );
-
-watch(live.model, (now) => {
-  if (now && prompt.chosen[key.value] === now) prompt.chosen = { ...prompt.chosen, [key.value]: undefined };
-});
 </script>
 
 <template>

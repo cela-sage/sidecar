@@ -23,6 +23,11 @@ export interface PromptSent {
   at: number;
 }
 
+export interface PromptPick {
+  model: string;
+  at: number;
+}
+
 interface Draft {
   text: string;
   files: AttachedFile[];
@@ -53,7 +58,7 @@ export const $prompt = defineStore(() => {
   const chrome = useChrome();
   const drafts = ref<Partial<Record<string, Draft>>>({});
   const sent = ref<PromptSent[]>([]);
-  const chosen = ref<Partial<Record<string, string>>>({});
+  const chosen = ref<Partial<Record<string, PromptPick>>>({});
   const focusAsked = ref(0);
   const isSending = ref(false);
 
@@ -141,7 +146,7 @@ export const $prompt = defineStore(() => {
       chrome.toast(FAILED[reply.reason], "destructive");
       return false;
     }
-    chosen.value = { ...chosen.value, [key]: model };
+    chosen.value = { ...chosen.value, [key]: { model, at: Date.now() } };
     return true;
   };
 
