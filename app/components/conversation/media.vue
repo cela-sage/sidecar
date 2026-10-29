@@ -5,12 +5,6 @@ export interface ChatMedia {
   src: string;
   size: number;
 }
-
-const UNITS = [
-  { unit: "kilobyte", from: 1024 },
-  { unit: "megabyte", from: 1024 * 1024 },
-  { unit: "gigabyte", from: 1024 * 1024 * 1024 },
-] as const;
 </script>
 
 <script lang="ts" setup>
@@ -29,18 +23,7 @@ const time = ref(0);
 const isPlaying = ref(false);
 const bars = ref<number[]>([]);
 
-const meta = computed(() => {
-  const type = FileKind.extensionOf(media.path).toUpperCase();
-  if (media.size < 1024) return `${type} · ${media.size} B`;
-  const { unit, from } = UNITS.findLast((one) => media.size >= one.from) ?? UNITS[0];
-  const amount = new Intl.NumberFormat(undefined, {
-    maximumFractionDigits: from >= 1024 * 1024 ? 1 : 0,
-    style: "unit",
-    unit,
-    unitDisplay: "short",
-  }).format(media.size / from);
-  return `${type} · ${amount}`;
-});
+const meta = computed(() => `${FileKind.extensionOf(media.path).toUpperCase()} · ${sizeLabel(media.size)}`);
 const progress = computed(() => (duration.value ? time.value / duration.value : 0));
 const played = computed(() => Math.round(progress.value * bars.value.length));
 
@@ -168,7 +151,13 @@ onMounted(async () => {
         <UiIcon :icon="isPlaying ? Pause : Play" size="xs" />
       </button>
       <span class="wave" aria-hidden="true" @click="seek">
-        <span v-for="(height, at) in bars" :key="at" class="bar" :data-played="at < played" :style="{ '--h': height }" />
+        <span
+          v-for="(height, at) in bars"
+          :key="at"
+          class="bar"
+          :data-played="at < played"
+          :style="{ '--h': height }"
+        />
       </span>
       <span class="time">{{ clock(isPlaying || time ? time : duration) }}</span>
     </div>
@@ -185,7 +174,7 @@ onMounted(async () => {
 }
 
 .path {
-  @apply flex min-w-0 flex-1 items-center gap-1.75 font-mono typo-mono-micro font-medium text-fg no-underline;
+  @apply flex min-w-0 flex-1 items-center gap-1.75 typo-mono-micro font-mono font-medium text-fg no-underline;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -227,7 +216,7 @@ onMounted(async () => {
 }
 
 .controls {
-  @apply absolute right-2 bottom-2 left-2 flex h-7 items-center gap-2.5 rounded-full px-2 cela-glass;
+  @apply absolute right-2 bottom-2 left-2 cela-glass flex h-7 items-center gap-2.5 rounded-full px-2;
 }
 
 .small-play {
@@ -244,7 +233,7 @@ onMounted(async () => {
 }
 
 .time {
-  @apply flex-none font-mono typo-mono-micro font-medium text-fg;
+  @apply flex-none typo-mono-micro font-mono font-medium text-fg;
 }
 
 .sound {

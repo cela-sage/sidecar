@@ -7,6 +7,23 @@ export function homePath(cwd: string): string {
   return home ? `~${cwd.slice(home.length)}` : cwd;
 }
 
+const SIZE_UNITS = [
+  { unit: "kilobyte", from: 1024 },
+  { unit: "megabyte", from: 1024 * 1024 },
+  { unit: "gigabyte", from: 1024 * 1024 * 1024 },
+] as const;
+
+export const sizeLabel = (bytes: number): string => {
+  if (bytes < 1024) return `${bytes} B`;
+  const { unit, from } = SIZE_UNITS.findLast((one) => bytes >= one.from) ?? SIZE_UNITS[0];
+  return new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: from >= 1024 * 1024 ? 1 : 0,
+    style: "unit",
+    unit,
+    unitDisplay: "short",
+  }).format(bytes / from);
+};
+
 export function basename(path: string): string {
   return path.split("/").filter(Boolean).at(-1) ?? path;
 }
