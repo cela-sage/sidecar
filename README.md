@@ -378,8 +378,10 @@ and on each `session.measure`, the server keeps the last reading per conversatio
 yet takes its figure from the breakdown's own estimate. The engine measures nothing again after a compaction until the
 next response, so the mod's `session.compact` hook posts `isCompacting` as one starts, whoever starts it, and the size
 it ended at as it finishes, which the compaction counts for the messages it kept alone, so the tools, memory files and
-system prompt are added back. The Compacted note keeps the transcript's own count. Every share is against the model's window, as the status line reads it, though the
-breakdown counts the smaller compaction window. The breakdown is asked when
+system prompt are added back. The hook also posts the size the meter read when it started and the one it read when it
+ended, which the server keeps with the reading, 50 at most, and the Compacted note reads those. Every share is against
+the model's window, as the status line reads it, though the breakdown counts the smaller compaction window. The
+breakdown is asked when
 the popover opens, through `GET /api/sessions/:key/usage?breakdown=1`, which has the mod post it on a
 `{"do":"breakdown"}` control. Only a conversation that has posted usage is asked, since a mod older than 0.59.0 would
 read the control as a message to Claude, so a conversation started before it shows no meter until it restarts.
@@ -388,8 +390,10 @@ A command typed in your terminal is written twice, as the raw input and as the h
 line. What it printed is read line by line: a hook's completion line, such as `PostCompact [<script>] completed
 successfully: {}`, draws as a small `Hook(PostCompact)` note without the script, and `Compacted (ctrl+o to see full
 summary)` is left out because the Compacted note stands for it. The note sits between two hairlines and reads the
-context before and after, `Compacted · 124k → 32k · 10:52`, from the transcript's `compact_boundary` row, which the
-transcript writes just ahead of the summary's. Click that note and the chat reads the summary from
+context before and after, `Compacted · 124k → 32k · 10:52`, as the meter measured them, so the two agree. A
+compaction the mod did not record, from a conversation whose mod is older than 0.60.1, reads the transcript's
+`compact_boundary` row instead, which the transcript writes just ahead of the summary's and which counts the messages
+the compaction kept alone, so its second figure is lower than the meter's. Click that note and the chat reads the summary from
 its transcript row, as markdown, through `GET /api/sessions/:key/summary?at=<ms>`, with `at` the note's own time.
 
 A message to a conversation the tree knows but no process runs wakes it first. `deliver` in

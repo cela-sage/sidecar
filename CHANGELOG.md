@@ -7,6 +7,16 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.60.1
+
+### Fixed
+
+- **The Compacted note and the context meter agree.** The note read the transcript's count, which covers the messages a
+  compaction kept alone, so it said "106k → 23k" beside a meter at 9%. The mod now records the size the meter read as
+  a compaction started and as it ended, tools, memory files and system prompt in, and the note reads that, falling
+  back to the transcript's count for a compaction the mod did not record. A conversation started before 0.60.1 keeps
+  its old mod until it restarts, and its notes keep the old count.
+
 ## 0.60.0
 
 ### Changed
