@@ -1,9 +1,11 @@
 <script lang="ts" setup>
 import { Check, ChevronDown } from "@lucide/vue";
+import type { SessionMode } from "~/utils/session-modes";
 
 const { current } = defineProps<{ current?: string }>();
 
 const sc = useSidecar();
+const prompt = $prompt();
 const terminal = $terminal();
 const popover = useTemplateRef<{ close: () => void }>("popover");
 const asking = ref<string>();
@@ -15,9 +17,14 @@ const close = (): void => {
   asking.value = undefined;
 };
 
-const pick = (id: string): void => {
+const pick = ({ id, command }: SessionMode): void => {
   if (id === current) return close();
-  asking.value = id;
+  if (!command) {
+    asking.value = id;
+    return;
+  }
+  close();
+  void prompt.runCommand({ name: command, args: "" });
 };
 
 const attach = (): void => {
@@ -72,9 +79,10 @@ const attach = (): void => {
         :key="one.id"
         class="item plain-button focusable"
         :aria-checked="one.id === current"
+        :data-tip="one.command ? `Runs /${one.command} in the session` : undefined"
         role="menuitemradio"
         type="button"
-        @click="pick(one.id)"
+        @click="pick(one)"
       >
         <span class="words">
           <span class="name">{{ one.name }}</span>

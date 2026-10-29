@@ -173,6 +173,13 @@ export const $prompt = defineStore(() => {
     return deliver(key, "command", { ...command });
   };
 
+  const runCommand = async (command: CommandCall): Promise<boolean> => {
+    const key = sc.sessionKey.value;
+    if (!key || !(await run(key, command))) return false;
+    sent.value = [...sent.value, { key, text: SlashCommand.line(command), at: Date.now() }];
+    return true;
+  };
+
   const send = async (): Promise<void> => {
     const key = sc.sessionKey.value;
     const draft = front();
@@ -230,6 +237,7 @@ export const $prompt = defineStore(() => {
     mention,
     pick,
     refused,
+    runCommand,
     send,
     sent,
     stop,

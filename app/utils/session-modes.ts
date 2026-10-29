@@ -2,12 +2,13 @@ export interface SessionMode {
   id: string;
   name: string;
   about: string;
+  command?: string;
 }
 
 const LISTED: SessionMode[] = [
   { id: "default", name: "Default", about: "Asks before it edits or runs" },
   { id: "acceptEdits", name: "Accept edits", about: "Edits files without asking" },
-  { id: "plan", name: "Plan", about: "Reads and plans, changes nothing" },
+  { id: "plan", name: "Plan", about: "Reads and plans, changes nothing", command: "plan" },
   { id: "auto", name: "Auto", about: "A classifier answers the prompts" },
   { id: "bypassPermissions", name: "Bypass permissions", about: "Skips every check" },
 ];
