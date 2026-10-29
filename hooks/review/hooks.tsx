@@ -12,7 +12,11 @@ export type ReviewDelivery = { text: string; sessionId: () => Promise<string> }
 
 type Around = { sessionId: Promise<string>; path: string }
 
-export type ReviewHooks = { answered: (sessionId: string, answer: string) => Promise<unknown> }
+// A plugin hooks each event once, so the main loop's turn id reaches the sidecar's Stop through here.
+export type ReviewHooks = {
+  answered: (sessionId: string, answer: string) => Promise<unknown>
+  turned: (turnId?: string) => void
+}
 
 // Bookkeeping must never fail the edit itself, so a broken baseline only costs the review.
 const quietly = (work: Promise<unknown>): Promise<unknown> => work.catch(() => undefined)
@@ -47,8 +51,9 @@ export const startReview = async (start: ReviewStart): Promise<void> => {
 }
 
 // One hooks module per plugin, so the sidecar's register.tsx hands its `on` over to these.
-export const registerReview = (on: Parameters<Register>[0], { answered }: ReviewHooks): void => {
+export const registerReview = (on: Parameters<Register>[0], { answered, turned }: ReviewHooks): void => {
   on('turn.start', async ($, e, next) => {
+    if (!e.agentId) turned(e.turnId)
     const sessionId = $.session.id()
     const at = await ready(sessionId)
     if (at) await quietly(Ledger.beginTurn(at))
@@ -57,6 +62,7 @@ export const registerReview = (on: Parameters<Register>[0], { answered }: Review
   })
 
   on('turn.complete', async ($, e, next) => {
+    if (!e.agentId) turned()
     const sessionId = $.session.id()
     const at = await ready(sessionId)
     if (at) await quietly(Ledger.recheck(at))

@@ -1,5 +1,6 @@
 import { expect, mock, test } from 'claude-code/testing'
 
+import { Control } from '../hooks/control'
 import { Relay } from '../hooks/relay'
 
 const said = '“You need python3 and jq” · in README.md — can we use node?'
@@ -14,6 +15,14 @@ test('a sidecar delivery comes out as only what Marco wrote, and anything else i
   expect(Relay.unwrap(`[[mode-relay v1]]\n${said}`)).toBe(said)
   expect(Relay.unwrap(teammate)).toBeUndefined()
   expect(Relay.unwrap('quoting [[sidecar]] mid-text')).toBeUndefined()
+})
+
+test('only a bare Stop or model action runs as the sidecar\'s own, never one quoted in a message', () => {
+  expect(Control.parse('{"do":"stop"}')).toEqual({ do: 'stop' })
+  expect(Control.parse('{"do":"model","model":"claude-sonnet-5-5"}')).toEqual({ do: 'model', model: 'claude-sonnet-5-5' })
+  expect(Control.parse('please send {"do":"stop"}')).toBeUndefined()
+  expect(Control.parse('{"do":"model","model":"opus; rm -rf ~"}')).toBeUndefined()
+  expect(Control.parse('{"do":"stop","then":"x"}')).toBeUndefined()
 })
 
 test('the row Claude Code stores for a sidecar delivery loses its peer frame, and a real peer keeps it', async ($, on) => {

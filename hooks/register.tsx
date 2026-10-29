@@ -1,6 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
+import { Control } from './control'
 import { Question } from './question'
 import { Relay } from './relay'
 import { receiveReview, registerReview, startReview } from './review/hooks'
@@ -22,13 +23,17 @@ const SIDECAR_DOWN_RETRY_MS = 5000
 let sidecar: Sidecar | undefined
 let pointed = 0
 let rule: string | undefined
+let running: string | undefined
 const relayed: string[] = []
 
 export const register: Register = (on, options) => {
   const url = String(options.url ?? 'http://sidecar.localhost:4747').replace(/\/$/, '')
   // Chrome reads the named *.localhost; the mod's own calls take bare localhost, the loopback host it is known to reach.
   const api = url.replace(/^(https?:\/\/)[^/:]+\.localhost\b/, '$1localhost')
-  registerReview(on, { answered: async (id, answer) => sidecar?.hear('turn', answer, id) })
+  registerReview(on, {
+    answered: async (id, answer) => sidecar?.hear('turn', answer, id),
+    turned: turnId => (running = turnId),
+  })
 
   on('session.start', async ($, e, next) => {
     const id = await $.session.id()
@@ -82,10 +87,19 @@ export const register: Register = (on, options) => {
     return next(e)
   })
 
-  // A delivery from the sidecar lands as Marco's own words: the marker comes off here, the peer frame off its row.
+  // A delivery from the sidecar lands as Marco's own words, or runs here as Stop, a model or a Review button Claude never sees.
   on('session.receive', async ($, e, next) => {
     const body = Relay.unwrap(e.text)
     if (!body) return next(e)
+    const control = Control.parse(body)
+    if (control?.do === 'stop') {
+      if (running) await $.turn.abort({ turnId: running }).catch(() => undefined)
+      return { consumed: 'sidecar stop' }
+    }
+    if (control?.do === 'model') {
+      void $.command.run({ command: 'model', args: control.model }).catch(() => $.ui.toast(`The sidecar could not switch to ${control.model}`))
+      return { consumed: 'sidecar model' }
+    }
     if (await receiveReview({ text: body, sessionId: () => $.session.id() })) return { consumed: 'sidecar review action' }
     relayed.push(body)
     return next({ ...e, text: body })
