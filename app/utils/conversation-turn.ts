@@ -1,0 +1,65 @@
+import z from "zod";
+
+const Kind = z.enum([
+  "thinking",
+  "narration",
+  "answer",
+  "acting",
+  "note",
+  "summary",
+  "command",
+  "printed",
+  "drop",
+  "done",
+  "end",
+]);
+
+const Call = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("read"), path: z.string(), from: z.number().optional(), to: z.number().optional() }),
+  z.object({ kind: z.literal("edit"), path: z.string() }),
+  z.object({ kind: z.literal("run"), command: z.string() }),
+]);
+
+const Diff = z.object({
+  add: z.number(),
+  del: z.number(),
+  hunks: z.array(z.object({ oldStart: z.number(), newStart: z.number(), lines: z.array(z.string()) })),
+  isClipped: z.literal(true).optional(),
+});
+
+// A field the client cannot read drops alone, so a newer server never costs the whole turn.
+const Turn = z.object({
+  at: z.number(),
+  role: z.enum(["assistant", "user", "system"]),
+  text: z.string(),
+  kind: Kind.optional().catch(undefined),
+  tool: z.string().min(1).optional().catch(undefined),
+  arg: z.string().min(1).optional().catch(undefined),
+  call: Call.optional().catch(undefined),
+  ref: z.string().min(1).optional().catch(undefined),
+  bg: z.literal(true).optional().catch(undefined),
+  queued: z.literal(true).optional().catch(undefined),
+  joined: z.literal(true).optional().catch(undefined),
+  out: z.string().optional().catch(undefined),
+  diff: Diff.optional().catch(undefined),
+  failed: z.literal(true).optional().catch(undefined),
+  via: z.literal("terminal").optional().catch(undefined),
+  model: z.string().min(1).optional().catch(undefined),
+  mode: z.string().min(1).optional().catch(undefined),
+  sizes: z.object({ before: z.number(), after: z.number() }).optional().catch(undefined),
+});
+
+export type TurnKind = z.infer<typeof Kind>;
+export type ConversationTurn = z.infer<typeof Turn>;
+
+export function asTurn(value: unknown): ConversationTurn | undefined {
+  return Turn.safeParse(value).data;
+}
+
+export function parseTurn(raw: string): ConversationTurn | undefined {
+  try {
+    return asTurn(JSON.parse(raw) as unknown);
+  } catch {
+    return undefined;
+  }
+}

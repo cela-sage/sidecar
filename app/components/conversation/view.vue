@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { Terminal } from "@lucide/vue";
-import type { ConversationTurn } from "~/composables/useConversation";
+import type { ConversationTurn } from "~/utils/conversation-turn";
 import type { PromptSent } from "~/stores/prompt";
 import type { AskedQuestion } from "~/stores/questions";
 

@@ -1,5 +1,5 @@
 import type { ToolDiff } from "~~/shared/types/conversation";
-import type { ConversationTurn } from "~/composables/useConversation";
+import type { ConversationTurn } from "~/utils/conversation-turn";
 
 export type ToolState = "live" | "done" | "failed" | "quiet";
 

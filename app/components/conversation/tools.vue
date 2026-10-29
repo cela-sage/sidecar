@@ -1,7 +1,7 @@
 <script lang="ts" setup>
 import { Check, ChevronRight, FileText, Pencil, SquareTerminal, Wrench } from "@lucide/vue";
 import type { Component } from "vue";
-import type { ConversationTurn } from "~/composables/useConversation";
+import type { ConversationTurn } from "~/utils/conversation-turn";
 import type { ReadFile, ToolRow } from "~/utils/tool-rows";
 
 const { isBusy, results, turns } = defineProps<{

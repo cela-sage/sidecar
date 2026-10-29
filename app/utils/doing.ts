@@ -1,5 +1,5 @@
 import type { MascotState } from "~/components/claude/mascot.vue";
-import type { ConversationTurn } from "~/composables/useConversation";
+import type { ConversationTurn } from "~/utils/conversation-turn";
 
 const WRITE = new Set(["Write", "Edit", "NotebookEdit"]);
 const OFFLOAD = new Set(["Agent", "Task", "Workflow"]);
