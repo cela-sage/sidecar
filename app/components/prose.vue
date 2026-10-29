@@ -106,6 +106,14 @@ watch(
   @apply mx-0 mt-0 mb-2 pl-4.5;
 }
 
+.prose :deep(ul) {
+  @apply list-disc;
+}
+
+.prose :deep(ol) {
+  @apply list-decimal;
+}
+
 .prose :deep(li) {
   @apply mx-0 mt-0 mb-0.75;
 }
