@@ -27,10 +27,14 @@ export type ReviewAction =
   | { do: 'accept-lines' | 'reject-lines'; path: string; old: number[]; new: number[] }
   | { do: 'undo' | 'redo' }
 
+export type RunningTurn = { turnId?: string }
+
 declare module 'claude-code' {
   interface PluginState {
     sidecar: {
       review: ReviewLedger
+      relayed: string[]
+      running: RunningTurn
     }
   }
 }

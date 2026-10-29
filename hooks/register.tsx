@@ -4,10 +4,12 @@ import type { Register } from 'claude-code'
 import { Control } from './control'
 import { Question } from './question'
 import { Relay } from './relay'
-import { receiveReview, registerReview, startReview } from './review/hooks'
+import { receiveReview, registerReview, startReview, stopTurn } from './review/hooks'
 import { EMPTY_LEDGER } from './review/ledger'
 
 const reviewLedger = atom({ plugin: 'sidecar', key: 'review' } as const, EMPTY_LEDGER)
+// Held by the host rather than the module, since a reload between a delivery and its row resets module variables.
+const relayed = atom({ plugin: 'sidecar', key: 'relayed' } as const, [] as string[])
 
 // Each call takes the live session id, since a /clear moves the process to a new one without a session.start.
 type Sidecar = {
@@ -23,8 +25,6 @@ const SIDECAR_DOWN_RETRY_MS = 5000
 let sidecar: Sidecar | undefined
 let pointed = 0
 let rule: string | undefined
-let running: string | undefined
-const relayed: string[] = []
 
 export const register: Register = (on, options) => {
   const url = String(options.url ?? 'http://sidecar.localhost:4747').replace(/\/$/, '')
@@ -32,7 +32,6 @@ export const register: Register = (on, options) => {
   const api = url.replace(/^(https?:\/\/)[^/:]+\.localhost\b/, '$1localhost')
   registerReview(on, {
     answered: async (id, answer) => sidecar?.hear('turn', answer, id),
-    turned: turnId => (running = turnId),
   })
 
   on('session.start', async ($, e, next) => {
@@ -93,7 +92,7 @@ export const register: Register = (on, options) => {
     if (!body) return next(e)
     const control = Control.parse(body)
     if (control?.do === 'stop') {
-      if (running) await $.turn.abort({ turnId: running }).catch(() => undefined)
+      await stopTurn($)
       return { consumed: 'sidecar stop' }
     }
     if (control?.do === 'model') {
@@ -101,7 +100,7 @@ export const register: Register = (on, options) => {
       return { consumed: 'sidecar model' }
     }
     if (await receiveReview({ text: body, sessionId: () => $.session.id() })) return { consumed: 'sidecar review action' }
-    relayed.push(body)
+    await update($, relayed, list => [...list, body])
     return next({ ...e, text: body })
   })
 
@@ -110,9 +109,8 @@ export const register: Register = (on, options) => {
     const [block, ...rest] = e.message.content
     const text = block?.type === 'text' && !rest.length ? block.text : undefined
     const body = typeof text === 'string' ? Relay.unframe(text) : undefined
-    const at = body ? relayed.indexOf(body) : -1
-    if (!body || at < 0) return next(e)
-    relayed.splice(at, 1)
+    if (!body || !(await read($, relayed)).includes(body)) return next(e)
+    await update($, relayed, list => list.filter((one, at) => at !== list.indexOf(body)))
     return next({ ...e, message: { ...e.message, content: [{ type: 'text', text: body }] } })
   })
 
