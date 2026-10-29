@@ -1,6 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { Register } from 'claude-code'
 
+import { Commands } from './commands'
 import { Control } from './control'
 import { Question } from './question'
 import { Relay } from './relay'
@@ -98,6 +99,31 @@ export const register: Register = (on, options) => {
     if (control?.do === 'model') {
       void $.command.run({ command: 'model', args: control.model }).catch(() => $.ui.toast(`The sidecar could not switch to ${control.model}`))
       return { consumed: 'sidecar model' }
+    }
+    if (control?.do === 'command') {
+      const { name, args } = control
+      if (Commands.needsTerminal(name, args)) $.ui.toast(`Run /${name} in your terminal`)
+      else
+        void $.command
+          .run({ command: name, args })
+          .catch(async error => {
+            for (const text of Commands.notRun(name, args, error)) {
+              await $.session.append({ message: { type: 'system', content: [{ type: 'text', text }] } })
+            }
+          })
+          .catch(() => $.ui.toast(`The sidecar could not run /${name}`))
+      return { consumed: 'sidecar command' }
+    }
+    if (control?.do === 'commands') {
+      const [list, id] = await Promise.all([$.command.list(), $.session.id()])
+      void $.http
+        .fetch(`${api}/api/sessions/${id.slice(0, 8)}/commands`, {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify(Commands.describe(list)),
+        })
+        .catch(() => undefined)
+      return { consumed: 'sidecar commands' }
     }
     if (await receiveReview({ text: body, sessionId: () => $.session.id() })) return { consumed: 'sidecar review action' }
     await update($, relayed, list => [...list, body])
