@@ -12,9 +12,29 @@ const Row = z.object({
   }),
 });
 
+const Boundary = z.object({
+  subtype: z.literal("compact_boundary"),
+  compactMetadata: z.object({ preTokens: z.number(), postTokens: z.number() }),
+});
+
+export interface CompactSizes {
+  before: number;
+  after: number;
+}
+
 const rowOf = (line: string): z.infer<typeof Row> | undefined => {
   try {
     return Row.safeParse(JSON.parse(line)).data;
+  } catch {
+    return undefined;
+  }
+};
+
+export const sizesOf = (line: string): CompactSizes | undefined => {
+  if (!line.includes('"compact_boundary"')) return undefined;
+  try {
+    const row = Boundary.safeParse(JSON.parse(line)).data;
+    return row && { before: row.compactMetadata.preTokens, after: row.compactMetadata.postTokens };
   } catch {
     return undefined;
   }

@@ -332,7 +332,13 @@ test("a compaction typed in the terminal reads in the file's order as its comman
   const at = (second: number): string => `2026-01-01T09:00:${second}.000Z`;
   writeTranscript(key, "-tmp-compact", [
     { type: "user", cwd: "/tmp/compact", timestamp: at(33), message: { role: "user", content: "/compact" } },
-    { type: "system", subtype: "compact_boundary", timestamp: at(37), content: "Conversation compacted" },
+    {
+      type: "system",
+      subtype: "compact_boundary",
+      timestamp: at(37),
+      content: "Conversation compacted",
+      compactMetadata: { trigger: "manual", preTokens: 124_000, postTokens: 32_000 },
+    },
     {
       type: "user",
       isCompactSummary: true,
@@ -363,8 +369,9 @@ test("a compaction typed in the terminal reads in the file's order as its comman
     },
   ]);
 
+  const { turns } = conversationOf({ key });
   assert.deepEqual(
-    conversationOf({ key }).turns.map((turn) => ({ kind: turn.kind, text: turn.text })),
+    turns.map((turn) => ({ kind: turn.kind, text: turn.text })),
     [
       { kind: "command", text: "/compact" },
       { kind: "summary", text: "Compacted" },
@@ -372,6 +379,7 @@ test("a compaction typed in the terminal reads in the file's order as its comman
       { kind: "note", text: "Hook(PostCompact)" },
     ],
   );
+  assert.deepEqual(turns.find((turn) => turn.kind === "summary")?.sizes, { before: 124_000, after: 32_000 });
 });
 
 test("a compaction's summary is read from its row by when it landed, without the reminders around it", async () => {

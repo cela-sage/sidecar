@@ -4,6 +4,7 @@ import type { Question, QuestionOption } from "../../../shared/types/question.ts
 import { ToolCalls } from "./calls.ts";
 import { plain } from "./relay.ts";
 import { argOf, readOut } from "./speaker.ts";
+import { sizesOf, type CompactSizes } from "./summary.ts";
 import { readRange, transcriptIndex, type TranscriptGrowth } from "./transcripts.ts";
 
 // Narration and answer share the provider's `text` block, told apart only by position.
@@ -35,6 +36,7 @@ export type ConversationTurn = {
   via?: "terminal";
   model?: string;
   mode?: string;
+  sizes?: CompactSizes;
 };
 
 export type ConversationSlice = {
@@ -68,8 +70,15 @@ export function conversationOf({
   const echo = new Map<string, number>();
   // A result carries no tool name of its own; only the call it pairs to does.
   const toolByRef = new Map<string, string>();
+  // The transcript writes a compaction's boundary row, which holds the sizes, just ahead of its summary row.
+  let compacted: CompactSizes | undefined;
   for (const line of splitLines(read.text)) {
+    compacted = sizesOf(line) ?? compacted;
     for (const turn of turnOf(line)) {
+      if (turn.kind === "summary" && compacted) {
+        turn.sizes = compacted;
+        compacted = undefined;
+      }
       if (turn.role === "user" && !turn.queued) {
         const said = echo.get(turn.text);
         if (said && turn.at - said < QUEUE_ECHO_MS) continue;
