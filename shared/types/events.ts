@@ -9,6 +9,7 @@ export interface Topics {
   "task.decided": { slug: string; thread: string; text: string; who: Who };
   "terminal.changed": TerminalState;
   "dock.changed": { tabs: DockTab[] };
+  "runs.changed": { project: string };
   "conversation.changed": { key: string; doing: boolean; asking: boolean };
   "question.changed": QuestionChanged;
 }

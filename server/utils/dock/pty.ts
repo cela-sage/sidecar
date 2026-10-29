@@ -13,7 +13,8 @@ export interface PtySpawn {
 }
 
 const DETACH = "\x1a";
-const DETACH_MS = 3000;
+const INTERRUPT = "\x03";
+const ENDING_MS = 3000;
 const KEPT = new Set(["CLAUDE_BIN", "CLAUDE_CONFIG_DIR"]);
 const DROPPED = ["CLAUDE", "DIRENV_"];
 
@@ -43,18 +44,23 @@ const spawn = ({ file, args, cwd, cols, rows, term = "xterm-256color" }: PtySpaw
   return spawnPty(file, args, { name: term, cols, rows, cwd, env: { ...cleanEnv(), COLORTERM: "truecolor" } });
 };
 
-// Ctrl+Z is how `claude attach` lets go of a session and leaves it running.
-const detach = (pty: IPty): Promise<void> =>
+const ending = (pty: IPty, key: string): Promise<void> =>
   new Promise((done) => {
     const timer = setTimeout(() => {
       pty.kill();
       done();
-    }, DETACH_MS);
+    }, ENDING_MS);
     pty.onExit(() => {
       clearTimeout(timer);
       done();
     });
-    pty.write(DETACH);
+    pty.write(key);
   });
 
-export const Pty = { detach, prepare, spawn };
+// Ctrl+Z is how `claude attach` lets go of a session and leaves it running.
+const detach = (pty: IPty): Promise<void> => ending(pty, DETACH);
+
+// Ctrl+C reaches the whole foreground group, so a dev server's children stop with it.
+const interrupt = (pty: IPty): Promise<void> => ending(pty, INTERRUPT);
+
+export const Pty = { detach, interrupt, prepare, spawn };

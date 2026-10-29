@@ -1,6 +1,7 @@
 import { appendFileSync, closeSync, mkdirSync, openSync, readSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { DockKind, type DockTab } from "../../shared/types/dock.ts";
+import { RunStatus } from "../../shared/types/runs.ts";
 import type { SidecarEvent, Topic, Topics } from "../../shared/types/events.ts";
 import { AskKind, Role, TaskState, type Who } from "../../shared/types/task.ts";
 import { Questions } from "../../shared/utils/question.ts";
@@ -58,11 +59,29 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     if (!Array.isArray(data.tabs)) return undefined;
     const tabs = data.tabs.flatMap((raw: unknown): DockTab[] => {
       const one = typeof raw === "object" && raw ? (raw as Fields) : {};
-      const [id, project, title, key] = [text(one.id), text(one.project), text(one.title), text(one.key)];
+      const [id, project, title, key, config] = [one.id, one.project, one.title, one.key, one.config].map(text);
       const kind = oneOf(DockKind, one.kind);
-      return id && project && kind ? [{ id, project, kind, title, ...(key ? { key } : {}) }] : [];
+      const status = oneOf(RunStatus, one.status);
+      const failing = Array.isArray(one.failing) ? one.failing.map(text) : undefined;
+      if (!id || !project || !kind) return [];
+      return [
+        {
+          id,
+          project,
+          kind,
+          title: title ?? "",
+          ...(key ? { key } : {}),
+          ...(config ? { config } : {}),
+          ...(status ? { status } : {}),
+          ...(failing ? { failing } : {}),
+        },
+      ];
     });
     return { tabs };
+  },
+  "runs.changed": (data) => {
+    const project = text(data.project);
+    return project ? { project } : undefined;
   },
   "conversation.changed": (data) => {
     const key = text(data.key);
