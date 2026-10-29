@@ -345,6 +345,12 @@ printed under it, and a name the session does not have prints the reason under i
 for the turn to end, and a conversation started before 0.48.0 has to be restarted before it runs one, since its
 mod hands the command to Claude as words.
 
+A command typed in your terminal is written twice, as the raw input and as the harness's receipt, and draws as one
+line. What it printed is read line by line: a hook's completion line, such as `PostCompact [<script>] completed
+successfully: {}`, draws as a small `Hook(PostCompact)` note without the script, and `Compacted (ctrl+o to see full
+summary)` is left out because the Compacted note stands for it. Click that note and the chat reads the summary from
+its transcript row, as markdown, through `GET /api/sessions/:key/summary?at=<ms>`, with `at` the note's own time.
+
 A message to a conversation the tree knows but no process runs wakes it first. `deliver` in
 `server/utils/sessions/inbox.ts` resumes the session in the background with `claude --bg --resume <id>`, from its own
 folder and with every inherited `CLAUDE*` variable dropped, waits up to 15 seconds for its inbox and then sends. The

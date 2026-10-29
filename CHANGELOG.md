@@ -7,6 +7,23 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.56.0
+
+### Added
+
+- **The Compacted note opens the compaction's summary,** read from its transcript row on click and drawn as markdown,
+  where the terminal shows it behind ctrl+o. `GET /api/sessions/:key/summary?at=<ms>` serves it and answers 404 when
+  no summary landed at that time. The note's turn is now kind `summary`, which a client older than 0.56.0 draws as a
+  plain note.
+
+### Fixed
+
+- **A compaction draws once in the chat,** where it drew `❯ /compact`, Compacted, `❯ /compact` again and the
+  terminal's raw output. A command typed in the terminal joins its receipt into one line, a hook's completion line in
+  a command's output draws as a `Hook(PostCompact)` note without its script, and the terminal's own "Compacted (ctrl+o
+  to see full summary)" hint is left out. The same line printed twice in a row now draws twice, where the second was
+  dropped as an echo.
+
 ## 0.55.2
 
 ### Fixed
