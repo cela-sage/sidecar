@@ -7,6 +7,19 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.55.0
+
+### Fixed
+
+- **A question or a permission prompt left open when the sidecar restarts comes back in the chat and the door,** about
+  ten seconds after the server is up. The mod announced it once, so a restart left the conversation waiting on a
+  dialog only a terminal could answer. A conversation started before this release keeps the old mod and still loses it.
+
+### Changed
+
+- **`GET /api/questions/:ref/answer` answers 404 for a question the server does not hold,** where it used to hold the
+  poll empty. The mod reads that as the cue to announce the question again.
+
 ## 0.54.2
 
 ### Fixed

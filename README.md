@@ -656,7 +656,9 @@ and lists at `GET /api/questions`, runs the dialog, and at the same time long-po
 the door posts within those seconds, or in the two after one ends, comes back to the hook, which returns it as
 the tool's result and so closes the dialog. However the call settles, a pick in either place or Esc
 interrupting the turn, the hook closes the question with `DELETE /api/questions/<tool id>`, which also ends its
-poll. With the sidecar down it tries again every five seconds, and the dialog answers as it always did.
+poll. With the sidecar down it tries again every five seconds, and the dialog answers as it always did. A sidecar
+that restarted under an open question has forgotten it and answers the poll with a 404, which makes the hook announce
+the question again, so it is back in the list about ten seconds after the server is up.
 
 A tool use that needs your permission runs the same race. The mod's `classic.PermissionRequest` hook, which the engine
 runs beside the terminal's dialog, opens a question headed with the tool and asking what it runs, a command, a path or
@@ -669,6 +671,10 @@ assistant. The engine leaves the hook running when the terminal's dialog is answ
 when the tool's `PostToolUse` or `PostToolUseFailure` arrives with the same tool and input, or at the turn's `Stop`,
 and a No or Esc in the terminal aborts it. AskUserQuestion and ExitPlanMode keep their own flows, because the engine
 ignores an allow for a tool that needs the person.
+
+Neither ask needs a terminal. In a `claude --bg` conversation with nothing attached the dialog sits on Claude Code's
+own background screen and the registry says `waiting`, the same two hooks run, and a pick from the chat or the door
+settles the call and the turn goes on, however long the ask has waited.
 
 A message the sidecar delivers is unwrapped by the `session.receive` hook, which then tells the sidecar with
 `POST /api/sessions/<key>/landed` and `{ text }`. That call never holds the delivery up, and with the sidecar down
