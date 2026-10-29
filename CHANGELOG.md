@@ -7,6 +7,21 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.46.0
+
+### Added
+
+- **A pasted image draws in the chat.** The `[Image #2]` marker in your message is a chip that opens the file in Files,
+  and the `[Image: source: …]` message Claude Code writes beside it is the picture card the prose already draws
+  for an image path. When the file is gone, `files/raw` and `files/stat` serve the base64 block sent with it, for
+  a path the conversation's own messages named and no other.
+- **An image attached in the prompt or the door shows as a thumbnail chip,** with a hover preview and a ×. In the door
+  the × takes the `@name` out of the text. The message still carries its `Attached:` line.
+
+### Changed
+
+- **The prompt's chips are one component,** `ComposerPiece`, shared with the door.
+
 ## 0.45.0
 
 ### Added

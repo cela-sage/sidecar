@@ -271,9 +271,18 @@ path that is not on disk draws nothing, which `GET /api/sessions/:key/files/stat
 way. A web link previews on hover with the page's image, title and host from `/api/web/preview`, which answers
 204 when it finds nothing, and a local one offers Open in Artifacts.
 
+An image you paste into Claude Code's own prompt draws in the chat where you sent it. Claude Code writes it as two
+user messages, your words with an `[Image #2]` marker and a second one that holds only
+`[Image: source: <path>]`, so the first shows the marker as a chip that opens the file in Files and the second
+draws the same picture card the prose uses for an image path, under your message. The path is the picture: when
+the file is gone, `files/raw` and `files/stat` answer from the base64 block
+sent beside it, and they answer only for a path your messages handed over, never for one the page names. A marker
+with no source line to match, such as one queued mid-turn, stays a chip that opens nothing.
+
 The prompt attaches files, from the paperclip, a paste or a drop, and blocks of text that another part of the
 sidecar hands it through `$prompt().attach({ label, text })`, each a removable chip that goes into the message
-under its label. Enter sends, a message sent mid-turn queues behind it, and with the field empty Stop, or esc,
+under its label. An image shows as a thumbnail in its chip, and hovering the chip previews the picture, while the
+message still carries `Attached: <path>` for the model. Enter sends, a message sent mid-turn queues behind it, and with the field empty Stop, or esc,
 ends the running turn through `POST /api/sessions/:key/stop`. Stop shows as soon as the turn bus has the turn
 open, before its first block lands. The model picker shows the session's model, read from its newest turn, and
 lists Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 with Older models by family, and a pick runs `/model` in the
@@ -536,7 +545,9 @@ A file pasted or dropped into the field, of any type, uploads to `POST /api/uplo
 it under `~/.claude/sidecar/uploads/door/` with its own name made safe and a `-2` when that name is taken, keeps the
 20 MB cap, and returns its absolute path. The field shows it as `@name` drawn as its own mark, a paperclip in the
 info tint, which the conversation picker never reads as a pick, and the message carries one `Attached: /path` line
-per file still named in it, never the file's content, so the assistant reads it with its own tools.
+per file still named in it, never the file's content, so the assistant reads it with its own tools. An image shows
+above the field as a thumbnail chip with its name and a ×, which takes its `@name` out of the text, and hovering it
+previews the picture.
 
 A comment asks a blank Claude on the side: Ask (⌘↵) in the comment popover opens a side question card where
 you picked, under the lines in Review and Files or in an artifact's margin, and posts to
