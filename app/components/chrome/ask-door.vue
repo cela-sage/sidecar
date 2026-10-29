@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ArrowRight, ArrowUp, ChevronDown, Terminal, Trash2, X } from "@lucide/vue";
+import { ArrowRight, ArrowUp, ChevronDown, Plus, Terminal, Trash2, X } from "@lucide/vue";
 import { useResizeObserver } from "@vueuse/core";
 import { Titles } from "~~/shared/utils/titles";
 import type { MascotState } from "~/components/claude/mascot.vue";
@@ -21,7 +21,7 @@ const body = useTemplateRef<HTMLElement>("body");
 const restLayer = useTemplateRef<HTMLElement>("rest");
 const panelLayer = useTemplateRef<HTMLElement>("panel");
 const isPicking = ref(false);
-const keepsContext = ref(true);
+const keepsContext = ref(false);
 const hasPanel = ref(door.isOpen);
 const isInstant = ref(false);
 const box = ref<{ width: number; height: number }>();
@@ -90,11 +90,11 @@ const sub = computed<{ text: string; tone: Tone }>(() => {
 
 const greeting = computed(() => {
   if (door.mode === "new") return "What should the new assistant work on?";
-  if (sending.value?.kind === "task") return `Ask about ${sending.value.title}, or tell the assistant what to do.`;
+  if (context.value?.kind === "task") return `Ask about ${context.value.title}, or tell the assistant what to do.`;
   return "What should the assistant do?";
 });
 
-const chips = computed(() => CHIPS[sending.value?.kind === "task" ? "task" : "conversation"]);
+const chips = computed(() => CHIPS[context.value?.kind === "task" ? "task" : "conversation"]);
 
 const placeholder = computed(() =>
   door.thread.length
@@ -169,8 +169,11 @@ const pick = (next: DoorTarget): void => {
   focus();
 };
 
+// Every chip is written about what is in front, so taking one takes the context with it.
 const fill = (chip = chips.value[0]): void => {
-  if (chip) door.draft = chip;
+  if (!chip) return focus();
+  door.draft = chip;
+  if (context.value) keepsContext.value = true;
   focus();
 };
 
@@ -195,7 +198,7 @@ watch(
 useResizeObserver(restLayer, measure);
 useResizeObserver(panelLayer, measure);
 
-watch(contextKey, () => (keepsContext.value = true));
+watch(contextKey, () => (keepsContext.value = false));
 watch(
   () => [door.thread.length, door.thread.at(-1)?.step, door.thread.at(-1)?.answer, door.isOpen],
   () => void nextTick(() => body.value?.scrollTo({ top: body.value.scrollHeight })),
@@ -237,7 +240,7 @@ onMounted(() => {
           <button
             class="pick plain-button focusable"
             data-region="door-pick"
-            data-tip="Pick who to ask, or start a new assistant"
+            data-tip="Pick an assistant, or start a new one"
             type="button"
             aria-haspopup="menu"
             :aria-expanded="isPicking"
@@ -344,6 +347,19 @@ onMounted(() => {
               <UiIcon :icon="X" size="xs" />
             </button>
           </span>
+          <button
+            v-else-if="context"
+            class="context plain-button focusable"
+            data-region="door-context"
+            data-suggested="true"
+            data-tip="Suggested from the screen you are on. Add it to send it with your message"
+            type="button"
+            @click="keepsContext = true"
+          >
+            <UiIcon class="add" :icon="Plus" size="xs" />
+            <span class="about mono-meta">about</span>
+            <span class="context-name">{{ context.title }}</span>
+          </button>
           <div class="compose">
             <DoorField
               ref="field"
@@ -598,6 +614,20 @@ onMounted(() => {
 
 .context {
   @apply inline-flex h-6 max-w-full items-center gap-1.5 self-start rounded-full border border-border bg-sunken pr-1.5 pl-2.25 typo-caption font-semibold;
+}
+
+.context[data-suggested="true"] {
+  @apply border-dashed border-border-strong bg-transparent pr-2.25 pl-1.75 text-muted transition-colors duration-(--duration-fast) ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .context[data-suggested="true"]:hover {
+    @apply bg-sunken text-fg;
+  }
+}
+
+.add {
+  @apply flex-none;
 }
 
 .about {
