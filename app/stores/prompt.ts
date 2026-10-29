@@ -49,7 +49,7 @@ const compose = ({ text, files, blocks }: Draft): string =>
   [
     text.trim(),
     ...blocks.map((one) => `${one.label}:\n\n\`\`\`\n${one.text}\n\`\`\``),
-    ...(files.length ? [files.map((one) => `Attached: ${one.path}`).join("\n")] : []),
+    ...(files.length ? [files.map((one) => AttachedFiles.line(one.path)).join("\n")] : []),
   ]
     .filter(Boolean)
     .join("\n\n");

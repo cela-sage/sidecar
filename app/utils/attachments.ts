@@ -1,4 +1,5 @@
 import type { AttachedFile } from "~~/shared/types/files";
+import { AttachedFiles } from "../../shared/utils/attached-files.ts";
 import type { Typed } from "./mentions.ts";
 
 export interface Attachment extends AttachedFile {
@@ -32,7 +33,7 @@ const insert = ({ text, caret }: Typed, name: string): Typed => {
 
 const message = (text: string, files: AttachedFile[]): string => {
   const named = new Set(of(text, files).map((one) => one.name));
-  const lines = files.filter((one) => named.has(one.name)).map((one) => `Attached: ${one.path}`);
+  const lines = files.filter((one) => named.has(one.name)).map((one) => AttachedFiles.line(one.path));
   return lines.length ? `${text}\n\n${lines.join("\n")}` : text;
 };
 
