@@ -136,7 +136,11 @@ watch(
 }
 
 .prose :deep(blockquote) {
-  @apply mx-0 mt-0 mb-2 border-l-2 border-l-border-strong py-0.5 pr-0 pl-2.5 text-muted;
+  @apply mx-0 mt-0 mb-2 rounded-r-selector border-l-3 border-l-border-strong bg-sunken px-3 py-1.5 typo-caption leading-normal text-muted;
+}
+
+.prose :deep(blockquote > :last-child) {
+  @apply mb-0;
 }
 
 .prose :deep(hr) {
