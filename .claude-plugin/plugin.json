@@ -1,6 +1,6 @@
 {
   "name": "sidecar",
-  "version": "0.61.0",
+  "version": "0.62.0",
   "description": "A local app beside the conversation where you read what Claude makes, comment on any block of it and send the notes back. /sidecar opens it on this conversation, typing in a session moves it there, and every file Claude changes is kept for its Review to approve, reject, undo and redo",
   "author": {
     "name": "Marco Dong"

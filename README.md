@@ -288,15 +288,16 @@ turn marked `joined` that leaves the running turn open, so it stays in the chat 
 it only when the turn next reads its inbox, so the mod also tells the sidecar the moment it takes the message
 (`POST /api/sessions/:key/landed`, published as `message.landed`) and the chat draws it from then on, with its
 picture cards and chips, instead of captioning it queued, and the transcript's row keeps that place. A queued copy
-never hides the row that delivers it. A pending AskUserQuestion draws in the stream
-where its tool row sits, as the door draws it, with its header, options and picks, and a click answers it through
-the same `POST /api/questions/:ref/answer`. The card pairs with its row by the call's tool id and the row folds as
-any other call once the question settles. Each run of tool calls is one list of folded rows, a call paired to its result by
-the provider's id: Read folds consecutive reads into one row whose files open in Files at the lines read, Edited
-and Wrote carry the change's `+` and `−` counts, unfold to the diff with each side's line numbers and open the
-file in Review, Ran shows the command with its description beside it and unfolds to the output, and a failed
-call says so in red. The server clips what it carries, a run's output to its head and tail and a diff to 240
-lines, and leaves a read's file and an edit's receipt out.
+never hides the row that delivers it. The chat shows only words: your messages, your commands with what they
+printed, the Compacted note with its summary and Claude's answer. The answer is the last text of a turn and the chat
+holds it back until the turn ends, on its `end` turn or when the registry stops calling the session busy, then draws
+it whole. Thinking, narration, tool calls and their results, and notes such as a task notification, a hook receipt or
+the interruption mark never draw, and a running turn is only the mascot and Working. A pending AskUserQuestion or
+permission prompt draws under the newest row while it waits on you, as the door draws it, with its header, options and
+picks, and a click answers it through the same `POST /api/questions/:ref/answer`; once it settles it leaves the chat.
+Every run stays in History, where a turn opens with its tools, and every edit in Review. The server still carries
+them on the stream, clipping a run's output to its head and tail and a diff to 240 lines, and leaving a read's file
+and an edit's receipt out.
 
 Claude's prose renders as everywhere else, with more in the chat. A fence named as `ts [src/menu.ts:3-9]`, or
 with the path bare after the language, gets a caption that opens Files at those lines with them selected, and
@@ -728,8 +729,7 @@ a URL, under a `permission-<uuid>` ref, with Allow once, Allow always and No. Al
 suggests rules, and says where they land, as `Allows Bash(git push:*) in your local settings`. A pick comes back as
 the hook's `decision`: Allow once allows the call, Allow always allows it with the suggested rules as
 `updatedPermissions`, and No, or any answer it does not know, denies it. The chat draws the question under the newest
-row when no tool row claims it, since the engine gives the hook no tool call id, and the door draws it for the
-assistant. The engine leaves the hook running when the terminal's dialog is answered Yes, so the hook ends its wait
+row, and the door draws it for the assistant. The engine leaves the hook running when the terminal's dialog is answered Yes, so the hook ends its wait
 when the tool's `PostToolUse` or `PostToolUseFailure` arrives with the same tool and input, or at the turn's `Stop`,
 and a No or Esc in the terminal aborts it. AskUserQuestion and ExitPlanMode keep their own flows, because the engine
 ignores an allow for a tool that needs the person.

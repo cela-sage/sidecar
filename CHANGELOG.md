@@ -7,6 +7,16 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.62.0
+
+### Changed
+
+- **The chat shows only words.** Your messages, your commands with what they printed, the Compacted note and
+  Claude's answer stay. Thinking, narration, tool calls and results, and notes such as a task notification or a hook
+  receipt are gone from it, so a reply is one row and lands whole when the turn ends, while a running turn shows the
+  mascot and Working. A question or permission prompt still draws while it waits on you and leaves once it settles,
+  and every run stays in History and every edit in Review. An answered question no longer leaves a row behind.
+
 ## 0.61.0
 
 ### Added
