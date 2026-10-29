@@ -27,11 +27,13 @@ const FAILED: Record<Exclude<ReviewActionReply, { delivered: true }>["reason"], 
   "refused-by-inbox": "The conversation refused the message. Try again in a moment.",
 };
 
+export const useReviewPick = (): Ref<string | undefined> => useState<string | undefined>("rv:selected");
+
 export function useReview(): ReviewFace {
   const sc = useSidecar();
   const chrome = useChrome();
   const snapshot = useState<ReviewSnapshot | undefined>("rv:snapshot");
-  const selected = useState<string | undefined>("rv:selected");
+  const selected = useReviewPick();
   const isCompact = useState("rv:compact", () => true);
   const isWrapped = useState("rv:wrapped", () => true);
   const isDirty = useState("rv:dirty", () => false);
