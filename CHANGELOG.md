@@ -7,6 +7,14 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.55.1
+
+### Fixed
+
+- **A permission prompt keeps its chat card while the sidecar is down for more than ten seconds,** where it used to
+  lose it for good. The mod rested between retries on a clock wait, and the engine ends a hook after ten seconds of
+  those, so a restart took the prompt's wait with it. A conversation started before this release keeps the old mod.
+
 ## 0.55.0
 
 ### Fixed
