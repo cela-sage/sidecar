@@ -7,6 +7,26 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.52.0
+
+### Added
+
+- **The chat draws a pending AskUserQuestion with its header, options and picks,** where its tool row sat with a
+  spinner, and a click answers it through the door's `POST /api/questions/:ref/answer`. A pick in the chat closes the
+  terminal's dialog, and a late one says it didn't reach the question.
+- **A message the session takes mid-turn reads as landed.** The mod's `session.receive` tells the sidecar with
+  `POST /api/sessions/:key/landed`, published as the new `message.landed` topic, and the chat draws the message in the
+  stream with its picture cards and chips instead of captioning it "queued behind the turn in flight". It covers a
+  relay from another session too.
+
+### Changed
+
+- **The door and the chat share one `$questions` store and one `QuestionAsk` component.** The door no longer keeps
+  the question on its exchange, and a conversation started before this version has to restart before its mod tells
+  the sidecar a message landed.
+- **The chat hides its Working line while a question waits on you.**
+- **`app/components/door/question.vue` moved to `question/options.vue`,** as `QuestionOptions`.
+
 ## 0.51.0
 
 ### Added

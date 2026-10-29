@@ -261,7 +261,13 @@ Conversation is the session as a chat, read from `/api/sessions/:key/conversatio
 two inputs: the prompt at its foot and your terminal. A message typed in the prompt goes through
 `/api/sessions/:key/message`, the inbox the door uses, shows at once and gives way to its own copy when the
 transcript holds it, and one typed in the terminal says so under it with the time, told apart by the origin
-Claude Code stores on the row. Each run of tool calls is one list of folded rows, a call paired to its result by
+Claude Code stores on the row. A message that joins a turn already running gets no row of its own, only a
+`queued_command` attachment the turns skip, so the mod tells the sidecar the moment it takes the message
+(`POST /api/sessions/:key/landed`, published as `message.landed`) and the chat draws it in the stream from then on,
+with its picture cards and chips, instead of captioning it queued. A pending AskUserQuestion draws in the stream
+where its tool row sits, as the door draws it, with its header, options and picks, and a click answers it through
+the same `POST /api/questions/:ref/answer`. The card pairs with its row by the call's tool id and the row folds as
+any other call once the question settles. Each run of tool calls is one list of folded rows, a call paired to its result by
 the provider's id: Read folds consecutive reads into one row whose files open in Files at the lines read, Edited
 and Wrote carry the change's `+` and `−` counts, unfold to the diff with each side's line numbers and open the
 file in Review, Ran shows the command with its description beside it and unfolds to the output, and a failed
@@ -537,7 +543,8 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `dock.changed`     | `tabs`                  | the server, when a dock tab opens, ends or its running program changes          | The dock's tabs and the shells still running, and each run's status and failing lines |
 | `runs.changed`     | `project`               | `sidecar run <project> add` and `remove`                                        | The run widget's menu reads the project again |
 | `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
-| `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion and again, without `questions`, when it settles | The door draws the question and its options |
+| `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion and again, without `questions`, when it settles | The door and the chat draw the question and its options |
+| `message.landed`   | `key`, `text`           | the server, when the mod tells it that a session took a sidecar message         | The chat shows the message as landed        |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
 else runs `sidecar publish artifact.created '{"slug":"…","path":"…"}'`. A component consumes with
@@ -553,8 +560,9 @@ bus in `server/plugins/turns.ts` parses each growth into the chat's turns once a
 same turns instead of each parsing the transcript, and a `turn_duration` entry arrives as an `end` turn that
 settles the reply. The same plugin runs every growth through `BusyRules` in `shared/utils/busy.ts`, the rules
 the door's mascot also follows: a prompt opens the turn, and an `end` turn, an interruption or 2.5 seconds of
-quiet after a narration closes it. A tool call reaches the transcript only once it has finished, so an open
-AskUserQuestion is never in it: the mod tells the server instead, and that marks the conversation asking. Each flip is
+quiet after a narration closes it. An open AskUserQuestion is in the transcript as a call with no result, which
+reads like any tool still running, so the mod tells the server it waits on you, and that marks the conversation
+asking. Each flip is
 published as `conversation.changed`, and `GET /api/sessions/busy` returns the conversations with a turn open,
 which the app reads each time its event stream opens, since a restarted server knows none until they grow.
 
@@ -578,8 +586,9 @@ the earlier message loses its line and the one answer lands under the last. Besi
 back in amber, with an AskUserQuestion drawn whole: its header, the question, each option with its description,
 and whether it takes one pick or several. Clicking an option answers it, a multi-select collects its picks and
 sends them on Send, and several questions go back together once each has a pick, posted to
-`POST /api/questions/:ref/answer` with the call's tool id and the answers keyed by question text. The door
-learns the question from `question.changed`, since the transcript only holds the call once it is answered. The mod hands
+`POST /api/questions/:ref/answer` with the call's tool id and the answers keyed by question text. The door and the
+chat learn the question from `question.changed` into one `$questions` store and draw it with the same
+`QuestionAsk`, so a pick in either closes the other. The mod hands
 them to the waiting call, so the terminal's dialog closes and the model reads the same result a pick in the
 terminal gives. The terminal stays a place to answer, with an Attach beside the options, and whichever answers
 first wins. A message typed in the field still waits in the queue behind the open question, and an answer
@@ -630,6 +639,10 @@ the door posts within those seconds, or in the two after one ends, comes back to
 the tool's result and so closes the dialog. However the call settles, a pick in either place or Esc
 interrupting the turn, the hook closes the question with `DELETE /api/questions/<tool id>`, which also ends its
 poll. With the sidecar down it tries again every five seconds, and the dialog answers as it always did.
+
+A message the sidecar delivers is unwrapped by the `session.receive` hook, which then tells the sidecar with
+`POST /api/sessions/<key>/landed` and `{ text }`. That call never holds the delivery up, and with the sidecar down
+the chat falls back to the transcript.
 
 It also keeps the review the sidecar's Review face shows. Before Claude's first edit to a file, through
 Edit, Write, NotebookEdit or a shell command, it stores what the file held, and each turn it records which
