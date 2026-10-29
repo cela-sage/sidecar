@@ -7,6 +7,14 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.46.1
+
+### Added
+
+- **An image you attached shows in the chat as the picture card,** not as its `Attached: <path>` line. The lines that
+  end a message leave its bubble for the card under it, and a file that is not an image keeps its line. `files/raw`
+  and `files/stat` answer for such a path only when it sits in the sidecar's `uploads/` folder.
+
 ## 0.46.0
 
 ### Added

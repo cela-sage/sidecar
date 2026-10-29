@@ -277,7 +277,10 @@ user messages, your words with an `[Image #2]` marker and a second one that hold
 draws the same picture card the prose uses for an image path, under your message. The path is the picture: when
 the file is gone, `files/raw` and `files/stat` answer from the base64 block
 sent beside it, and they answer only for a path your messages handed over, never for one the page names. A marker
-with no source line to match, such as one queued mid-turn, stays a chip that opens nothing.
+with no source line to match, such as one queued mid-turn, stays a chip that opens nothing. An image you attached
+through the sidecar's prompt or the door draws the same way: the `Attached: <path>` lines ending the message leave
+its bubble for the picture card, a file that is not an image keeps its line, and a path counts only when it sits in
+`~/.claude/sidecar/uploads/`, where the prompt saved it.
 
 The prompt attaches files, from the paperclip, a paste or a drop, and blocks of text that another part of the
 sidecar hands it through `$prompt().attach({ label, text })`, each a removable chip that goes into the message
