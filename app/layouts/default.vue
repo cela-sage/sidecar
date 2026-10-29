@@ -79,6 +79,7 @@ useResizeObserver(boardEl, ([entry]) => {
       >
         <OrgHeader />
         <OrgTree />
+        <UsagePlan />
       </UiSurface>
 
       <PaneResizer v-model="tree" :initial="TREE_W" label="Resize the tree" :max="480" />

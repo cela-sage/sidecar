@@ -123,6 +123,7 @@ watch(
         />
         <input ref="picker" class="picker" multiple type="file" @change="onPicked" />
         <ConversationModel :current="model" :has-history="hasHistory" />
+        <ConversationContext :is-busy="isBusy" />
         <ConversationMode :current="mode" />
         <span class="spacer" />
         <button
