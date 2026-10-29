@@ -183,7 +183,7 @@ watch(
 }
 
 .ran {
-  @apply flex flex-col gap-1 font-mono typo-mono-meta;
+  @apply flex flex-col gap-1 typo-mono-meta font-mono;
 }
 
 .ran[data-pending="true"] {

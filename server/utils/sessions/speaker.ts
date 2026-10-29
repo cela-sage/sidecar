@@ -51,7 +51,9 @@ function ranOf(body: string): Piece[] | undefined {
   if (!typed && !printed) return undefined;
   const text = stripVTControlCharacters(printed?.[1] ?? "").trim();
   return [
-    ...(typed ? [{ kind: "command" as const, line: SlashCommand.line({ name: typed.name, args: typed.args.trim() }) }] : []),
+    ...(typed
+      ? [{ kind: "command" as const, line: SlashCommand.line({ name: typed.name, args: typed.args.trim() }) }]
+      : []),
     ...(text ? [{ kind: "printed" as const, text }] : []),
   ];
 }

@@ -8,16 +8,7 @@ import { readRange, transcriptIndex, type TranscriptGrowth } from "./transcripts
 
 // Narration and answer share the provider's `text` block, told apart only by position.
 export type TurnKind =
-  | "thinking"
-  | "narration"
-  | "answer"
-  | "acting"
-  | "note"
-  | "command"
-  | "printed"
-  | "drop"
-  | "done"
-  | "end";
+  "thinking" | "narration" | "answer" | "acting" | "note" | "command" | "printed" | "drop" | "done" | "end";
 
 export type ConversationTurn = {
   role: "user" | "assistant" | "system";

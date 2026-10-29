@@ -39,7 +39,7 @@ const emit = defineEmits<{ pick: [row: SessionCommand]; point: [at: number] }>()
 }
 
 .name {
-  @apply flex-none font-mono typo-mono-meta font-semibold text-fg;
+  @apply flex-none typo-mono-meta font-mono font-semibold text-fg;
 }
 
 .about {
