@@ -78,7 +78,7 @@ watch(
     <div class="box" @dragover.prevent @drop="onDrop">
       <ConversationCommands
         v-if="rows.length"
-        class="picker"
+        class="menu"
         :cursor="cursor"
         :rows="rows"
         @pick="complete"
@@ -167,7 +167,7 @@ watch(
   @apply relative flex flex-col gap-1.5 rounded-2xl border border-border-strong bg-raised pt-2.5 pr-2.5 pb-2 pl-3.5 shadow-sm transition-colors duration-(--duration-fast) ease-out;
 }
 
-.picker {
+.menu {
   @apply absolute right-0 bottom-full left-0 z-3 mb-2;
 }
 
