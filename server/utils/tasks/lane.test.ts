@@ -124,6 +124,25 @@ test("a decide typed at a Task Lead's prompt is Marco's, in the history and on t
   assert.equal(entry.from, lead.from);
 });
 
+test("a lead's done files the task finished, Marco's mark makes it Done as his decision, and a lead never undoes it", () => {
+  const path = task("check", "running");
+  TaskLane.state({ given: "check", caller: lead, state: "done" });
+  assert.equal(stateOf(path), "finished");
+  TaskLane.state({ given: "check", caller: { who: "YOU" }, state: "done" });
+  assert.equal(stateOf(path), "done");
+  TaskLane.state({ given: "check", caller: lead, state: "done" });
+  assert.equal(stateOf(path), "done");
+  assert.deepEqual(
+    TaskHistory.read("check")
+      .map((entry) => HistoryLines.of(entry))
+      .map(({ text, chips, isDecision }) => [text, chips, isDecision]),
+    [
+      ["Finished it, and it waits on your mark.", ["running to finished"], false],
+      ["You marked it done.", ["decision", "finished to done"], true],
+    ],
+  );
+});
+
 test("a new task is an unassigned .md with the four parts, and Undo after a drop puts it back in the inbox", () => {
   const made = TaskLane.create("Hook that blocks committing settings.local.json");
   assert.equal(made.slug, "hook-that-blocks-committing-settings");

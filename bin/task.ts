@@ -25,7 +25,8 @@ export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slu
                              conversation that asked hears it; judge --settle alone settles the standing verdict
   decide <n|"words"> [--thread <n>]
                              settle it, and the conversation that asked hears the decision
-  done                       mark it done
+  done                       a Task Lead's work is finished and waits on Marco's mark; only Marco's own
+                             terminal, the status control or the tree row's menu puts it in Done
 Every verb lands in the task's history, which Task Lead turns join on their own.`;
 
 interface Run {
@@ -208,7 +209,9 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
   },
   done: async ({ slug }) => {
     const file = TaskLane.state({ given: slug, caller: caller(), state: "done" });
-    console.log(`${file.slug} is done`);
+    console.log(
+      file.task.state === "done" ? `${file.slug} is done` : `${file.slug} is finished, and waits on Marco's mark`,
+    );
     return 0;
   },
 };

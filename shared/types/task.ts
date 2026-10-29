@@ -1,4 +1,13 @@
-export const TaskState = ["unassigned", "assigned", "assessed", "running", "blocked", "waiting", "done"] as const;
+export const TaskState = [
+  "unassigned",
+  "assigned",
+  "assessed",
+  "running",
+  "blocked",
+  "waiting",
+  "finished",
+  "done",
+] as const;
 export type TaskState = (typeof TaskState)[number];
 
 export const Role = ["EA", "PL", "DL", "TL"] as const;

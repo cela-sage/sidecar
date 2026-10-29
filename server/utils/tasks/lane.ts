@@ -102,15 +102,22 @@ const move = (file: TaskFile, now: TaskState): { file: TaskFile; move?: Move } =
   return { file: TaskFiles.restamp(file, { ...file.task, state: now }), move: { was, now } };
 };
 
-const state = ({ given, caller, state: now, reason, on }: StateInput): TaskFile => {
+// Done is Marco's mark, so a lead's done files the task finished for him to check and never undoes a mark he gave.
+const reached = (was: TaskState, asked: TaskState, caller: Caller): TaskState => {
+  if (asked !== "done" || caller.who === "YOU") return asked;
+  return was === "done" ? was : "finished";
+};
+
+const state = ({ given, caller, state: asked, reason, on }: StateInput): TaskFile => {
   const file = TaskFiles.open(given);
-  if (now === "waiting" && !reason) throw new Refusal("waiting needs --reason, what the task waits for", 2);
-  if (!file.task.project && now !== "unassigned")
+  if (asked === "waiting" && !reason) throw new Refusal("waiting needs --reason, what the task waits for", 2);
+  if (!file.task.project && asked !== "unassigned")
     throw new Refusal(
-      `${file.slug} is on no project, so it cannot be ${now}. Give it one: sidecar task ${file.slug} assign <project>`,
+      `${file.slug} is on no project, so it cannot be ${asked}. Give it one: sidecar task ${file.slug} assign <project>`,
       2,
     );
   const was = file.task.state;
+  const now = reached(was, asked, caller);
   if (was === now && !reason) return file;
   const task = { ...file.task, state: now, ...(now === "unassigned" ? { project: undefined } : {}) };
   const next = TaskFiles.restamp(file, task);

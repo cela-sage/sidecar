@@ -22,6 +22,10 @@ test("the strip passes what is behind, marks where it is, and dashes what is ahe
       .join(" ");
   assert.equal(strip("running"), "Backlog:past Assigned:past Assessed:past In progress:running Done:future");
   assert.equal(strip("blocked"), "Backlog:past Assigned:past Assessed:past In progress:past Blocked:needs Done:future");
+  assert.equal(
+    strip("finished"),
+    "Backlog:past Assigned:past Assessed:past In progress:past Finished:needs Done:future",
+  );
   assert.equal(strip("unassigned"), "Backlog:waiting Assigned:future Assessed:future In progress:future Done:future");
   assert.equal(strip("done"), "Backlog:past Assigned:past Assessed:past In progress:past Done:done");
   assert.deepEqual(
@@ -134,6 +138,45 @@ test("a running task whose Task Leads are idle does not spin, and one spins only
   assert.equal(markOf(Org.treeOf(input)), "completed");
   assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: false } } })), "working");
   assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: true } } })), "needs");
+});
+
+test("a finished task heads the list with the needs-you mark, and a lead with a turn open shows its task In progress", () => {
+  const meta = (slug: string, state: TaskMeta["task"]["state"]): TaskMeta => ({
+    slug,
+    title: slug,
+    kind: "page",
+    format: "md",
+    path: `/tmp/${slug}.md`,
+    task: { state, project: "cela" },
+  });
+  const input = {
+    projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
+    sessions: [
+      session({ key: "board", name: "[Cela] TL board build" }),
+      session({ key: "old", name: "[Cela] TL old build" }),
+    ],
+    tasks: [meta("calm", "running"), meta("old", "done"), meta("board", "finished")],
+  };
+  const shown = (busy: Record<string, { doing: boolean; asking: boolean }>): string[][] => {
+    const [cela] = Org.treeOf({ ...input, busy }).projects;
+    return [
+      cela?.tasks.map((one) => `${one.meta.slug}:${one.status}:${one.mark}`) ?? [],
+      cela?.done.map((one) => one.meta.slug) ?? [],
+    ];
+  };
+  assert.deepEqual(shown({}), [["board:finished:needs", "calm:running:completed"], ["old"]]);
+
+  const working = { doing: true, asking: false };
+  assert.deepEqual(shown({ board: working, old: working }), [
+    ["board:running:working", "calm:running:completed", "old:running:working"],
+    [],
+  ]);
+  assert.equal(Org.statusOf(Org.treeOf({ ...input, busy: { old: working } }), "old"), "running");
+  assert.equal(Org.treeOf(input).projects[0]?.mark, "needs");
+
+  const at = "2026-10-29T09:00:00Z";
+  const marked: HistoryEntry = { at, who: "YOU", kind: "state", move: { was: "finished", now: "done" } };
+  assert.deepEqual(Timeline.story([marked], "done"), { done: { at, who: "YOU" } });
 });
 
 test("the org tree puts each role where it works, folds what is done and files your own conversations by their prefix", () => {

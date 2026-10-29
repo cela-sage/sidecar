@@ -27,6 +27,7 @@ const LOOK: Record<TaskState, TaskLook> = {
   running: "running",
   blocked: "needs",
   waiting: "waiting",
+  finished: "needs",
   done: "done",
 };
 
@@ -39,13 +40,23 @@ const TIP: Record<TaskState, string> = {
   running: "A Task Lead runs it",
   blocked: "The Task Lead is blocked on you",
   waiting: "It waits on a third party",
-  done: "Finished",
+  finished: "The Task Lead finished it, and it waits on your mark",
+  done: "Done is your mark, and it means you checked it",
 };
 
 // Each project keeps its colour from the design, in the order the default lanes come in.
 const TINTS = ["blue", "violet", "cyan", "green", "slate"];
 const PATH: TaskState[] = ["unassigned", "assigned", "assessed", "running"];
-const PRESSING: TaskState[] = ["blocked", "running", "waiting", "assessed", "assigned", "unassigned", "done"];
+const PRESSING: TaskState[] = [
+  "finished",
+  "blocked",
+  "running",
+  "waiting",
+  "assessed",
+  "assigned",
+  "unassigned",
+  "done",
+];
 const AGENT_ORDER: AgentState[] = ["needs input", "working", "completed"];
 
 const isTask = (meta: ArtifactMeta): meta is TaskMeta => !!meta.task;
@@ -80,6 +91,7 @@ const stepsOf = (state: TaskState, { resumed, settledBy, waiting }: TaskStory = 
       tip: "An escalation stopped it, and the decision is in the history",
     });
   if (state === "blocked") steps.push({ label: "Blocked", kind: LOOK[state], tip: TIP[state] });
+  if (state === "finished") steps.push({ label: "Finished", kind: LOOK[state], tip: TIP[state] });
   if (state === "waiting")
     steps.push({ label: waiting?.on ? `Waiting on ${waiting.on}` : "Waiting", kind: LOOK[state], tip: TIP[state] });
   steps.push({ label: "Done", kind: state === "done" ? "done" : "future", tip: TIP.done, state: "done" });

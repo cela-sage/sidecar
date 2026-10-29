@@ -20,7 +20,8 @@ export interface TaskStory {
   settledBy?: Who;
   waiting?: { on?: string; reason?: string; since: string };
   resumed?: { on?: string; at: string; waited: string };
-  done?: { at: string };
+  finished?: { at: string };
+  done?: { at: string; who: Who };
 }
 
 const FOLD_MS = 30 * 60_000;
@@ -100,7 +101,8 @@ const story = (entries: HistoryEntry[], state: TaskState): TaskStory => {
     const { at, reason } = last.entry;
     return { waiting: { ...(on ? { on } : {}), ...(reason ? { reason } : {}), since: at } };
   }
-  if (state === "done") return { done: { at: last.entry.at } };
+  if (state === "finished") return { finished: { at: last.entry.at } };
+  if (state === "done") return { done: { at: last.entry.at, who: last.entry.who } };
   if (state !== "running") return {};
   if (last.move.was === "waiting" && waited)
     return { resumed: { ...(on ? { on } : {}), at: last.entry.at, waited: span(waited.at, last.entry.at) } };

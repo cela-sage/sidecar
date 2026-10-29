@@ -29,21 +29,30 @@ const toldWhom = (to: string): string => {
   return role ? ROLE_NAME[role] : to;
 };
 
-const stated = ({ move, on, reason }: EntryOf["state"]): string => {
+const isMark = ({ move, who }: EntryOf["state"]): boolean => who === "YOU" && move.now === "done";
+
+const movedTo = (entry: EntryOf["state"]): string => {
+  const { move } = entry;
+  if (move.now === "running" && move.was === "waiting") return "Picked it back up.";
+  if (move.now === "finished") return "Finished it, and it waits on your mark.";
+  if (move.now === "done") return isMark(entry) ? "You marked it done." : "Marked it done.";
+  return `Moved it to ${move.now}.`;
+};
+
+const stated = (entry: EntryOf["state"]): string => {
+  const { move, on, reason } = entry;
   if (move.now === "waiting") return `Waiting${on ? ` on ${on}` : ""}${reason ? `: ${reason}` : "."}`;
-  const said =
-    move.now === "running" && move.was === "waiting"
-      ? "Picked it back up."
-      : move.now === "done"
-        ? "Marked it done."
-        : `Moved it to ${move.now}.`;
-  return reason ? `${said} ${reason}` : said;
+  return reason ? `${movedTo(entry)} ${reason}` : movedTo(entry);
 };
 
 const LINES: { [K in HistoryKind]: (entry: EntryOf[K]) => Line } = {
   turn: ({ text }) => ({ lead: "", text, chips: ["turn"] }),
   message: ({ text, to }) => ({ lead: `You told ${toldWhom(to)}: `, text, chips: ["message"] }),
-  state: (entry) => ({ lead: "", text: stated(entry), chips: moved(entry.move) }),
+  state: (entry) => ({
+    lead: "",
+    text: stated(entry),
+    chips: [...(isMark(entry) ? ["decision"] : []), ...moved(entry.move)],
+  }),
   assign: ({ move, project }) => ({ lead: "", text: `Put it on ${project}.`, chips: moved(move) }),
   content: ({ parts }) => ({
     lead: "",
@@ -78,7 +87,7 @@ const lineOf = <K extends HistoryKind>(kind: K, entry: EntryOf[K]): Line => LINE
 
 const of = (entry: HistoryEntry): HistoryLine => ({
   ...lineOf(entry.kind, entry),
-  isDecision: entry.kind === "decide" && entry.who === "YOU",
+  isDecision: (entry.kind === "decide" && entry.who === "YOU") || (entry.kind === "state" && isMark(entry)),
 });
 
 export const HistoryLines = { of };
