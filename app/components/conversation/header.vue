@@ -55,11 +55,12 @@ const copyId = async (): Promise<void> => {
   @apply flex h-14 flex-none items-center gap-2.25 pr-3 pl-4.5;
 }
 
-:global(.shell[data-shell="true"]:not([data-full="true"])) .bar {
+/* Never :global() here: Vue's scoped compiler keeps only what is inside it, which made the whole shell the drag region. */
+.shell[data-shell="true"]:not([data-full="true"]) .bar {
   app-region: drag;
 }
 
-:global(.shell[data-shell="true"]) .bar > :not(.spacer) {
+.shell[data-shell="true"] .bar > :not(.spacer) {
   app-region: no-drag;
 }
 

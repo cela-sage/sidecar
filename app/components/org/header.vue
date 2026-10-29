@@ -142,16 +142,17 @@ useShortcuts(
   @apply hidden h-3 w-14 flex-none;
 }
 
-:global(.shell[data-shell="true"]) .lights {
+/* Never :global() here: Vue's scoped compiler keeps only what is inside it, which made the whole shell the drag region. */
+.shell[data-shell="true"] .lights {
   @apply block;
 }
 
 /* On the desktop shell this row is the title bar: it drags the window, and a double click does what System Settings says. */
-:global(.shell[data-shell="true"]:not([data-full="true"])) .bar {
+.shell[data-shell="true"]:not([data-full="true"]) .bar {
   app-region: drag;
 }
 
-:global(.shell[data-shell="true"]) .bar > :not(.spacer, .lights) {
+.shell[data-shell="true"] .bar > :not(.spacer, .lights) {
   app-region: no-drag;
 }
 
