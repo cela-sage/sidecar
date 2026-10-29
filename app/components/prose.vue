@@ -5,6 +5,7 @@ import type { MarkdownDocument as Tree } from "comark";
 import { proseConversation } from "~/utils/prose-keys";
 import ProseCode from "./prose-code.vue";
 import ProseConversation from "./prose-conversation.vue";
+import ProseFile from "./prose-file.vue";
 import ProseLine from "./prose-line.vue";
 import ProseLink from "./prose-link.vue";
 import ProseMediaRef from "./prose-media-ref.vue";
@@ -21,6 +22,7 @@ const parse = createMarkdownParser({
 const COMPONENTS = {
   a: ProseLink,
   "conversation-ref": ProseConversation,
+  "file-ref": ProseFile,
   "line-ref": ProseLine,
   "media-ref": ProseMediaRef,
   "media-set": ProseMediaSet,
@@ -45,7 +47,7 @@ watch(
     const parsed = await parse(next);
     if (next !== value) return;
     const refs = ConversationRefs.withRefs(parsed.nodes, titles.value);
-    const nodes = conversation ? MediaRefs.withMedia(refs) : refs;
+    const nodes = conversation ? FileRefs.withRefs(MediaRefs.withMedia(refs)) : refs;
     tree.value = { ...parsed, nodes: lineRefsOf ? SideQuestion.withLineRefs(nodes, lineRefsOf) : nodes };
   },
   { immediate: true },

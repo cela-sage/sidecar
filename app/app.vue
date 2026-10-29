@@ -130,6 +130,7 @@ onMounted(() => {
   <!-- Viewport overlays, not islands: they answer to the window rather than to the
        content column, so the layout shell deliberately does not bound them. -->
   <OrgConversationMenu />
+  <FileMenu />
   <ChromeCommentMode />
   <ChromeVeil />
   <ChromeToaster />
