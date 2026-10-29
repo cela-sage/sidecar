@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.44.5
+
+### Fixed
+
+- **The desktop app takes clicks again.** Since 0.40.0 its whole window was a drag region, so nothing clicked and a
+  double-click anywhere zoomed it: the headers' drag rule wrapped the shell in `:global()`, which Vue's scoped
+  compiler keeps alone, dropping the header it was meant for. Only the two header rows drag now, and the traffic
+  lights get the room the tree's header reserves for them, which the same wrapper had been hiding.
+
 ## 0.44.4
 
 ### Fixed
