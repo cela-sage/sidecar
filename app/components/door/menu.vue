@@ -8,10 +8,14 @@ import type { Mark } from "~/utils/org";
 const emit = defineEmits<{ pick: [target: DoorTarget] }>();
 
 const door = $door();
+const busy = $busy();
 
+// The turn bus, as the tree reads it, since a polled "working" stays on after the turn ends.
 const markOf = (session: LiveSession): Mark => {
   if (!session.live) return "done";
-  return Tasks.agentStateOf(session) === "working" ? "working" : "completed";
+  const bus = busy.keys[session.key];
+  if (bus?.asking) return "waits";
+  return bus?.doing ? "working" : "completed";
 };
 
 const nameAfterRole = (title: string): string => {
