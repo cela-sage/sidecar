@@ -24,10 +24,14 @@ const toggle = async (): Promise<void> => {
 
 <template>
   <div class="summary" :data-open="isOpen">
-    <button class="toggle plain-button mono-meta focusable" type="button" :aria-expanded="isOpen" @click="toggle">
-      {{ label }}
-      <UiIcon class="chevron" :icon="ChevronRight" size="xs" />
-    </button>
+    <div class="divider" role="separator">
+      <span class="rule" />
+      <button class="toggle plain-button mono-meta focusable" type="button" :aria-expanded="isOpen" @click="toggle">
+        {{ label }}
+        <UiIcon class="chevron" :icon="ChevronRight" size="xs" />
+      </button>
+      <span class="rule" />
+    </div>
     <template v-if="isOpen">
       <Prose v-if="text" class="body" :conversation="conversation" :value="text" />
       <p v-else-if="isMissing" class="quiet mono-meta">The summary is no longer in the transcript</p>
@@ -41,8 +45,16 @@ const toggle = async (): Promise<void> => {
   @apply flex flex-col items-center gap-2;
 }
 
+.divider {
+  @apply flex w-full items-center gap-3;
+}
+
+.rule {
+  @apply h-px flex-1 bg-border;
+}
+
 .toggle {
-  @apply inline-flex items-center gap-1 border-0 bg-transparent p-0 text-subtle normal-case;
+  @apply inline-flex flex-none items-center gap-1 border-0 bg-transparent p-0 text-subtle normal-case;
 }
 
 .chevron {

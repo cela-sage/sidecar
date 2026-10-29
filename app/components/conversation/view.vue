@@ -128,7 +128,7 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
             v-else-if="block.kind === 'summary'"
             :at="block.turn.at"
             :conversation="key"
-            :label="block.turn.text"
+            :label="Usage.compacted(block.turn, clock)"
           />
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
           <QuestionAsk v-else-if="block.kind === 'asking'" :ask="block.ask" />

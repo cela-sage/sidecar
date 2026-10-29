@@ -52,6 +52,7 @@ const Turn = z.object({
   via: z.literal("terminal").optional().catch(undefined),
   model: z.string().min(1).optional().catch(undefined),
   mode: z.string().min(1).optional().catch(undefined),
+  sizes: z.object({ before: z.number(), after: z.number() }).optional().catch(undefined),
 });
 
 export type TurnKind = z.infer<typeof Kind>;
