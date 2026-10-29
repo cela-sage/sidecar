@@ -4,6 +4,7 @@ import type { FrameAnchor, FrameHit, FrameMark, ViewBox, ViewRect } from "~/type
 import type { FindTarget } from "~/stores/find";
 import type { ProxyPlace } from "~~/lib/web/host";
 import type { CommentOffer } from "~/composables/useChrome";
+import type { PopupOpen } from "~/utils/shell";
 import {
   type AgentMessage,
   CHANNEL,
@@ -53,20 +54,6 @@ const SANDBOX = [
   "allow-top-navigation-to-custom-protocols",
 ].join(" ");
 
-interface PopupOpen {
-  id: number;
-  opener: string;
-  origin: string;
-}
-interface SidecarShell {
-  closePopup(id: number): void;
-  onPopupClosed(cb: (id: number) => void): () => void;
-  onPopupOpen(cb: (open: PopupOpen) => void): () => void;
-  openInChrome(url: string): void;
-  partition: string;
-  placePopup(id: number, rect: ViewRect): void;
-  present: true;
-}
 interface WebviewTag extends HTMLElement {
   findInPage(text: string, options: { findNext: boolean; forward: boolean }): number;
   send(channel: string, ...args: unknown[]): void;
@@ -82,7 +69,7 @@ const find = $find();
 const artifact = $artifact();
 const shown = useFaceShown();
 const look = useTheme();
-const shellApi = (window as unknown as { sidecarShell?: SidecarShell }).sidecarShell;
+const shellApi = sidecarShell();
 // The desktop shell renders the artifact as a real top-level page in a webview; without it the proxy frame is the light option.
 const shell = !!shellApi;
 const IPC = "sidecar";
