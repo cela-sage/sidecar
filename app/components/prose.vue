@@ -159,4 +159,8 @@ watch(
 .prose :deep(img) {
   @apply max-w-full rounded-field;
 }
+
+.prose :deep(.media-set) {
+  @apply mt-2.5 mb-3;
+}
 </style>

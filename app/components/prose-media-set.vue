@@ -2,20 +2,21 @@
 import type { FileStat } from "~~/shared/types/files";
 import type { ChatMedia } from "~/components/conversation/media.vue";
 
-const { paths } = defineProps<{ paths: string }>();
+const { conversation: own, paths } = defineProps<{ conversation?: string; paths: string }>();
 
 const sc = useSidecar();
-const conversation = inject(proseConversation, undefined);
-const cwd = computed(() => sc.sessions.value.find((one) => one.key === conversation)?.cwd);
+const provided = inject(proseConversation, undefined);
+const conversation = computed(() => own ?? provided);
+const cwd = computed(() => sc.sessions.value.find((one) => one.key === conversation.value)?.cwd);
 const sizes = ref(new Map<string, number>());
 
 const named = computed(() =>
   paths.split("\n").flatMap((path) => {
     const kind = FileKind.of(path);
     const absolute = path.startsWith("/") ? path : cwd.value && `${cwd.value}/${path.replace(/^\.\//, "")}`;
-    if (!conversation || !absolute || path.startsWith("~")) return [];
+    if (!conversation.value || !absolute || path.startsWith("~")) return [];
     if (kind !== "image" && kind !== "video" && kind !== "audio") return [];
-    return [{ path, kind, absolute, src: Preview.srcOf({ conversation, path: absolute }) }];
+    return [{ path, kind, absolute, src: Preview.srcOf({ conversation: conversation.value, path: absolute }) }];
   }),
 );
 
@@ -31,8 +32,8 @@ const sounds = computed(() => items.value.filter((one) => one.kind === "audio"))
 watch(
   named,
   async (list) => {
-    if (!conversation) return;
-    const at = `/api/sessions/${encodeURIComponent(conversation)}/files/stat`;
+    if (!conversation.value) return;
+    const at = `/api/sessions/${encodeURIComponent(conversation.value)}/files/stat`;
     const stats = await Promise.all(
       list.map((one) => $fetch<FileStat>(at, { query: { path: one.absolute } }).catch(() => undefined)),
     );
@@ -53,7 +54,7 @@ watch(
 
 <style scoped>
 .media-set {
-  @apply mt-2.5 mb-3 flex flex-col gap-2.5;
+  @apply flex flex-col gap-2.5;
 }
 
 .pictures {
