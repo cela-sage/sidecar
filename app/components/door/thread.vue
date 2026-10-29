@@ -18,7 +18,11 @@ const lines = computed(() => DoorTurns.linesOf(door.thread));
         <DoorReceipt v-for="receipt in one.receipts" :key="`${receipt.slug}-${receipt.now}`" :receipt="receipt" />
       </div>
 
-      <p v-if="lines.get(one.id) === 'live'" class="busy" role="status">
+      <p v-if="one.isWaking" class="busy" role="status">
+        <OrgMark mark="working" />
+        <span class="busy-line shimmer">Waking {{ door.assistant?.name ?? "the assistant" }}</span>
+      </p>
+      <p v-else-if="lines.get(one.id) === 'live'" class="busy" role="status">
         <OrgMark mark="working" />
         <span class="busy-line shimmer">{{ step || "Reading your message" }}</span>
       </p>

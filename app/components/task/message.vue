@@ -8,7 +8,7 @@ const chrome = useChrome();
 const words = ref("");
 
 const FAILED: Record<Exclude<Delivery, { delivered: true }>["reason"], string> = {
-  "no-live-session": "isn't running, so the message stays here",
+  "no-live-session": "isn't running and didn't wake, so the message stays here",
   "refused-by-inbox": "refused the message. It stays here, try again in a moment",
 };
 

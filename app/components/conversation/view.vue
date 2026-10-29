@@ -130,6 +130,10 @@ watch(
           <span>Run /{{ refusal.name }} in your terminal</span>
           <UiButton size="xs" variant="outline" @click="terminal.attach(key)">Attach</UiButton>
         </p>
+        <p v-if="prompt.isWaking" class="busy" role="status">
+          <ClaudeMascot :size="20" state="thinking" />
+          <span class="busy-line shimmer">Waking {{ name }}</span>
+        </p>
         <p v-if="isBusy" class="busy" role="status">
           <ClaudeMascot :size="20" :state="live.mascot.value" />
           <span class="busy-line shimmer">{{ live.step.value || "Working" }}</span>

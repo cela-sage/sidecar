@@ -7,7 +7,7 @@ export interface DeliverOptions {
 }
 
 const FAILED: Record<Exclude<Delivery, { delivered: true }>["reason"], string> = {
-  "no-live-session": "This conversation isn't running, so the notes stay in the tray.",
+  "no-live-session": "This conversation isn't running and didn't wake, so the notes stay in the tray.",
   "refused-by-inbox": "The conversation refused the notes. They stay in the tray, try again in a moment.",
 };
 
@@ -17,10 +17,13 @@ export const $notes = defineStore(() => {
   const tray = useTray();
   const chrome = useChrome();
   const isSending = ref(false);
+  const isWaking = ref(false);
+  const sendingLabel = computed(() => (isWaking.value ? "Waking…" : "Sending…"));
 
   async function deliver({ text, key = sc.sessionKey.value, slug }: DeliverOptions): Promise<Delivery | undefined> {
     if (!key || !text || isSending.value) return undefined;
     isSending.value = true;
+    isWaking.value = isAsleep(sc.sessions.value, key);
     try {
       return await $fetch<Delivery>(`/api/sessions/${encodeURIComponent(key)}/message`, {
         body: { text, ...(slug ? { slug } : {}) },
@@ -31,6 +34,7 @@ export const $notes = defineStore(() => {
       return undefined;
     } finally {
       isSending.value = false;
+      isWaking.value = false;
     }
   }
 
@@ -44,5 +48,5 @@ export const $notes = defineStore(() => {
     chrome.toast("Sent to Claude", "success");
   }
 
-  return { deliver, isSending, send };
+  return { deliver, isSending, send, sendingLabel };
 });

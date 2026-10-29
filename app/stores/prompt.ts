@@ -49,7 +49,7 @@ interface Draft {
 }
 
 const FAILED: Record<Exclude<Delivery, { delivered: true }>["reason"], string> = {
-  "no-live-session": "This conversation isn't running, so it never got the message",
+  "no-live-session": "This conversation isn't running and didn't wake, so it never got the message",
   "refused-by-inbox": "The conversation refused the message, try again in a moment",
 };
 
@@ -77,6 +77,8 @@ export const $prompt = defineStore(() => {
   const refused = ref<Partial<Record<string, PromptRefusal>>>({});
   const focusAsked = ref(0);
   const isSending = ref(false);
+  const wakingKey = ref<string>();
+  const isWaking = computed(() => !!wakingKey.value && wakingKey.value === sc.sessionKey.value);
   const asking = new Map<string, Promise<SessionCommand[]>>();
 
   const draftOf = (key: string): Draft => (drafts.value[key] ??= { text: "", files: [], blocks: [] });
@@ -136,7 +138,9 @@ export const $prompt = defineStore(() => {
   };
 
   const deliver = async (key: string, path: "message" | "command", body: Record<string, string>): Promise<boolean> => {
+    wakingKey.value = isAsleep(sc.sessions.value, key) ? key : undefined;
     const reply = await post(key, path, body);
+    wakingKey.value = undefined;
     if (!reply.delivered) chrome.toast(FAILED[reply.reason], "destructive");
     return reply.delivered;
   };
@@ -221,6 +225,7 @@ export const $prompt = defineStore(() => {
     focusAsked,
     isEmpty,
     isSending,
+    isWaking,
     landed,
     mention,
     pick,

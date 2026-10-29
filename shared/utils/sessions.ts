@@ -7,3 +7,6 @@ export function sessionOrder(a: LiveSession, b: LiveSession): number {
   if (!!a.archived !== !!b.archived) return a.archived ? 1 : -1;
   return (b.lastActive || 0) - (a.lastActive || 0);
 }
+
+export const isAsleep = (sessions: LiveSession[], key: string): boolean =>
+  sessions.some((one) => one.key === key && !one.live);

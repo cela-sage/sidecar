@@ -36,6 +36,7 @@ export interface DoorExchange {
   picks?: Record<string, string>;
   isAnswering?: boolean;
   isMissed?: boolean;
+  isWaking?: boolean;
   failure?: string;
   receipts: DoorReceipt[];
 }
@@ -55,7 +56,7 @@ const FOLLOW_MS = 15 * 60_000;
 const OPEN_MS = 2000;
 
 const FAILED: Record<Exclude<Delivery, { delivered: true }>["reason"], string> = {
-  "no-live-session": "isn't running, so it never got the message",
+  "no-live-session": "isn't running and didn't wake, so it never got the message",
   "refused-by-inbox": "refused the message, try again in a moment",
 };
 
@@ -221,7 +222,9 @@ export const $door = defineStore(() => {
   const ask = async (sent: DoorSend, to: string): Promise<void> => {
     const made = exchange(sent.text, to);
     await follow(made.id, to);
+    update(made.id, { isWaking: isAsleep(sc.sessions.value, to) });
     const reply = await tell({ key: to, text: composed(sent), slug: slugOf(sent.context) });
+    update(made.id, { isWaking: false });
     if (reply.delivered) return;
     following.get(made.id)?.stop();
     const name = assistant.value?.name ?? "The assistant";

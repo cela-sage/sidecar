@@ -23,7 +23,7 @@ export interface ReviewFace {
 
 const FAILED: Record<Exclude<ReviewActionReply, { delivered: true }>["reason"], string> = {
   "bad-action": "That action was malformed, so nothing was sent.",
-  "no-live-session": "This conversation isn't running. Resume it to apply the review.",
+  "no-live-session": "This conversation isn't running and didn't wake, so the review wasn't applied.",
   "refused-by-inbox": "The conversation refused the message. Try again in a moment.",
 };
 

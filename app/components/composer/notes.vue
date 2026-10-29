@@ -38,7 +38,7 @@ onMounted(() => {
           @click="notes.send"
         >
           <UiIcon :icon="Send" size="sm" />
-          {{ notes.isSending ? "Sending…" : `Send ${plural(tray.count.value, "note")} to Claude` }}
+          {{ notes.isSending ? notes.sendingLabel : `Send ${plural(tray.count.value, "note")} to Claude` }}
         </button>
       </UiSurface>
     </div>
