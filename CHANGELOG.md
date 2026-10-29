@@ -7,6 +7,28 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.42.0
+
+### Added
+
+- **The terminal dock, one per project,** at the bottom of the conversation's main panel, opened by the header's
+  terminal toggle or ⌥F12. Its header switches between Terminal and Run, names the project in front and lists its
+  tabs, each a login shell in the project's folder named after what runs in it, with New terminal (⌘T in the
+  desktop app) and Hide. A tab belongs to the project in front, the shells you leave keep running and the dock
+  says where, and the server holds them, so a reload or a second window finds them with their last screens. The
+  terminal draws on the dark tokens in both themes. Run says nothing is running until run configurations land.
+- **Follow terminal heads the tree** as the canvas draws it, the mode named beside it, with Auto, Ask and Manual
+  switch in its menu and Your terminal moved under it, Switch or ↵ to go and Not now or esc to stay.
+- **`GET /api/dock`, `POST /api/dock/shell`, `POST /api/dock/session`** and the websocket at `/api/dock/<id>`,
+  which refuse every origin but the sidecar's own, and the `dock.changed` event with the tabs.
+
+### Changed
+
+- **Attach goes to the dock while it is open,** as a tab running `claude attach`, and a conversation in another
+  project takes the sidecar there. A session has one holder, so the follower gets a `release` event and goes back
+  to agent view when the dock takes its conversation, and an Attach to the follower detaches the dock's tab.
+- **The card asking to switch lives under Follow terminal** rather than in the bottom left.
+
 ## 0.41.0
 
 ### Changed

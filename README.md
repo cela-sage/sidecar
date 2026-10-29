@@ -35,7 +35,7 @@ sidecar open --artifact <slug|url>  # the same, showing that page or address in 
 sidecar comments <slug>  # a page's threads; --reply <n> "..." answers one, --resolve <n> "..." closes it
 sidecar task new "<title>"  # a new unassigned task, printing its slug
 sidecar task <slug> [verb]  # a task's lane: state, assign, escalate, hire, judge, decide, done; bare prints where it stands
-sidecar terminal    # run once in the terminal you use for Claude Code, so Attach in the sidecar opens a conversation there
+sidecar terminal    # run once in the terminal you use for Claude Code, so Attach opens a conversation there while the dock is hidden
 sidecar setup [desktop|web]  # choose how it runs and set it up; prompts on first run
 sidecar publish <topic> <json>  # append an event every open sidecar hears
 sidecar status      # whether it is up and where
@@ -160,11 +160,11 @@ Comment, and holding C comments in either.
 ### The workspace
 
 Every screen is the tree on the left and the main panel on the right, with the assistant's door at the bottom
-right. The tree's header is Follow terminal, the switching mode below, then New task and the theme toggle, and
-the tree resizes from its edge, remembered as `sc:tree`. The main panel holds the conversation in front: its
-header names it with the project's image, the role, the title without its role token, the full title in the tip,
-and the session key, which a click copies, then the run widget, drawn but not wired yet, and the terminal toggle,
-off until the terminal dock lands. Under it the faces sit in one row, Conversation first, then Artifacts, Review,
+right. The tree's header is Follow terminal with the switching mode named beside it, then New task and the theme
+toggle, and the tree resizes from its edge, remembered as `sc:tree`. The main panel holds the conversation in
+front: its header names it with the project's image, the role, the title without its role token, the full title
+in the tip, and the session key, which a click copies, then the run widget, drawn but not wired yet, and the
+terminal toggle, which opens the terminal dock at the bottom of the panel. Under it the faces sit in one row, Conversation first, then Artifacts, Review,
 Files and History, switched in place so Back never leaves the conversation, with a count beside Artifacts and,
 once Review has read it, Review. Conversation is the turn stream read from `/api/sessions/:key/conversation` and
 its live stream: what you typed, what Claude said, each run of tool calls as one list of rows, notes such as a
@@ -256,7 +256,35 @@ The row the terminal holds shows its Attach pressed, while a switch you make ins
 arrow is not seen. With no follower running, the dot in the task rail's header says so and Attach copies the
 `claude attach` line instead. The stream opens with a `ready`
 event carrying what the sidecar thinks the terminal holds, so the follower corrects the sidecar when the two
-differ.
+differ. A session draws at one size, so it has one holder: while the terminal dock is open Attach goes to the
+dock, and a conversation the dock takes gets a `release` event that sends the follower back to agent view, the
+same way an Attach to the follower detaches the dock's tab for that conversation.
+
+### The terminal dock
+
+Each project has its own terminal, docked at the bottom of the conversation's main panel and opened with the
+header's terminal button or ⌥F12. Its header switches between Terminal and Run, names the project in front,
+and lists that project's tabs: each shell is your login shell in the project's folder, named after what runs
+in it, New terminal (⌘T in the desktop app) opens another, and Hide puts the dock away. The first time the dock
+shows a project it opens a shell there. A tab belongs to the project of the conversation in front, so moving to
+another project's conversation shows its tabs, while the shells you left keep running and the dock says so,
+`Cela · 2 shells still running`. The server holds the shells, so a reload or a second window finds them with
+their last screens, and they end when you `exit` them or the server stops. Attach while the dock is open runs
+`claude attach <key>` in a tab of its own, Ctrl+Z there detaches it, and a conversation in another project
+takes the sidecar there, the way any pick does. The terminal draws on the dark tokens in both themes, through
+`data-theme="dark"` on its body, which `@cela/design` honours on any element. Run waits for run
+configurations, so it says nothing is running.
+
+```
+GET  /api/dock                                                               ->  DockTab[]
+POST /api/dock/shell    {"project":"<key>","folder"?:"<absolute>","cols":<n>,"rows":<n>}  ->  DockTab
+POST /api/dock/session  {"project":"<key>","key":"<8-hex>","cols":<n>,"rows":<n>}         ->  DockTab
+WS   /api/dock/<id>     up: {"kind":"input","data":"…"} | {"kind":"resize","cols":<n>,"rows":<n>}, down: the pty's output
+```
+
+A browser lets any site post JSON or open a websocket to `localhost`, and these type into live shells, so every
+one of them refuses an origin that is not the sidecar's own. The websocket replays the tab's last 256 KB first,
+and closing it leaves the shell running.
 
 ### The task lane
 
@@ -364,6 +392,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
 | `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the open task             | Settles the escalation on the task          |
 | `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | Every Attach, pressed on the one it holds   |
+| `dock.changed`     | `tabs`                  | the server, when a dock tab opens, ends or its running program changes          | The dock's tabs and the shells still running |
 | `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
 | `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion and again, without `questions`, when it settles | The door draws the question and its options |
 
@@ -485,11 +514,11 @@ While a page listens it also reads Terminal's front tab title with osascript onc
 sidecar at the conversation that tab switches to, so a terminal tab switch counts as moving without typing.
 
 Whether a move by typing or by Terminal's tab switches the sidecar is the switching mode, picked from Follow
-terminal at the top of the tree and remembered per window. Ask to switch, the default, shows a card in the
-bottom left, over everything else including a fullscreen artifact, with the conversation's name, folder and what it is doing, which switches there when pressed and
-stays until pressed, dismissed or no longer needed, asking once per move so typing on in that conversation
-doesn't bring a dismissed card back. Auto switch moves straight there, as the sidecar always did, and Manual
-switch never moves on its own. An explicit `/sidecar` or `sidecar open` always lands whatever the mode, and so
+terminal at the top of the tree and remembered per window. Ask to switch, the default, shows a card under it,
+Your terminal moved, with the conversation's mark, role, name, project and task, where Switch or ↵ moves there
+and Not now or esc stays, and the card waits until pressed, dismissed or no longer needed, asking once per move
+so typing on in that conversation doesn't bring a dismissed card back. Auto switch moves straight there, as the
+sidecar always did, and Manual switch never moves on its own. An explicit `/sidecar` or `sidecar open` always lands whatever the mode, and so
 does Listening, which has no conversation of its own to stay on.
 
 What the sidecar sends a session, notes and Review's buttons alike, opens on a `[[sidecar]]` line
