@@ -296,3 +296,55 @@ test("a command draws as its line and what it printed, and the context the harne
     ],
   );
 });
+
+test("a message that joins a running turn is a user turn of its own, and its queued copy never hides the delivered row", () => {
+  const key = "11111111";
+  const at = (second: number): string => `2026-01-01T10:00:0${second}.000Z`;
+  const attached = (
+    second: number,
+    prompt: unknown,
+    origin: string,
+    commandMode = "prompt",
+  ): Record<string, unknown> => ({
+    type: "attachment",
+    timestamp: at(second),
+    attachment: { type: "queued_command", commandMode, origin: { kind: origin }, prompt },
+  });
+  writeTranscript(key, "-tmp-joined", [
+    { type: "queue-operation", operation: "enqueue", timestamp: at(1), content: "also check the docs" },
+    { type: "queue-operation", operation: "remove", timestamp: at(2), content: "also check the docs" },
+    attached(1, "also check the docs", "human"),
+    attached(
+      3,
+      [
+        { type: "text", text: "ship it" },
+        { type: "image", source: {} },
+      ],
+      "peer",
+    ),
+    attached(4, "<task-notification>done</task-notification>", "task-notification", "task-notification"),
+    { type: "queue-operation", operation: "enqueue", timestamp: at(5), content: "one more thing" },
+    { type: "queue-operation", operation: "dequeue", timestamp: at(6) },
+    { type: "user", timestamp: at(7), origin: { kind: "human" }, message: { role: "user", content: "one more thing" } },
+  ]);
+
+  assert.deepEqual(
+    conversationOf({ key }).turns.map(({ role, kind, text, queued, joined, via }) => ({
+      role,
+      kind,
+      text,
+      ...(queued && { queued }),
+      ...(joined && { joined }),
+      ...(via && { via }),
+    })),
+    [
+      { role: "user", kind: undefined, text: "also check the docs", queued: true },
+      { role: "system", kind: "drop", text: "also check the docs" },
+      { role: "user", kind: undefined, text: "also check the docs", joined: true, via: "terminal" },
+      { role: "user", kind: undefined, text: "ship it", joined: true },
+      { role: "user", kind: undefined, text: "one more thing", queued: true },
+      { role: "system", kind: "drop", text: "" },
+      { role: "user", kind: undefined, text: "one more thing", via: "terminal" },
+    ],
+  );
+});

@@ -160,7 +160,7 @@ function adopt({ key, isLive = false, offset, turns }: LinkAdoption): void {
   };
   for (const turn of turns) {
     if (turn.role === "user") {
-      if (!turn.queued) handOver();
+      if (!turn.queued && !turn.joined) handOver();
       for (const href of linksOf(turn.text)) takeSite(href);
       for (const local of pathsIn(turn.text)) if (Tracked.isPage(local)) takeFile(local);
     } else if (turn.kind === "end") handOver();

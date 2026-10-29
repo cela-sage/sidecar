@@ -26,6 +26,8 @@ export type ConversationTurn = {
   bg?: true;
   /** Typed but not yet delivered, so the turn it belongs to has not started. */
   queued?: boolean;
+  /** Delivered into a turn already running, so the one in flight is not over. */
+  joined?: true;
   out?: string;
   diff?: ToolDiff;
   failed?: true;
@@ -61,13 +63,13 @@ export function conversationOf({
   const read = path ? readRange(path, start, until) : undefined;
   if (!read) return { turns: [], offset: path ? start : 0 };
   const turns: ConversationTurn[] = [];
-  // The harness re-queues a mid-turn message, writing it twice with replies in between.
+  // The harness writes a delivered message twice with replies in between; a queued copy only announces it, so it never hides the row.
   const echo = new Map<string, number>();
   // A result carries no tool name of its own; only the call it pairs to does.
   const toolByRef = new Map<string, string>();
   for (const line of splitLines(read.text)) {
     for (const turn of turnOf(line)) {
-      if (turn.role === "user") {
+      if (turn.role === "user" && !turn.queued) {
         const said = echo.get(turn.text);
         if (said && turn.at - said < QUEUE_ECHO_MS) continue;
         echo.set(turn.text, turn.at);
@@ -97,16 +99,32 @@ function queuedOf(entry: Record<string, unknown>): ConversationTurn[] {
   return [];
 }
 
-type Spoken = { text: string; at: number; queued?: boolean; via?: "terminal" };
+type Spoken = { text: string; at: number; queued?: boolean; joined?: boolean; via?: "terminal" };
 
 // One entry can hold a withdrawn ask, an interruption and a live ask, and all three keep their order.
-function spoke({ text, at, queued = false, via }: Spoken): ConversationTurn[] {
+function spoke({ text, at, queued = false, joined = false, via }: Spoken): ConversationTurn[] {
   return readOut(text).map((piece): ConversationTurn => {
     if (piece.kind === "note") return { role: "system", text: piece.label, at, kind: "note" };
     if (piece.kind === "command") return { role: "system", text: piece.line, at, kind: "command" };
     if (piece.kind === "printed") return { role: "system", text: piece.text, at, kind: "printed" };
-    return { role: "user", text: plain(piece.text), at, queued: queued || undefined, ...(via ? { via } : {}) };
+    return {
+      role: "user",
+      text: plain(piece.text),
+      at,
+      queued: queued || undefined,
+      ...(joined ? { joined: true as const } : {}),
+      ...(via ? { via } : {}),
+    };
   });
+}
+
+// A message that reaches a running turn is recorded as this attachment alone, stamped with when it arrived and with no user row.
+function joinedOf({ attachment, timestamp }: Record<string, unknown>): ConversationTurn[] {
+  const at = atOf(timestamp);
+  if (!at || typeof attachment !== "object" || !attachment) return [];
+  const sent = attachment as Record<string, unknown>;
+  const said = sent.type === "queued_command" && sent.commandMode === "prompt" ? saidOf(sent.prompt) : undefined;
+  return said ? spoke({ text: said.text, at, joined: true, via: viaOf(sent) }) : [];
 }
 
 const ranIn = (content: unknown, at: number): ConversationTurn[] =>
@@ -129,6 +147,7 @@ function turnOf(line: string): ConversationTurn[] {
   const entry = record(line);
   if (!entry) return [];
   if (entry.type === "queue-operation") return queuedOf(entry);
+  if (entry.type === "attachment") return joinedOf(entry);
   if (entry.isSidechain) return [];
   const at = atOf(entry.timestamp);
   if (!at) return [];
@@ -245,7 +264,7 @@ function saidOf(content: unknown): Said | undefined {
 function settle(turns: ConversationTurn[]): void {
   let latest: ConversationTurn | undefined;
   for (const turn of turns) {
-    if ((turn.role === "user" && !turn.queued) || turn.kind === "end") {
+    if ((turn.role === "user" && !turn.queued && !turn.joined) || turn.kind === "end") {
       if (latest) latest.kind = "answer";
       latest = undefined;
     } else if (turn.kind === "narration") {

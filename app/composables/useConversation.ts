@@ -33,6 +33,7 @@ const Turn = z.object({
   /** Started with run_in_background, so it is long-running by construction. */
   bg: z.literal(true).optional().catch(undefined),
   queued: z.literal(true).optional().catch(undefined),
+  joined: z.literal(true).optional().catch(undefined),
   out: z.string().optional().catch(undefined),
   diff: Diff.optional().catch(undefined),
   failed: z.literal(true).optional().catch(undefined),
@@ -169,7 +170,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     candidate = undefined;
   }
 
-  // A message that joins a running turn never gets a user row, only a queued_command attachment the turns skip.
+  // The transcript writes a delivery's row only when the running turn next reads it, so the mod's receipt shows it sooner.
   function receive({ text, at }: { text: string; at: number }): void {
     const turn: ConversationTurn = { role: "user", text, at };
     if (turns.some((row) => row.role === "user" && !row.queued && isReceiptOf(turn, row))) return;
@@ -177,11 +178,9 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     show(turn);
   }
 
-  function dropReceipt(row: ConversationTurn): void {
+  function takeReceipt(row: ConversationTurn): boolean {
     const receipt = [...received].find((turn) => isReceiptOf(turn, row));
-    if (!receipt) return;
-    received.delete(receipt);
-    stream.value = stream.value.filter((turn) => turn !== receipt);
+    return !!receipt && received.delete(receipt);
   }
 
   function append(turn: ConversationTurn): void {
@@ -207,17 +206,16 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     if (turn.role === "user" && !turn.queued) {
       const pending = turns.findIndex((row) => row.queued && row.text === turn.text);
       if (pending >= 0) turns.splice(pending, 1);
-      dropReceipt(turn);
     }
     if (held(turn)) return;
     busy.value = BusyRules.next(busy.value, turn).now;
     if (turn.role === "user") {
-      // Queued means the turn it belongs to has not started, so the one in flight must not be settled.
-      if (!turn.queued) {
+      // Queued means the turn it belongs to has not started and joined that it already has, so neither settles the one in flight.
+      if (!turn.queued && !turn.joined) {
         settle();
         wrote.value = false;
-        show(turn);
       }
+      if (!turn.queued && !takeReceipt(turn)) show(turn);
       awaiting.value = true;
       turns.push(turn);
       return;
