@@ -31,7 +31,9 @@ const {
 const emit = defineEmits<{ open: [] }>();
 
 const terminal = $terminal();
+const conversationMenu = $conversationMenu();
 const isHeld = computed(() => !!attach && terminal.holds(attach));
+const isLit = computed(() => !!attach && conversationMenu.lit === attach);
 </script>
 
 <template>
@@ -39,9 +41,11 @@ const isHeld = computed(() => !!attach && terminal.holds(attach));
     class="row"
     role="treeitem"
     :aria-selected="isSelected"
+    :data-conversation="attach"
     :data-depth="depth"
     :data-done="mark === 'done'"
     :data-front="isFront"
+    :data-lit="isLit"
     :data-selected="isSelected"
     :data-task="isTask"
   >
@@ -113,6 +117,10 @@ const isHeld = computed(() => !!attach && terminal.holds(attach));
 
 .row[data-selected="true"]::before {
   @apply border-border-strong bg-sunken;
+}
+
+.row[data-lit="true"]::before {
+  @apply border-primary bg-primary-soft transition-colors duration-(--duration-fast) ease-out;
 }
 
 @media (hover: hover) and (pointer: fine) {

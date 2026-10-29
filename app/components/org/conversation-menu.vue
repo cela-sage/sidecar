@@ -1,10 +1,12 @@
 <script lang="ts" setup>
-import { ArrowUpRight, Pencil, Terminal, Trash2 } from "@lucide/vue";
+import { ArrowUpRight, AtSign, Copy, ListTree, Pencil, Terminal, Trash2 } from "@lucide/vue";
 import type { ConversationTarget } from "~/stores/conversation-menu";
 
 const sc = useSidecar();
+const chrome = useChrome();
 const desk = $desk();
 const terminal = $terminal();
+const prompt = $prompt();
 const conversationMenu = $conversationMenu();
 const menu = useTemplateRef<{ openAt: (x: number, y: number) => void; close: () => void }>("menu");
 const target = ref<ConversationTarget>();
@@ -16,6 +18,13 @@ const open = (one: ConversationTarget): void => {
   if (one.open) return one.open();
   sc.sessionKey.value = one.key;
   void navigateTo(`/c/${one.key}`, { replace: true });
+};
+
+const copyId = async ({ key }: ConversationTarget): Promise<void> => {
+  await navigator.clipboard
+    .writeText(key)
+    .then(() => chrome.toast(`Copied ${key}`))
+    .catch(() => chrome.toast("The clipboard refused the copy", "destructive"));
 };
 
 const act = (close: () => void, run: (one: ConversationTarget) => unknown): void => {
@@ -42,7 +51,7 @@ watch(
 </script>
 
 <template>
-  <UiContextMenu ref="menu" data-region="org-conversation-menu" label="Conversation" width="w-72">
+  <UiContextMenu ref="menu" data-region="org-conversation-menu" label="Conversation" width="w-68">
     <template #default="{ close }">
       <OrgDraft
         v-if="isRenaming && target"
@@ -55,13 +64,25 @@ watch(
         @name="rename"
       />
       <template v-else>
+        <div v-if="target" class="head">
+          <span class="title">{{ nameOf(target) }}</span>
+          <span class="key mono-meta">{{ target.key }}</span>
+        </div>
         <UiMenuItem :icon="ArrowUpRight" @click="act(close, open)">Open</UiMenuItem>
         <UiMenuItem
           :disabled="!target || terminal.switching === target.key"
           :icon="Terminal"
           @click="act(close, (one) => terminal.attach(one.key))"
-          >Attach</UiMenuItem
+          >Attach in your terminal</UiMenuItem
         >
+        <UiMenuItem :icon="AtSign" @click="act(close, (one) => prompt.mention({ key: one.key, title: nameOf(one) }))"
+          >Mention in the prompt</UiMenuItem
+        >
+        <UiMenuItem :icon="ListTree" @click="act(close, (one) => conversationMenu.reveal(one.key))"
+          >Reveal in the tree</UiMenuItem
+        >
+        <UiMenuItem :icon="Copy" @click="act(close, copyId)">Copy id</UiMenuItem>
+        <span class="rule" aria-hidden="true" />
         <UiMenuItem :icon="Pencil" @click="isRenaming = true">Rename</UiMenuItem>
         <UiMenuItem
           :icon="Trash2"
@@ -73,3 +94,21 @@ watch(
     </template>
   </UiContextMenu>
 </template>
+
+<style scoped>
+.head {
+  @apply flex min-w-0 flex-col gap-1 px-2 pt-2 pb-2;
+}
+
+.title {
+  @apply truncate typo-caption font-bold text-fg;
+}
+
+.key {
+  @apply text-muted normal-case;
+}
+
+.rule {
+  @apply mx-1.5 my-1 h-px bg-border;
+}
+</style>
