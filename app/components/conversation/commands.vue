@@ -20,7 +20,8 @@ const emit = defineEmits<{ pick: [row: SessionCommand]; point: [at: number] }>()
     >
       <span class="name">/{{ row.name }}</span>
       <span class="about">{{ row.description }}</span>
-      <span v-if="row.screen === 'always'" class="screen mono-meta">terminal</span>
+      <span v-if="SlashCommand.tagOf(row)" class="tag mono-meta">{{ SlashCommand.tagOf(row) }}</span>
+      <span v-if="row.screen === 'always'" class="tag mono-meta">terminal</span>
     </button>
   </div>
 </template>
@@ -46,7 +47,7 @@ const emit = defineEmits<{ pick: [row: SessionCommand]; point: [at: number] }>()
   @apply min-w-0 flex-1 truncate typo-caption text-muted;
 }
 
-.screen {
+.tag {
   @apply flex-none text-subtle normal-case;
 }
 </style>

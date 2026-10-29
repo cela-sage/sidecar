@@ -1,4 +1,5 @@
 import type { SessionCommand } from "~~/shared/types/command";
+import type { Topics } from "~~/shared/types/events";
 import type { AttachedFile } from "~~/shared/types/files";
 import type { Delivery } from "~/stores/notes";
 import type { Attachment } from "~/utils/attachments";
@@ -39,6 +40,8 @@ export interface PromptMove {
 export interface PromptRefusal {
   name: string;
 }
+
+export type PromptRun = "sent" | "terminal" | "failed";
 
 interface Listed {
   at: number;
@@ -90,7 +93,8 @@ export const $prompt = defineStore(() => {
   const draftOf = (key: string): Draft => (drafts.value[key] ??= { text: "", files: [], blocks: [] });
   const front = (): Draft | undefined => (sc.sessionKey.value ? draftOf(sc.sessionKey.value) : undefined);
   const held = computed(() => (sc.sessionKey.value ? drafts.value[sc.sessionKey.value] : undefined));
-  const commands = computed(() => listed.value[sc.sessionKey.value ?? ""]?.list ?? []);
+  const commandsOf = (key?: string): SessionCommand[] => listed.value[key ?? ""]?.list ?? [];
+  const commands = computed(() => commandsOf(sc.sessionKey.value));
 
   const text = computed({
     get: () => held.value?.text ?? "",
@@ -155,12 +159,12 @@ export const $prompt = defineStore(() => {
     const kept = listed.value[key];
     if (kept && Date.now() - kept.at < COMMANDS_FRESH_MS) return Promise.resolve(kept.list);
     const ask = async (): Promise<SessionCommand[]> => {
-      const list = await $fetch<SessionCommand[]>(`/api/sessions/${encodeURIComponent(key)}/commands`).catch(
+      const fetched = await $fetch<SessionCommand[]>(`/api/sessions/${encodeURIComponent(key)}/commands`).catch(
         (): SessionCommand[] => [],
       );
       asking.delete(key);
-      if (!list.length) return kept?.list ?? [];
-      listed.value = { ...listed.value, [key]: { at: Date.now(), list } };
+      const list = fetched.length ? fetched : (kept?.list ?? []);
+      listed.value = { ...listed.value, [key]: { at: fetched.length ? Date.now() : 0, list } };
       return list;
     };
     const pending = asking.get(key) ?? ask();
@@ -168,21 +172,31 @@ export const $prompt = defineStore(() => {
     return pending;
   };
 
-  const run = async (key: string, command: CommandCall): Promise<boolean> => {
+  const heard = ({ key }: Topics["commands.changed"]): void => {
+    const kept = listed.value[key];
+    if (!kept) return;
+    listed.value = { ...listed.value, [key]: { ...kept, at: 0 } };
+    void loadCommands(key);
+  };
+
+  const run = async (key: string, command: CommandCall): Promise<PromptRun> => {
     const known = (await loadCommands(key)).find(
       (one) => one.name === command.name || one.aliases?.includes(command.name),
     );
-    if (known && SlashCommand.needsTerminal(known, command.args)) {
-      refused.value = { ...refused.value, [key]: { name: command.name } };
-      return false;
-    }
-    return deliver(key, "command", { ...command });
+    if (known && SlashCommand.needsTerminal(known, command.args)) return "terminal";
+    return (await deliver(key, "command", { ...command })) ? "sent" : "failed";
+  };
+
+  const runHere = async (key: string, command: CommandCall): Promise<boolean> => {
+    const ran = await run(key, command);
+    if (ran === "terminal") refused.value = { ...refused.value, [key]: { name: command.name } };
+    return ran === "sent";
   };
 
   const switchMode = async ({ id, command }: { id: string; command: string }): Promise<void> => {
     const key = sc.sessionKey.value;
     const call = { name: command, args: "" };
-    if (!key || !(await run(key, call))) return;
+    if (!key || !(await runHere(key, call))) return;
     const at = Date.now();
     sent.value = [...sent.value, { key, text: SlashCommand.line(call), at }];
     moved.value = { ...moved.value, [key]: { mode: id, at } };
@@ -195,7 +209,7 @@ export const $prompt = defineStore(() => {
     const said = compose(draft);
     const command = SlashCommand.parse(said);
     isSending.value = true;
-    const isDelivered = await (command ? run(key, command) : deliver(key, "message", { text: said }));
+    const isDelivered = await (command ? runHere(key, command) : deliver(key, "message", { text: said }));
     isSending.value = false;
     if (!isDelivered) return;
     sent.value = [...sent.value, { key, text: command ? SlashCommand.line(command) : said, at: Date.now() }];
@@ -203,9 +217,13 @@ export const $prompt = defineStore(() => {
     drafts.value = { ...drafts.value, [key]: { text: "", files: [], blocks: [] } };
   };
 
-  watch(text, (value) => {
-    if (value.startsWith("/") && sc.sessionKey.value) void loadCommands(sc.sessionKey.value);
-  });
+  watch(
+    () => sc.sessionKey.value,
+    (key) => {
+      if (key) void loadCommands(key);
+    },
+    { immediate: true },
+  );
 
   const landed = (one: PromptSent): void => {
     sent.value = sent.value.filter((other) => other !== one);
@@ -235,17 +253,21 @@ export const $prompt = defineStore(() => {
     blocks,
     chosen,
     commands,
+    commandsOf,
     files,
     focus,
     focusAsked,
+    heard,
     isEmpty,
     isSending,
     isWaking,
     landed,
+    load: loadCommands,
     mention,
     moved,
     pick,
     refused,
+    run,
     send,
     sent,
     stop,

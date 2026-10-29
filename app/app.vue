@@ -8,6 +8,7 @@ const questions = $questions();
 const seen = $seen();
 const dock = $dock();
 const runs = $runs();
+const prompt = $prompt();
 const sc = useSidecar();
 const inlineArmed = useState<boolean>("sc:inline-armed", () => false);
 const inlineAsk = useState<boolean>("sc:inline-ask", () => false);
@@ -108,6 +109,7 @@ events.on("conversation.unseen", ({ data }) => seen.heard(data));
 events.on("dock.changed", ({ data }) => dock.heard(data));
 events.on("runs.changed", ({ data }) => void runs.load(data.project));
 events.on("question.changed", ({ data }) => questions.hear(data));
+events.on("commands.changed", ({ data }) => prompt.heard(data));
 // A restarted server's bus starts empty, so every open of the stream takes its snapshot again.
 events.onReady(() => {
   void busy.load();

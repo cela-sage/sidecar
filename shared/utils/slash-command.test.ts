@@ -44,6 +44,14 @@ test("typing after the slash lists the names that start with it first, then the 
   assert.deepEqual(SlashCommand.matching(list, "zz"), []);
 });
 
+test("a row says where its command comes from, and a builtin says nothing", () => {
+  assert.equal(SlashCommand.tagOf({ source: "builtin" }), undefined);
+  assert.equal(SlashCommand.tagOf({ source: "user" }), "user");
+  assert.equal(SlashCommand.tagOf({ source: "mcp" }), "mcp");
+  assert.equal(SlashCommand.tagOf({ source: "plugin", plugin: "mode" }), "mode");
+  assert.equal(SlashCommand.tagOf({ source: "plugin" }), "plugin");
+});
+
 test("a command that draws a screen is refused as typed, and bare only when it has no arguments", () => {
   assert.equal(SlashCommand.needsTerminal({ screen: "always" }, "all"), true);
   assert.equal(SlashCommand.needsTerminal({ screen: "bare" }, ""), true);
