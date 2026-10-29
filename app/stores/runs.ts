@@ -4,6 +4,7 @@ import type { RunConfig, RunGroup } from "~~/shared/types/runs";
 
 export const $runs = defineStore(() => {
   const dock = $dock();
+  const sc = useSidecar();
   const chrome = useChrome();
   const groups = ref<Partial<Record<string, RunGroup[]>>>({});
   const picked = useLocalStorage<Record<string, string>>("sc:run-picked", {});
@@ -39,11 +40,23 @@ export const $runs = defineStore(() => {
     if (tab) dock.added(tab);
   };
 
+  const startCommand = async (conversation: string, command: string): Promise<void> => {
+    const folder = sc.sessions.value.find((one) => one.key === conversation)?.cwd;
+    const tab = await $fetch<DockTab>(`/api/runs/${encodeURIComponent(dock.projectOf(conversation).key)}`, {
+      method: "POST",
+      body: { command, ...(folder ? { folder } : {}), ...dock.size },
+    }).catch((error: unknown) => {
+      chrome.toast(failReason(error) ?? "The command didn't start", "destructive");
+      return undefined;
+    });
+    if (tab) dock.added(tab);
+  };
+
   const stop = async (tab: DockTab): Promise<void> => {
     await $fetch(`/api/dock/${encodeURIComponent(tab.id)}/stop`, { method: "POST" }).catch((error: unknown) =>
       chrome.toast(failReason(error) ?? `${tab.title} didn't stop`, "destructive"),
     );
   };
 
-  return { groupsOf, load, pickedOf, start, stop, tabOf };
+  return { groupsOf, load, pickedOf, start, startCommand, stop, tabOf };
 });

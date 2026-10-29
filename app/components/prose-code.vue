@@ -16,6 +16,7 @@ const text = computed(() => {
   const children = node?.children;
   return Array.isArray(children) ? children.filter((one) => typeof one === "string").join("") : "";
 });
+const command = computed(() => SuggestedCommand.of(text.value));
 const html = ref<string>();
 
 const caption = computed(() => {
@@ -55,6 +56,7 @@ watch(
         <span class="file-range">{{ caption.range }}</span>
       </button>
       <span v-else class="language">{{ language }}</span>
+      <ProseRun v-if="command" :command="command" />
       <UiIconButton :icon="Copy" aria-label="Copy" data-tip="Copy" size="xs" @click="copy" />
     </figcaption>
     <pre class="body"><code v-if="html" v-html="html" /><code v-else>{{ text }}</code></pre>
