@@ -6,9 +6,12 @@ const chrome = useChrome();
 const route = useRoute();
 const artifact = $artifact();
 const task = $task();
+const layout = $layout();
 
-const TREE_W = 340;
+const TREE_W = 320;
 const tree = useLocalStorage("sc:tree", TREE_W);
+const side = computed(() => Math.min(tree.value, layout.sideCap ?? tree.value));
+const shellEl = useTemplateRef<HTMLElement>("shellEl");
 const dockEl = useTemplateRef<HTMLElement>("dockEl");
 const boardEl = useTemplateRef<HTMLElement>("boardEl");
 const dockHeight = ref(0);
@@ -47,6 +50,10 @@ function publish(dock: number, board: number): void {
 
 onScopeDispose(() => cancelAnimationFrame(queued));
 
+useResizeObserver(shellEl, ([entry]) => {
+  if (entry?.contentRect.width) layout.width = Math.round(entry.contentRect.width);
+});
+
 useResizeObserver(dockEl, ([entry]) => {
   publish(Math.round(entry?.contentRect.height ?? 0), Math.round(boardEl.value?.getBoundingClientRect().width ?? 0));
 });
@@ -60,27 +67,29 @@ useResizeObserver(boardEl, ([entry]) => {
   <!-- Unset until measured, so the first frame takes the CSS fallback rather than
        reserving nothing and shifting the reading surface once the observer reports. -->
   <div
+    ref="shellEl"
     class="shell"
     :data-full="artifact.isFull"
     :data-fullscreen="isFullScreen"
     :data-shell="onShell"
     :style="dockHeight ? { '--dock-h': `${dockHeight}px` } : undefined"
   >
-    <div class="workspace" :style="{ '--side-w': `${tree}px` }">
-      <UiSurface
+    <ChromeBar :inert="isDown">
+      <slot name="bar" />
+    </ChromeBar>
+
+    <div class="workspace" :style="{ '--side-w': `${side}px` }">
+      <aside
         class="side"
         aria-label="Every task and conversation"
-        as="aside"
         data-region="workspace-tree"
         :data-listed="artifact.isFull && artifact.isListed"
         :inert="isDown"
-        pad="none"
-        variant="raised"
       >
         <OrgHeader />
         <OrgTree />
         <UsagePlan />
-      </UiSurface>
+      </aside>
 
       <PaneResizer v-model="tree" :initial="TREE_W" label="Resize the tree" :max="480" />
 
@@ -113,25 +122,25 @@ useResizeObserver(boardEl, ([entry]) => {
 
 <style scoped>
 .shell {
-  @apply relative mx-auto my-0 h-screen max-w-(--shell-max-w) overflow-hidden bg-canvas;
+  @apply relative flex h-screen min-h-140 min-w-190 flex-col overflow-hidden bg-raised;
 }
 
 .workspace {
-  @apply grid h-full min-h-0 grid-cols-pane gap-x-2 p-(--gutter);
+  @apply grid min-h-0 flex-1 grid-cols-pane;
 }
 
 .side {
-  @apply flex min-h-0 flex-col overflow-hidden;
+  @apply flex min-h-0 flex-col overflow-hidden border-r border-r-border bg-canvas;
 }
 
-/* Over a grown sheet the tree takes the Artifacts list's place, so another task opens without leaving fullscreen. */
+/* Over a grown sheet the tree floats at its left edge, so another task opens without leaving fullscreen. */
 .side[data-listed="true"] {
-  @apply fixed top-14 bottom-2 left-2 z-28 w-85;
+  @apply fixed top-14 bottom-2 left-2 z-28 w-85 rounded-box border border-border shadow-lg;
 }
 
 /* The notes and the door float over the panes, so a pane's last row pads by --float-clear to stay clickable above them. */
 .column {
-  @apply relative min-h-0 min-w-0;
+  @apply relative min-h-0 min-w-0 bg-raised;
   --float-clear: calc(max(var(--dock-h, 0px), var(--island-row-h)) + var(--gutter));
 }
 

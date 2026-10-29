@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
 import { Check, ChevronDown, CircleDot, MessageSquare, MousePointer2, Plus, Terminal } from "@lucide/vue";
-import { useResizeObserver } from "@vueuse/core";
 import type { Component } from "vue";
 import { FOLLOW_MODES, type FollowMode } from "~/stores/follow";
 
@@ -9,30 +8,43 @@ interface ModeRow {
   hint: string;
   icon: Component;
   label: string;
+  short: string;
 }
 
 const ROWS: Record<FollowMode, ModeRow> = {
-  auto: { hint: "Moves to the conversation you type in or pick in Terminal", icon: CircleDot, label: "Auto switch" },
-  ask: { hint: "A card asks first, and pressing it moves there", icon: MessageSquare, label: "Ask to switch" },
+  auto: {
+    hint: "Moves to the conversation you type in or pick in Terminal",
+    icon: CircleDot,
+    label: "Auto switch",
+    short: "Auto",
+  },
+  ask: {
+    hint: "A card asks first, and pressing it moves there",
+    icon: MessageSquare,
+    label: "Ask to switch",
+    short: "Ask first",
+  },
   manual: {
     hint: "Moves only when you pick a conversation or run /sidecar",
     icon: MousePointer2,
     label: "Manual switch",
+    short: "Manual",
   },
 };
 
 const follow = $follow();
 const desk = $desk();
+const layout = $layout();
 const tree = useOrgTree();
-const lights = useTemplateRef<HTMLElement>("lights");
-
-// The desktop shell draws macOS's buttons on this spacer, and only the page knows where the header puts it.
-useResizeObserver(lights, ([entry]) => {
-  const rect = entry?.target.getBoundingClientRect();
-  if (rect?.width) sidecarShell()?.placeLights?.({ height: rect.height, width: rect.width, x: rect.x, y: rect.y });
-});
 
 const now = computed(() => ROWS[follow.mode] ?? ROWS.ask);
+const tip = computed(() => `Follow terminal · ${now.value.label}: ${now.value.hint.toLowerCase()}`);
+// The popover clamps to the window's left edge, so it is as wide as the sidebar the breakpoint leaves.
+const menuWidth = computed(() => {
+  if (layout.sideCap === 264) return "w-62";
+  if (layout.sideCap === 296) return "w-70";
+  return "w-76";
+});
 const place = computed(() => (follow.offer?.key ? Org.placeOf(tree.value, follow.offer.key) : undefined));
 const where = computed(() => {
   const group = place.value?.group;
@@ -62,21 +74,21 @@ useShortcuts(
 <template>
   <div class="follow" data-region="org-header">
     <header class="bar">
-      <span ref="lights" class="lights" aria-hidden="true" />
-      <UiPopover :estimated-height="250" placement="bottom" width="w-79">
+      <UiPopover :estimated-height="250" placement="bottom" :width="menuWidth">
         <template #trigger="{ open }">
           <button
             class="mode"
             type="button"
             aria-haspopup="menu"
             data-region="follow-mode"
-            data-tip="What the sidecar does when your terminal moves to another conversation"
             :aria-expanded="open"
+            :aria-label="`Follow terminal: ${now.label}`"
             :data-open="open"
+            :data-tip="tip"
           >
-            <UiIcon :icon="Terminal" size="sm" />
-            <span class="label">Follow terminal</span>
-            <span class="now mono-meta">{{ now.label }}</span>
+            <span class="tile" aria-hidden="true"><UiIcon :icon="Terminal" size="xs" /></span>
+            <span class="label">Follow</span>
+            <span class="now">{{ now.short }}</span>
             <UiIcon class="chevron" :icon="ChevronDown" size="xs" />
           </button>
         </template>
@@ -106,10 +118,10 @@ useShortcuts(
         data-region="org-new-task"
         data-tip="New task · {N}"
         :icon="Plus"
-        size="md"
+        size="sm"
         @click="desk.isNaming = true"
       />
-      <ChromeThemeToggle shape="inset" />
+      <ChromeThemeToggle shape="inset" size="sm" />
     </header>
 
     <div v-if="follow.offer" class="moved">
@@ -141,31 +153,17 @@ useShortcuts(
   @apply relative flex flex-none flex-col;
 }
 
-/* The traffic lights' row, so its middle stays where the desktop shell draws them. */
 .bar {
-  @apply flex h-(--island-row-h) flex-none items-center gap-1 border-b border-b-border px-2;
+  @apply flex h-10 flex-none items-center gap-0.5 border-b border-b-border pr-1.5 pl-2;
 }
 
-.lights {
-  @apply hidden h-3 w-13 flex-none;
-}
-
-/* Never :global() here: Vue's scoped compiler keeps only what is inside it, which made the whole shell the drag region. */
-.shell[data-shell="true"]:not([data-fullscreen="true"]) .lights {
-  @apply block;
-}
-
-/* On the desktop shell this row is the title bar: it drags the window, and a double click does what System Settings says. */
-.shell[data-shell="true"]:not([data-full="true"]) .bar {
-  app-region: drag;
-}
-
-.shell[data-shell="true"] .bar > :not(.spacer, .lights) {
-  app-region: no-drag;
+/* The sidebar sits on the canvas, where a ghost button's canvas hover would not show. */
+.bar :deep(.icon-button[data-variant="ghost"]:hover) {
+  @apply bg-sunken;
 }
 
 .mode {
-  @apply inline-flex h-7.5 min-w-0 cursor-pointer items-center gap-1.75 rounded-full border-0 bg-transparent px-2 text-fg transition-colors duration-(--duration-fast) ease-out;
+  @apply inline-flex h-7 min-w-0 cursor-pointer items-center gap-1.5 rounded-lg border-0 bg-transparent pr-1.5 pl-1 whitespace-nowrap text-fg transition-colors duration-(--duration-fast) ease-out;
 }
 
 .mode:hover,
@@ -177,12 +175,16 @@ useShortcuts(
   @apply focus-ring;
 }
 
+.tile {
+  @apply inline-flex size-5 flex-none items-center justify-center rounded-md bg-sunken inset-ring inset-ring-border;
+}
+
 .label {
-  @apply typo-caption-strong font-bold whitespace-nowrap;
+  @apply min-w-0 truncate typo-caption-medium text-muted;
 }
 
 .now {
-  @apply truncate text-muted;
+  @apply flex-none typo-caption-strong;
 }
 
 .chevron {

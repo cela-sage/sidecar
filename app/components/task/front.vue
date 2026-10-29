@@ -38,6 +38,10 @@ const conversation = computed(() => {
   @apply flex-1;
 }
 
+.front :deep(.slot > [data-surface="raised"]:not([data-expanded="true"])) {
+  @apply rounded-none border-0 shadow-none;
+}
+
 .missing {
   @apply flex flex-1 items-center justify-center;
 }

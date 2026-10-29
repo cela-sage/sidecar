@@ -9,6 +9,7 @@ const sc = useSidecar();
 const chrome = useChrome();
 const follow = $follow();
 const task = $task();
+const dock = $dock();
 
 // Read off disk at build: an unbuilt face is unreachable, with no list kept by hand.
 const parts = import.meta.glob<Component>(
@@ -44,6 +45,7 @@ const key = computed(() => String(route.params.key ?? ""));
 const session = computed(() => sc.sessions.value.find((s) => s.key === key.value));
 const face = computed(() => built[chrome.view.current.value]);
 const gone = computed(() => sc.ready.value && !session.value);
+const where = computed(() => dock.projectOf(key.value));
 
 // A face stays mounted behind the others once opened, so coming back neither reloads a live page nor reads its data again.
 const opened = ref<Face[]>([]);
@@ -64,6 +66,11 @@ follow.listen();
 
 <template>
   <NuxtLayout>
+    <template v-if="session" #bar>
+      <RunWidget v-if="where.project" :cwd="session.cwd" :project="where" />
+      <DockToggle />
+    </template>
+
     <!-- Claude Code is the chat, so the dock carries only the notes waiting to go to it. -->
     <template #dock>
       <ComposerNotes v-if="!gone" />
@@ -77,19 +84,8 @@ follow.listen();
       <UiButton to="/" variant="link">Listen for the next one</UiButton>
     </UiSurface>
 
-    <UiSurface
-      v-else
-      as="main"
-      class="main"
-      :aria-label="session ? nameOf(session) : key"
-      data-region="conversation-main"
-      pad="none"
-      variant="raised"
-    >
-      <template v-if="session">
-        <ConversationHeader :session="session" />
-        <ConversationFaces :session="session" />
-      </template>
+    <main v-else class="main" :aria-label="session ? nameOf(session) : key" data-region="conversation-main">
+      <ConversationFaces v-if="session" :session="session" />
       <div class="stage" data-region="conversation-stage" :data-face="chrome.view.current.value">
         <template v-for="one in opened" :key="one">
           <FaceHost v-if="built[one]" :face="one" :view="built[one]" />
@@ -97,7 +93,7 @@ follow.listen();
         <p v-if="!face" class="empty">No view has been built for this conversation yet.</p>
       </div>
       <DockPanel />
-    </UiSurface>
+    </main>
   </NuxtLayout>
 </template>
 

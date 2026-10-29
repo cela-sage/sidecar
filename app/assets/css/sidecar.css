@@ -10,7 +10,6 @@
   --gutter: 16px;
   --island-row-h: 40px;
   --dock-rest-h: 64px;
-  --shell-max-w: 1536px;
   /* Half a 1080p panel: 60vh reaches 540px on the ~900px viewport such a screen leaves. Only
      the expanded (full-history) transcript gets this much room. */
   --transcript-max-h: clamp(160px, 50vh, 480px);

@@ -5,9 +5,9 @@ $follow().listen({ isEager: true });
 
 <template>
   <NuxtLayout>
-    <UiSurface class="main" pad="none" variant="raised">
+    <main class="main">
       <ListeningScreen />
-    </UiSurface>
+    </main>
   </NuxtLayout>
 </template>
 
