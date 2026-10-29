@@ -7,6 +7,13 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.58.1
+
+### Fixed
+
+- **Lists in the chat show their bullets and numbers again.** Tailwind's preflight sets `list-style: none` on every
+  list and the chat's prose restored the indent but never the marker, so a bulleted reply read as indented paragraphs.
+
 ## 0.58.0
 
 ### Changed
