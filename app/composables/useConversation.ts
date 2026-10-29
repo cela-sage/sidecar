@@ -77,7 +77,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
         Math.max(0, since + LONG_MS - Date.now()),
       );
     }
-    if (turn.kind !== "acting") quiet = setTimeout(settle, BusyRules.QUIET_MS);
+    if (turn.kind !== "acting") quiet = setTimeout(rest, BusyRules.QUIET_MS);
   }
 
   // `long` is deliberately left standing: a call that ran two minutes was long-running.
@@ -106,8 +106,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     );
   }
 
-  // Nothing marks a text block final as it is written, so the newest one stands in until the turn ends.
-  function settle(): void {
+  function rest(): void {
     busy.value = BusyRules.IDLE;
     doing.value = undefined;
     awaiting.value = false;
@@ -116,9 +115,17 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     open.clear();
     clearTimeout(ageing);
     clearTimeout(quiet);
+  }
+
+  // Nothing marks a text block final as it is written, so the newest one is held back and only drawn once the turn is over.
+  function settle(): void {
+    rest();
     if (!candidate) return;
-    turns.push({ ...candidate, kind: "answer" });
+    const answer: ConversationTurn = { ...candidate, kind: "answer" };
     candidate = undefined;
+    if (held(answer)) return;
+    turns.push(answer);
+    show(answer);
   }
 
   // The transcript writes a delivery's row only when the running turn next reads it, so the mod's receipt shows it sooner.
@@ -177,7 +184,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
       if (echoesNote(turn, turns.at(-1))) return;
       const joined = commands.join(turn, turns);
       turns.push(turn);
-      if (!joined) show(turn);
+      if (!joined && turn.kind !== "note") show(turn);
       return;
     }
     awaiting.value = false;
@@ -186,16 +193,12 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
       if (turn.ref) open.set(turn.ref, turn.at);
       block(turn);
       if (wroteIn(turn)) wrote.value = true;
-      show(turn);
       return;
     }
     // Narration detects no state of its own, so it drops the mascot back to thinking.
     if (turn.kind === "narration" || turn.kind === "thinking") {
       block(turn);
-      if (turn.kind === "narration") {
-        candidate = turn;
-        show(turn);
-      }
+      if (turn.kind === "narration") candidate = turn;
       return;
     }
     candidate = undefined;
