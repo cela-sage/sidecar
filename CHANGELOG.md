@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.63.0
+
+### Changed
+
+- **A hidden terminal dock is a strip at the foot of the main panel.** It names each tool and what it holds, Terminal
+  with the project's shells and Run with its status, and a failed run shows its mark and the line that names the
+  failure. Each tool opens the dock on it, the chevron and ⌥F12 open it where you left it, and Hide puts it back to the
+  strip. The terminal toggle leaves the bar, so the bar holds the run widget alone, and the door rides above the strip.
+
 ## 0.62.0
 
 ### Changed

@@ -165,8 +165,11 @@ Comment, and holding C comments in either.
 
 Every screen is one window, laid out like an IDE: a 44px bar across the top, the tree flat on the left under it and
 the main panel on the right, with the assistant's door at the bottom right. The bar holds the traffic lights at its
-left in the desktop app and, for the conversation in front, the run widget and the terminal toggle at its right,
-which opens the terminal dock at the bottom of the panel. The tree's header is Follow terminal as one compact
+left in the desktop app and, for the conversation in front, the run widget at its right. While the terminal dock is
+hidden, a 32px strip at the foot of the main panel names each tool and what it holds, Terminal with the project's
+shells and Run with its status, and a failed run shows its mark and the line that names the failure. Each tool is a
+button that opens the dock on it, the chevron or ⌥F12 opens it where you left it, and the door rides above the
+strip. The tree's header is Follow terminal as one compact
 control, the mode's short name with the full one and what it does in the tip, then New task and the theme toggle,
 and the tree resizes from its edge, remembered as `sc:tree`. There is no conversation header, since the tree's row
 already names it: the faces sit as tabs atop the main panel, Conversation first, then Artifacts, Review, Files and
@@ -430,8 +433,8 @@ same way an Attach to the follower detaches the dock's tab for that conversation
 
 ### The terminal dock
 
-Each project has its own terminal, docked at the bottom of the conversation's main panel and opened with the
-bar's terminal button or ⌥F12. Its header switches between Terminal and Run, names the project in front,
+Each project has its own terminal, docked at the bottom of the conversation's main panel and opened from the strip
+that stands there while it is hidden, or with ⌥F12. Its header switches between Terminal and Run, names the project in front,
 and lists that project's tabs: each shell is your login shell in the project's folder, named after what runs
 in it, New terminal (⌘T in the desktop app) opens another, and Hide puts the dock away. A tab shows an × while you
 hover it and while it is selected: closing a shell ends it, closing a run that still runs stops it first as Stop
