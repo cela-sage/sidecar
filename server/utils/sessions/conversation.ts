@@ -1,13 +1,24 @@
 import { splitLines } from "../../../lib/text.ts";
 import type { ToolCall, ToolDiff } from "../../../shared/types/conversation.ts";
 import type { Question, QuestionOption } from "../../../shared/types/question.ts";
+import { PastedImages } from "../../../shared/utils/pasted-images.ts";
 import { ToolCalls } from "./calls.ts";
 import { plain } from "./relay.ts";
-import { argOf, readOut } from "./speaker.ts";
+import { argOf, readOut, withoutReminders } from "./speaker.ts";
 import { readRange, transcriptIndex, type TranscriptGrowth } from "./transcripts.ts";
 
 // Narration and answer share the provider's `text` block, told apart only by position.
-export type TurnKind = "thinking" | "narration" | "answer" | "acting" | "note" | "drop" | "done" | "end";
+export type TurnKind =
+  | "thinking"
+  | "narration"
+  | "answer"
+  | "acting"
+  | "note"
+  | "command"
+  | "printed"
+  | "drop"
+  | "done"
+  | "end";
 
 export type ConversationTurn = {
   role: "user" | "assistant" | "system";
@@ -100,12 +111,22 @@ type Spoken = { text: string; at: number; queued?: boolean; via?: "terminal" };
 
 // One entry can hold a withdrawn ask, an interruption and a live ask, and all three keep their order.
 function spoke({ text, at, queued = false, via }: Spoken): ConversationTurn[] {
-  return readOut(text).map((piece) =>
-    piece.kind === "note"
-      ? { role: "system" as const, text: piece.label, at, kind: "note" as const }
-      : { role: "user" as const, text: plain(piece.text), at, queued: queued || undefined, ...(via ? { via } : {}) },
-  );
+  return readOut(text).map((piece): ConversationTurn => {
+    if (piece.kind === "note") return { role: "system", text: piece.label, at, kind: "note" };
+    if (piece.kind === "command") return { role: "system", text: piece.line, at, kind: "command" };
+    if (piece.kind === "printed") return { role: "system", text: piece.text, at, kind: "printed" };
+    return { role: "user", text: plain(piece.text), at, queued: queued || undefined, ...(via ? { via } : {}) };
+  });
 }
+
+const ranIn = (content: unknown, at: number): ConversationTurn[] =>
+  typeof content === "string"
+    ? spoke({ text: content, at }).filter((turn) => turn.kind === "command" || turn.kind === "printed")
+    : [];
+
+// A meta row is context for the model: only a delivery from another session, a reminder's note and an image's source line are for the reader.
+const isContext = (entry: Record<string, unknown>, text: string): boolean =>
+  entry.isMeta === true && !entry.origin && !PastedImages.sourcesOf(text).length && !!withoutReminders(text);
 
 const viaOf = ({ origin }: Record<string, unknown>): "terminal" | undefined =>
   typeof origin === "object" && !!origin && "kind" in origin && origin.kind === "human" ? "terminal" : undefined;
@@ -121,8 +142,10 @@ function turnOf(line: string): ConversationTurn[] {
   if (entry.isSidechain) return [];
   const at = atOf(entry.timestamp);
   if (!at) return [];
-  if (entry.type === "system")
-    return entry.subtype === "turn_duration" ? [{ role: "system", text: "", at, kind: "end" }] : [];
+  if (entry.type === "system") {
+    if (entry.subtype === "turn_duration") return [{ role: "system", text: "", at, kind: "end" }];
+    return ranIn(entry.content, at);
+  }
   if (entry.type !== "user" && entry.type !== "assistant") return [];
   // The 28KB summary body is never worth carrying into a turn; only its presence is.
   if (entry.isCompactSummary) return [{ role: "system", text: "Compacted", at, kind: "note" }];
@@ -136,7 +159,7 @@ function turnOf(line: string): ConversationTurn[] {
   }
   const said = saidOf(content);
   if (!said) return [];
-  if (entry.type === "user") return spoke({ text: said.text, at, via: viaOf(entry) });
+  if (entry.type === "user") return isContext(entry, said.text) ? [] : spoke({ text: said.text, at, via: viaOf(entry) });
   const model = modelOf(message as Record<string, unknown>);
   return [
     {

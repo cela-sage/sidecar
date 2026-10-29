@@ -242,3 +242,56 @@ test("a call carries what the chat unfolds, and its result the diff or the outpu
     { call: { kind: "run", command: "pnpm test" }, out: "1 failed", failed: true },
   );
 });
+
+test("a command draws as its line and what it printed, and the context the harness adds around it stays out", () => {
+  const key = "ffffffff";
+  const user = (second: number, content: unknown, extra: Record<string, unknown> = {}): Record<string, unknown> => ({
+    type: "user",
+    cwd: "/tmp/cmd",
+    timestamp: `2026-01-01T09:00:0${second}.000Z`,
+    message: { role: "user", content },
+    ...extra,
+  });
+  writeTranscript(key, "-tmp-cmd", [
+    user(0, "<local-command-caveat>Caveat: generated while running local commands.</local-command-caveat>", { isMeta: true }),
+    user(1, "<command-name>/compact</command-name>\n   <command-message>compact</command-message>\n   <command-args></command-args>"),
+    user(2, "<local-command-stdout>\u001b[2mCompacted (ctrl+o to see full summary)\u001b[22m</local-command-stdout>"),
+    user(3, "<command-message>mode:ic</command-message>\n<command-name>/mode:ic</command-name>\n<command-args>new glass</command-args>"),
+    user(4, [{ type: "text", text: "Base directory for this skill: /tmp/skills/ic\n\n# IC" }], { isMeta: true }),
+    {
+      type: "system",
+      subtype: "local_command",
+      timestamp: "2026-01-01T09:00:05.000Z",
+      content: "<local-command-stdout>sidecar: up at http://sidecar.localhost:4747</local-command-stdout>",
+    },
+    user(6, "Another Claude session sent a message:\nship it", { isMeta: true, origin: { kind: "peer" } }),
+    user(7, [{ type: "text", text: "[Image: source: /tmp/cmd/1.png]" }], { isMeta: true }),
+    {
+      type: "system",
+      subtype: "informational",
+      timestamp: "2026-01-01T09:00:08.000Z",
+      content: "<command-name>/foo</command-name>\n<command-message>foo</command-message>\n<command-args></command-args>",
+    },
+    {
+      type: "system",
+      subtype: "informational",
+      timestamp: "2026-01-01T09:00:08.000Z",
+      content: "<local-command-stdout>No command named /foo in this session</local-command-stdout>",
+    },
+    { type: "system", subtype: "informational", timestamp: "2026-01-01T09:00:09.000Z", content: "sidecar: reloaded (10 hooks)" },
+  ]);
+
+  assert.deepEqual(
+    conversationOf({ key }).turns.map((turn) => ({ role: turn.role, kind: turn.kind, text: turn.text })),
+    [
+      { role: "system", kind: "command", text: "/compact" },
+      { role: "system", kind: "printed", text: "Compacted (ctrl+o to see full summary)" },
+      { role: "system", kind: "command", text: "/mode:ic new glass" },
+      { role: "system", kind: "printed", text: "sidecar: up at http://sidecar.localhost:4747" },
+      { role: "user", kind: undefined, text: "Another Claude session sent a message:\nship it" },
+      { role: "user", kind: undefined, text: "[Image: source: /tmp/cmd/1.png]" },
+      { role: "system", kind: "command", text: "/foo" },
+      { role: "system", kind: "printed", text: "No command named /foo in this session" },
+    ],
+  );
+});

@@ -1,17 +1,21 @@
+import { stripVTControlCharacters } from "node:util";
+import { SlashCommand } from "../../../shared/utils/slash-command.ts";
+
 export type SystemNote = { label: string };
 
 // The queue records no origin, so the harness's own tag is the only thing telling system from typed.
 const TAGS: [RegExp, (hit: RegExpMatchArray) => string][] = [
   [/<task-notification>[\s\S]*?<task-id>([^<]+)<\/task-id>/, (m) => `Task(${m[1]?.trim()})`],
   [/<task-notification>/, () => "Task notification"],
-  [/<command-name>([^<]+)<\/command-name>/, (m) => `Command(${m[1]?.trim().replace(/^\//, "")})`],
-  [/<local-command-stdout>/, () => "Command output"],
   [/<user-prompt-submit-hook>/, () => "Hook(UserPromptSubmit)"],
   [/<persisted-output>/, () => "Output persisted"],
   [/<local-command-caveat>/, () => "Session caveat"],
-  // A path never matches: a "/" always follows the token there, never whitespace or end.
-  [/^\/[^\s/]+(?:\s|$)/, (m) => `Command(${m[0].trim().replace(/^\//, "")})`],
 ];
+
+// A skill writes its message tag before its name tag, so the two are read apart.
+const COMMAND_NAME = /<command-name>\s*\/?([^<\s]+)\s*<\/command-name>/;
+const COMMAND_ARGS = /<command-args>([\s\S]*?)<\/command-args>/;
+const PRINTED = /<local-command-std(?:out|err)>([\s\S]*?)<\/local-command-std(?:out|err)>/;
 
 // Anywhere, not just at the start: an interruption sits between the withdrawn ask and the next one.
 const INTERRUPT = /\[Request interrupted[^\]]*\]/g;
@@ -19,11 +23,7 @@ const INTERRUPT = /\[Request interrupted[^\]]*\]/g;
 // A reminder wrapping a real message is context around it, not a message of its own.
 const REMINDER = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
 
-const WRAPPERS = [
-  /<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g,
-  /<command-name>[\s\S]*?<\/command-name>\s*<command-message>[\s\S]*?<\/command-message>\s*<command-args>[\s\S]*?<\/command-args>/g,
-  /<local-command-stdout>[\s\S]*?<\/local-command-stdout>/g,
-];
+const WRAPPERS = [/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g];
 
 export function noteOf(text: string): SystemNote | undefined {
   const body = text.trim();
@@ -39,12 +39,31 @@ export function withoutReminders(text: string): string {
   return text.replace(REMINDER, "").trim();
 }
 
-export type Piece = { kind: "note"; label: string } | { kind: "said"; text: string };
+export type Piece =
+  | { kind: "note"; label: string }
+  | { kind: "said"; text: string }
+  | { kind: "command"; line: string }
+  | { kind: "printed"; text: string };
+
+function ranOf(body: string): Piece[] | undefined {
+  const name = COMMAND_NAME.exec(body)?.[1];
+  const typed = name ? { name, args: COMMAND_ARGS.exec(body)?.[1] ?? "" } : SlashCommand.parse(body);
+  const printed = PRINTED.exec(body);
+  if (!typed && !printed) return undefined;
+  const text = stripVTControlCharacters(printed?.[1] ?? "").trim();
+  return [
+    ...(typed ? [{ kind: "command" as const, line: SlashCommand.line({ name: typed.name, args: typed.args.trim() }) }] : []),
+    ...(text ? [{ kind: "printed" as const, text }] : []),
+  ];
+}
 
 /** The message in order, so a withdrawn ask keeps its place ahead of the interruption. */
 export function readOut(text: string): Piece[] {
   const body = withoutReminders(text);
   if (!body) return [{ kind: "note", label: "System reminder" }];
+
+  const ran = ranOf(body);
+  if (ran) return ran;
 
   const note = noteOf(body);
   if (note) {

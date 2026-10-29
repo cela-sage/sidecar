@@ -19,11 +19,20 @@ test("a reminder wrapping real words is context, but a bare one is the whole mes
   assert.deepEqual(noteOf("<system-reminder>the board went up late</system-reminder>"), { label: "System reminder" })
 })
 
-test("a bare slash command is a note, but a path starting with one is not", () => {
-  assert.deepEqual(noteOf("/compact"), { label: "Command(compact)" })
-  assert.deepEqual(noteOf("/style edu"), { label: "Command(style)" })
-  assert.deepEqual(noteOf("/mode:autopilot"), { label: "Command(mode:autopilot)" })
-  assert.equal(noteOf("/Users/madong/Notes"), undefined)
+test("a slash command is its line however it was recorded, but a path starting with a slash is a message", () => {
+  assert.deepEqual(readOut("/compact"), [{ kind: "command", line: "/compact" }])
+  assert.deepEqual(readOut("/style edu"), [{ kind: "command", line: "/style edu" }])
+  assert.deepEqual(readOut("<command-name>/mode:ic</command-name>\n<command-args>a\nb</command-args>"), [
+    { kind: "command", line: "/mode:ic a\nb" },
+  ])
+  assert.deepEqual(readOut("/Users/madong/Notes"), [{ kind: "said", text: "/Users/madong/Notes" }])
+})
+
+test("what a command printed loses its colour, and an empty print draws nothing", () => {
+  assert.deepEqual(readOut("<local-command-stdout>\u001b[1mSet\u001b[22m model to opus</local-command-stdout>"), [
+    { kind: "printed", text: "Set model to opus" },
+  ])
+  assert.deepEqual(readOut("<local-command-stdout></local-command-stdout>"), [])
 })
 
 test("a caveat wrapper is a note like the other harness tags", () => {
