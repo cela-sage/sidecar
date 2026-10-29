@@ -4,7 +4,9 @@ import type { ConversationTurn } from "~/composables/useConversation";
 import type { PromptSent } from "~/stores/prompt";
 
 type Block =
-  | { kind: "you" | "said" | "note"; key: string; turn: ConversationTurn }
+  | { kind: "said" | "note"; key: string; turn: ConversationTurn }
+  | { kind: "you"; key: string; turn: ConversationTurn; images: string[] }
+  | { kind: "pasted"; key: string; paths: string[] }
   | { kind: "tools"; key: string; turns: ConversationTurn[] };
 
 const sc = useSidecar();
@@ -35,12 +37,23 @@ const blocks = computed<Block[]>(() => {
     if (turn.kind === "acting") {
       if (last?.kind === "tools") last.turns.push(turn);
       else out.push({ kind: "tools", key: id, turns: [turn] });
-    } else if (turn.role === "user") out.push({ kind: "you", key: id, turn });
-    else if (turn.role === "system") out.push({ kind: "note", key: id, turn });
+    } else if (turn.role === "user") {
+      const paths = PastedImages.sourcesOf(turn.text);
+      if (!paths.length) out.push({ kind: "you", key: id, turn, images: [] });
+      else {
+        if (last?.kind === "you") last.images.push(...paths);
+        out.push({ kind: "pasted", key: id, paths });
+      }
+    } else if (turn.role === "system") out.push({ kind: "note", key: id, turn });
     else out.push({ kind: "said", key: id, turn });
   }
   return out;
 });
+
+const partsOf = ({ images, turn }: Extract<Block, { kind: "you" }>) =>
+  PastedImages.partsOf(turn.text).map((part) =>
+    part.kind === "text" ? part : { ...part, path: images.find((path) => PastedImages.numberOf(path) === part.number) },
+  );
 
 // A message queued behind a running turn reaches the stream only once delivered, so the sent copy stands in until then.
 const landedOf = (one: PromptSent): boolean =>
@@ -64,10 +77,20 @@ watch(
         >
         <template v-for="block in blocks" :key="block.key">
           <div v-if="block.kind === 'you'" class="you">
-            <p class="bubble">{{ block.turn.text }}</p>
+            <p class="bubble">
+              <template v-for="(part, at) in partsOf(block)" :key="at"
+                ><ConversationImageRef v-if="part.kind === 'image'" :number="part.number" :path="part.path" /><template
+                  v-else
+                  >{{ part.text }}</template
+                ></template
+              >
+            </p>
             <span v-if="block.turn.via === 'terminal'" class="typed mono-meta">
               <UiIcon :icon="Terminal" size="xs" />typed in your terminal · {{ clock.format(block.turn.at) }}
             </span>
+          </div>
+          <div v-else-if="block.kind === 'pasted'" class="you">
+            <ProseMediaSet class="pasted" :conversation="key" :paths="block.paths.join('\n')" />
           </div>
           <p v-else-if="block.kind === 'note'" class="note mono-meta">{{ block.turn.text }}</p>
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
@@ -116,6 +139,10 @@ watch(
 
 .bubble {
   @apply m-0 max-w-130 rounded-2xl bg-sunken px-3.5 py-2.25 typo-body leading-normal text-pretty whitespace-pre-wrap;
+}
+
+.pasted {
+  @apply w-full max-w-90;
 }
 
 .you[data-pending="true"] .bubble {
