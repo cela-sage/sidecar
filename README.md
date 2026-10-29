@@ -421,9 +421,11 @@ lists the `package.json` scripts and `Makefile` targets of every repo one level 
 grouped by repo and then by file, followed by the ones written for the project, with a filter at the top whose
 Enter runs the first match. The repo the conversation runs in heads the list when its folder is inside one, and
 the first `dev` in that order, else the first entry, is the pick until you choose another. A script runs through the runner its lockfile names, pnpm, bun or yarn, else npm, and
-a target through `make`. The widget shows the picked configuration, remembered per project as `sc:run-picked`,
-with a breathing dot while it runs and a red mark when its last run failed. Run (⌃R) starts it, and while it runs
-Restart (⌘R) and Stop (⌘F2) take its place. ⌃R and ⌘R step aside while an artifact is in front, where ⌘R reloads
+a target through `make`. The widget is one pill: the picked configuration, remembered per project as `sc:run-picked`,
+with its name and a chevron that opens the list, a breathing green dot while it runs and a red one when its last run
+failed, then after a hairline its action. Run (⌃R) starts it, and while it runs Restart (⌘R) and Stop (⌘F2) take its
+place, and after a failure Run reads Rerun. The command shows only in the pill's tip and in the list, which marks
+the picked configuration with a check. ⌃R and ⌘R step aside while an artifact is in front, where ⌘R reloads
 the artifact, and ⌃R stays the shell's history search inside the terminal.
 
 Each run is a tab in the dock's Run tool, one per configuration, running `$SHELL -l -c "<command>"` in the repo's

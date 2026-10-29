@@ -7,6 +7,16 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.58.0
+
+### Changed
+
+- **The run widget is one pill,** where it was a segmented control: the configuration first, with a dot that breathes
+  green while it runs and turns red after a failure, its name and a chevron, then after a hairline its action, Run at
+  rest, Restart and Stop while it runs, Rerun after a failure. The command no longer sits in the pill: it shows in
+  the tip and in the list, which marks the current configuration with a check and no longer carries a play mark on
+  every row. The dock's Run tab, the exit status, the failure band, the filter and the keys are as they were.
+
 ## 0.57.1
 
 ### Fixed
