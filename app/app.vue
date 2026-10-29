@@ -5,6 +5,7 @@ const task = $task();
 const terminal = $terminal();
 const busy = $busy();
 const dock = $dock();
+const runs = $runs();
 const sc = useSidecar();
 const inlineArmed = useState<boolean>("sc:inline-armed", () => false);
 const inlineAsk = useState<boolean>("sc:inline-ask", () => false);
@@ -102,6 +103,7 @@ const events = useEvents();
 events.on("terminal.changed", ({ data }) => terminal.heard(data));
 events.on("conversation.changed", ({ data }) => busy.heard(data));
 events.on("dock.changed", ({ data }) => dock.heard(data));
+events.on("runs.changed", ({ data }) => void runs.load(data.project));
 // A restarted server's bus starts empty, so every open of the stream takes its snapshot again.
 events.onReady(() => {
   void busy.load();

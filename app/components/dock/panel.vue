@@ -21,9 +21,10 @@ const dock = $dock();
 const tree = useOrgTree();
 
 const front = computed(() => dock.projectOf(String(route.params.key ?? "")));
-const theirs = computed(() => dock.tabsOf(front.value.key));
-const shown = computed(() => dock.shownOf(front.value.key));
+const theirs = computed(() => dock.tabsOf(front.value.key, dock.tool));
+const shown = computed(() => dock.shownOf(front.value.key, dock.tool));
 const isTerminal = computed(() => dock.tool === "terminal");
+const failing = computed(() => (shown.value?.status === "failed" ? (shown.value.failing ?? []) : []));
 
 const kept = computed((): Kept[] => {
   const counts = new Map<string, number>();
@@ -93,7 +94,11 @@ const pick = (value: DockTool): void => {
           <OrgAvatar v-if="front.project && front.tint" :project="front.project" :tint="front.tint" />
           <span class="project-name">{{ front.name }}</span>
         </span>
-        <div v-if="isTerminal" class="tabs" role="tablist" :aria-label="`${front.name}'s terminals`">
+        <div
+          class="tabs"
+          role="tablist"
+          :aria-label="isTerminal ? `${front.name}'s terminals` : `${front.name}'s runs`"
+        >
           <button
             v-for="tab in theirs"
             :key="tab.id"
@@ -108,12 +113,17 @@ const pick = (value: DockTool): void => {
               <UiIcon :icon="Terminal" size="xs" />
               {{ tab.title }}
             </template>
+            <template v-else-if="tab.kind === 'run'">
+              <RunStatusMark :status="tab.status" />
+              {{ tab.title }}
+            </template>
             <template v-else>
               <span v-if="sessionOf(tab)?.role" class="role">{{ sessionOf(tab)?.role }}</span>
               {{ sessionOf(tab)?.name ?? tab.key }}
             </template>
           </button>
           <UiIconButton
+            v-if="isTerminal"
             :disabled="isOpening"
             :icon="Plus"
             label="New terminal"
@@ -136,13 +146,14 @@ const pick = (value: DockTool): void => {
       </header>
 
       <div class="body" data-theme="dark">
-        <DockScreen v-for="tab in dock.tabs" :key="tab.id" :is-shown="isTerminal && tab.id === shown?.id" :tab="tab" />
-        <UiStateMessage v-if="isTerminal && !shown" class="empty" align="center">
-          {{ isOpening ? `Opening a shell in ${front.name}…` : `No shells in ${front.name}` }}
-        </UiStateMessage>
-        <UiStateMessage v-if="!isTerminal" class="empty" align="center"
-          >Nothing is running in {{ front.name }}</UiStateMessage
-        >
+        <RunFailure v-if="shown && failing.length" :lines="failing" :tab="shown" />
+        <div class="screens">
+          <DockScreen v-for="tab in dock.tabs" :key="tab.id" :is-shown="tab.id === shown?.id" :tab="tab" />
+          <UiStateMessage v-if="!shown" class="empty" align="center">
+            <template v-if="!isTerminal">Nothing has run in {{ front.name }}</template>
+            <template v-else>{{ isOpening ? `Opening a shell in ${front.name}…` : `No shells in ${front.name}` }}</template>
+          </UiStateMessage>
+        </div>
       </div>
     </section>
   </template>
@@ -202,7 +213,11 @@ const pick = (value: DockTool): void => {
 }
 
 .body {
-  @apply relative min-h-0 flex-1 bg-raised;
+  @apply flex min-h-0 flex-1 flex-col bg-raised;
+}
+
+.screens {
+  @apply relative min-h-0 flex-1;
 }
 
 .empty {

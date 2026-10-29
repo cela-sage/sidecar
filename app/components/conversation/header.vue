@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ChevronDown, PanelBottom, Play } from "@lucide/vue";
+import { PanelBottom } from "@lucide/vue";
 import { Titles } from "~~/shared/utils/titles";
 import type { LiveSession } from "~~/shared/types/session";
 
@@ -12,6 +12,7 @@ const tree = useOrgTree();
 const full = computed(() => nameOf(session));
 const parsed = computed(() => Titles.parse(full.value));
 const group = computed(() => Org.placeOf(tree.value, session.key)?.group);
+const where = computed(() => dock.projectOf(session.key));
 const title = computed(() => {
   const words = parsed.value?.words.filter((word) => word !== parsed.value?.role) ?? [];
   return words.join(" ") || full.value;
@@ -34,23 +35,7 @@ const copyId = async (): Promise<void> => {
       {{ session.key }}
     </button>
     <span class="spacer" />
-    <div
-      class="run"
-      data-scaffold
-      role="group"
-      aria-label="Run configurations"
-      data-tip="Run configurations aren't read yet"
-    >
-      <span class="scaffold-body run-body">
-        <button class="run-pick plain-button" aria-haspopup="menu" disabled type="button">
-          <span class="run-name">Run</span>
-          <UiIcon class="run-chevron" :icon="ChevronDown" size="xs" />
-        </button>
-        <button class="run-play plain-button" aria-label="Run" disabled type="button">
-          <UiIcon :icon="Play" size="xs" />
-        </button>
-      </span>
-    </div>
+    <RunWidget v-if="where.project" :project="where" />
     <button
       class="terminal plain-button focusable"
       aria-label="Terminal"
@@ -102,30 +87,6 @@ const copyId = async (): Promise<void> => {
 
 .spacer {
   @apply min-w-4 flex-1;
-}
-
-.run {
-  @apply flex-none;
-}
-
-.run-body {
-  @apply flex h-8.5 items-center gap-0.5 rounded-full border border-border bg-sunken p-0.5;
-}
-
-.run-pick {
-  @apply inline-flex h-7 items-center gap-1.75 rounded-full border-0 bg-raised px-2.5 text-fg shadow-sm;
-}
-
-.run-name {
-  @apply typo-caption font-semibold whitespace-nowrap;
-}
-
-.run-chevron {
-  @apply text-muted;
-}
-
-.run-play {
-  @apply inline-flex size-7 items-center justify-center rounded-full border-0 bg-transparent p-0 text-success;
 }
 
 .terminal {

@@ -47,21 +47,26 @@ export const $dock = defineStore(() => {
       : { key: project, name: project === NO_PROJECT ? "No project" : project };
   };
 
-  const tabsOf = (project: string): DockTab[] => tabs.value.filter((one) => one.project === project);
+  const toolOf = (tab: DockTab): DockTool => (tab.kind === "run" ? "run" : "terminal");
 
-  const shownOf = (project: string): DockTab | undefined => {
-    const theirs = tabsOf(project);
-    return theirs.find((one) => one.id === picked.value[project]) ?? theirs[0];
+  const slotOf = (project: string, of: DockTool): string => `${of}:${project}`;
+
+  const tabsOf = (project: string, of: DockTool): DockTab[] =>
+    tabs.value.filter((one) => one.project === project && toolOf(one) === of);
+
+  const shownOf = (project: string, of: DockTool): DockTab | undefined => {
+    const theirs = tabsOf(project, of);
+    return theirs.find((one) => one.id === picked.value[slotOf(project, of)]) ?? theirs[0];
   };
 
   const pick = (tab: DockTab): void => {
-    picked.value = { ...picked.value, [tab.project]: tab.id };
+    picked.value = { ...picked.value, [slotOf(tab.project, toolOf(tab))]: tab.id };
   };
 
   const added = (tab: DockTab): void => {
     tabs.value = [...tabs.value.filter((one) => one.id !== tab.id), tab];
     pick(tab);
-    tool.value = "terminal";
+    tool.value = toolOf(tab);
     isOpen.value = true;
   };
 
@@ -95,6 +100,7 @@ export const $dock = defineStore(() => {
   };
 
   return {
+    added,
     attach,
     groupOf,
     heard,

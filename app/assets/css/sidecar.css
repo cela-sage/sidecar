@@ -236,16 +236,6 @@ body {
   @apply settle delay-(--duration-fast);
 }
 
-/* Marks a region drawn from the design that no data can fill yet, so a drawing is
-   never read as a description. */
-[data-scaffold] {
-  @apply relative;
-}
-
-[data-scaffold] > .scaffold-body {
-  @apply opacity-55;
-}
-
 /* Global, not scoped: speed-highlight's spans arrive via v-html, which scoped CSS never reaches. */
 .shj-syn-kwd,
 .shj-syn-section {
