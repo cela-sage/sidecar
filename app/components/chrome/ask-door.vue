@@ -55,11 +55,7 @@ const sending = computed(() => (keepsContext.value ? context.value : undefined))
 
 const inbox = computed(() => tasks.value.filter((one) => one.task.state === "unassigned"));
 const tree = computed(() => Org.treeOf({ sessions: sc.sessions.value, tasks: tasks.value, projects: task.projects }));
-const candidates = computed(() => [
-  ...tree.value.assistants,
-  ...tree.value.projects.flatMap((group) => [...group.leads, ...group.tasks.flatMap((one) => one.leads)]),
-  ...tree.value.unplaced,
-]);
+const candidates = computed(() => Org.everyone(tree.value));
 
 const isEmpty = computed(() => !door.thread.length);
 const showsInbox = computed(() => isEmpty.value && inbox.value.length > 0);

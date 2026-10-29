@@ -281,6 +281,20 @@ const placeOf = (tree: OrgTree, key: string): OrgPlace | undefined => {
   return row ? { row } : undefined;
 };
 
+const everyone = (tree: OrgTree): OrgConversation[] => [
+  ...tree.assistants,
+  ...tree.projects.flatMap((group) => [...group.leads, ...group.tasks.flatMap((one) => one.leads)]),
+  ...tree.unplaced,
+];
+
+const mentionable = (tree: OrgTree, key: string): OrgConversation[] => {
+  const group = placeOf(tree, key)?.group;
+  const rows = group
+    ? [...group.leads, ...group.tasks.flatMap((one) => one.leads), ...group.conversations]
+    : everyone(tree);
+  return rows.filter((row) => row.key !== key);
+};
+
 const statusOf = (tree: OrgTree, slug: string): TaskState | undefined =>
   tree.projects.flatMap((group) => [...group.tasks, ...group.done]).find((one) => one.meta.slug === slug)?.status;
 
@@ -303,4 +317,4 @@ const titles = (tree: OrgTree): Map<string, string> => {
   return new Map([...keys].flatMap(([title, key]) => (title && key ? [[title, key] as const] : [])));
 };
 
-export const Org = { placeOf, statusOf, titles, treeOf };
+export const Org = { everyone, mentionable, placeOf, statusOf, titles, treeOf };

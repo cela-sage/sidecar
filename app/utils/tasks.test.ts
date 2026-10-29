@@ -120,6 +120,36 @@ test("the tree drops a Done task you removed or that went Done a day ago, and li
   assert.equal(tree.conversations, 1);
 });
 
+test("a conversation points at its own project's conversations alone, and one outside every project at everyone", () => {
+  const board: TaskMeta = {
+    slug: "board",
+    title: "Board",
+    kind: "page",
+    format: "md",
+    path: "/tmp/board.md",
+    task: { state: "running", project: "cela" },
+  };
+  const tree = Org.treeOf({
+    projects: [
+      { key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" },
+      { key: "mf", name: "Moneyfarm", token: "MF", folder: "/tmp/mf" },
+    ],
+    sessions: [
+      session({ key: "plcela", name: "[Cela] PL sidecar plan" }),
+      session({ key: "tlboard", name: "[Cela] TL board build" }),
+      session({ key: "chatcela", name: "[Cela] zoom the sidecar" }),
+      session({ key: "plmf", name: "[MF] PL mongo plan" }),
+      session({ key: "chatmf", name: "[MF] AI-506 mongo" }),
+      session({ key: "assistant", name: "[meta] EA triage" }),
+    ],
+    tasks: [board],
+  });
+  const keys = (key: string): string[] => Org.mentionable(tree, key).map((one) => one.key).sort();
+  assert.deepEqual(keys("tlboard"), ["chatcela", "plcela"]);
+  assert.deepEqual(keys("plmf"), ["chatmf"]);
+  assert.deepEqual(keys("assistant"), ["plcela", "plmf", "tlboard"]);
+});
+
 test("a running task whose Task Leads are idle does not spin, and one spins only while the bus says a lead is doing", () => {
   const running: TaskMeta = {
     slug: "board",

@@ -12,10 +12,14 @@ const {
 
 const prompt = $prompt();
 const dock = $dock();
+const sc = useSidecar();
+const tree = useOrgTree();
 const input = useTemplateRef<{ focus: () => void }>("input");
 const picker = useTemplateRef<HTMLInputElement>("picker");
 
 const canStop = computed(() => isBusy && prompt.isEmpty);
+
+const candidates = computed(() => (sc.sessionKey.value ? Org.mentionable(tree.value, sc.sessionKey.value) : []));
 
 const pieces = computed<ComposerPieceItem[]>(() => [
   ...prompt.blocks.map((one) => ({ id: one.id, icon: TextQuote, label: one.label, tip: one.text.slice(0, 400) })),
@@ -53,6 +57,7 @@ watch(
       <ComposerInput
         ref="input"
         v-model="prompt.text"
+        :candidates="candidates"
         :commands="prompt.commands"
         is-tall
         :label="`Message ${name}`"
