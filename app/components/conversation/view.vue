@@ -2,16 +2,19 @@
 import { Terminal } from "@lucide/vue";
 import type { ConversationTurn } from "~/composables/useConversation";
 import type { PromptSent } from "~/stores/prompt";
+import type { AskedQuestion } from "~/stores/questions";
 
 type Block =
   | { kind: "said" | "note"; key: string; turn: ConversationTurn }
   | { kind: "you"; key: string; turn: ConversationTurn; text: string; images: string[] }
   | { kind: "pictures"; key: string; paths: string[] }
   | { kind: "ran"; key: string; line?: string; printed: string[] }
+  | { kind: "asking"; key: string; ask: AskedQuestion }
   | { kind: "tools"; key: string; turns: ConversationTurn[] };
 
 const sc = useSidecar();
 const prompt = $prompt();
+const questions = $questions();
 const terminal = $terminal();
 const busy = $busy();
 const tree = useOrgTree();
@@ -37,7 +40,9 @@ const blocks = computed<Block[]>(() => {
     const id = `${turn.at}-${at}`;
     const last = out.at(-1);
     if (turn.kind === "acting") {
-      if (last?.kind === "tools") last.turns.push(turn);
+      const ask = turn.tool === "AskUserQuestion" && turn.ref ? questions.open[turn.ref] : undefined;
+      if (ask) out.push({ kind: "asking", key: id, ask });
+      else if (last?.kind === "tools") last.turns.push(turn);
       else out.push({ kind: "tools", key: id, turns: [turn] });
     } else if (turn.kind === "command") {
       out.push({ kind: "ran", key: id, line: turn.text, printed: [] });
@@ -56,6 +61,8 @@ const blocks = computed<Block[]>(() => {
   }
   return out;
 });
+
+const isAsking = computed(() => blocks.value.some((block) => block.kind === "asking"));
 
 const partsOf = ({ images, text }: Extract<Block, { kind: "you" }>) =>
   PastedImages.partsOf(text).map((part) =>
@@ -109,6 +116,7 @@ watch(
           </div>
           <p v-else-if="block.kind === 'note'" class="note mono-meta">{{ block.turn.text }}</p>
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
+          <QuestionAsk v-else-if="block.kind === 'asking'" :ask="block.ask" />
           <ConversationTools
             v-else-if="block.kind === 'tools'"
             :is-busy="isBusy"
@@ -134,7 +142,7 @@ watch(
           <ClaudeMascot :size="20" state="thinking" />
           <span class="busy-line shimmer">Waking {{ name }}</span>
         </p>
-        <p v-if="isBusy" class="busy" role="status">
+        <p v-if="isBusy && !isAsking" class="busy" role="status">
           <ClaudeMascot :size="20" :state="live.mascot.value" />
           <span class="busy-line shimmer">{{ live.step.value || "Working" }}</span>
         </p>
