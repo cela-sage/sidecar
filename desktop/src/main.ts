@@ -138,13 +138,18 @@ function reglue(): void {
   for (const [id, { rect }] of popups) if (rect) placePopup(id, rect);
 }
 
-const LIGHTS = { x: 30, y: 23 };
-const ISLAND_MID_Y = 36;
+// macOS draws the three buttons 52 by 12 whatever the page's zoom, so they centre on the room the page reports.
+const LIGHTS = { height: 12, width: 52 };
+let lights: Rect | undefined;
 
 const placeLights = (): void => {
-  const zoom = mainWindow?.webContents.getZoomFactor() ?? 1;
-  const position = { x: Math.round(LIGHTS.x * zoom), y: Math.round(LIGHTS.y + (zoom - 1) * ISLAND_MID_Y) };
-  mainWindow?.setWindowButtonPosition(position);
+  if (!lights || !mainWindow) return;
+  const zoom = mainWindow.webContents.getZoomFactor();
+  mainWindow.setWindowButtonPosition({
+    x: Math.round((lights.x + lights.width / 2) * zoom - LIGHTS.width / 2),
+    y: Math.round((lights.y + lights.height / 2) * zoom - LIGHTS.height / 2),
+  });
+  mainWindow.setWindowButtonVisibility(true);
 };
 
 function zoomWindow(to: (factor: number) => number): void {
@@ -179,12 +184,12 @@ function createWindow(): void {
     show: false,
     title: NAME,
     titleBarStyle: "hiddenInset",
-    trafficLightPosition: LIGHTS,
     webPreferences: { contextIsolation: true, preload: UI_PRELOAD, sandbox: true, webviewTag: true },
     width: 1280,
   });
+  // Hidden until the page reports their place, so they never flash at Electron's default inset first.
+  win.setWindowButtonVisibility(false);
   win.once("ready-to-show", () => win.show());
-  win.webContents.on("did-finish-load", placeLights);
   win.webContents.setWindowOpenHandler(({ url }) => {
     openExternal(url);
     return { action: "deny" };
@@ -268,6 +273,10 @@ if (process.argv.includes("--import")) {
     ipcMain.handle("shell:import-cookies", () => importCookies());
     ipcMain.on("popup:place", (_event, { id, rect }: { id: number; rect: Rect }) => placePopup(id, rect));
     ipcMain.on("popup:close", (_event, id: number) => popups.get(id)?.win.close());
+    ipcMain.on("lights:place", (_event, rect: Rect) => {
+      lights = rect;
+      placeLights();
+    });
     ipcMain.on("zoom:pinch", (_event, deltaY: number) => zoomWindow((factor) => Zoom.pinch(factor, deltaY)));
 
     Menu.setApplicationMenu(menu());

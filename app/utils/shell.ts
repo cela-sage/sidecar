@@ -12,6 +12,7 @@ export interface SidecarShell {
   onPopupOpen(cb: (open: PopupOpen) => void): () => void;
   openInChrome(url: string): void;
   partition: string;
+  placeLights(rect: ViewRect): void;
   placePopup(id: number, rect: ViewRect): void;
   present: true;
 }

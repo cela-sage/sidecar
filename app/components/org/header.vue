@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
 import { Check, ChevronDown, CircleDot, MessageSquare, MousePointer2, Plus, Terminal } from "@lucide/vue";
+import { useResizeObserver } from "@vueuse/core";
 import type { Component } from "vue";
 import { FOLLOW_MODES, type FollowMode } from "~/stores/follow";
 
@@ -23,6 +24,13 @@ const ROWS: Record<FollowMode, ModeRow> = {
 const follow = $follow();
 const desk = $desk();
 const tree = useOrgTree();
+const lights = useTemplateRef<HTMLElement>("lights");
+
+// The desktop shell draws macOS's buttons on this spacer, and only the page knows where the header puts it.
+useResizeObserver(lights, ([entry]) => {
+  const rect = entry?.target.getBoundingClientRect();
+  if (rect?.width) sidecarShell()?.placeLights?.({ height: rect.height, width: rect.width, x: rect.x, y: rect.y });
+});
 
 const now = computed(() => ROWS[follow.mode] ?? ROWS.ask);
 const place = computed(() => (follow.offer?.key ? Org.placeOf(tree.value, follow.offer.key) : undefined));
@@ -54,7 +62,7 @@ useShortcuts(
 <template>
   <div class="follow" data-region="org-header">
     <header class="bar">
-      <span class="lights" aria-hidden="true" />
+      <span ref="lights" class="lights" aria-hidden="true" />
       <UiPopover :estimated-height="250" placement="bottom" width="w-79">
         <template #trigger="{ open }">
           <button
@@ -139,7 +147,7 @@ useShortcuts(
 }
 
 .lights {
-  @apply hidden h-3 w-14 flex-none;
+  @apply hidden h-3 w-13 flex-none;
 }
 
 /* Never :global() here: Vue's scoped compiler keeps only what is inside it, which made the whole shell the drag region. */

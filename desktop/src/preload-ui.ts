@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld("sidecarShell", {
   onPopupOpen: (cb: (open: PopupOpen) => void): (() => void) => subscribe("popup:open", cb),
   openInChrome: (url: string): Promise<void> => ipcRenderer.invoke("shell:open-external", url),
   partition: info.partition,
+  placeLights: (rect: Rect): void => ipcRenderer.send("lights:place", rect),
   placePopup: (id: number, rect: Rect): void => ipcRenderer.send("popup:place", { id, rect }),
   present: true,
 });
