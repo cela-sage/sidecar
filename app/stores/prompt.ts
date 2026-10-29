@@ -31,6 +31,11 @@ export interface PromptPick {
   at: number;
 }
 
+export interface PromptMove {
+  mode: string;
+  at: number;
+}
+
 export interface PromptRefusal {
   name: string;
 }
@@ -73,6 +78,7 @@ export const $prompt = defineStore(() => {
   const drafts = ref<Partial<Record<string, Draft>>>({});
   const sent = ref<PromptSent[]>([]);
   const chosen = ref<Partial<Record<string, PromptPick>>>({});
+  const moved = ref<Partial<Record<string, PromptMove>>>({});
   const listed = ref<Partial<Record<string, Listed>>>({});
   const refused = ref<Partial<Record<string, PromptRefusal>>>({});
   const focusAsked = ref(0);
@@ -173,11 +179,13 @@ export const $prompt = defineStore(() => {
     return deliver(key, "command", { ...command });
   };
 
-  const runCommand = async (command: CommandCall): Promise<boolean> => {
+  const switchMode = async ({ id, command }: { id: string; command: string }): Promise<void> => {
     const key = sc.sessionKey.value;
-    if (!key || !(await run(key, command))) return false;
-    sent.value = [...sent.value, { key, text: SlashCommand.line(command), at: Date.now() }];
-    return true;
+    const call = { name: command, args: "" };
+    if (!key || !(await run(key, call))) return;
+    const at = Date.now();
+    sent.value = [...sent.value, { key, text: SlashCommand.line(call), at }];
+    moved.value = { ...moved.value, [key]: { mode: id, at } };
   };
 
   const send = async (): Promise<void> => {
@@ -235,12 +243,13 @@ export const $prompt = defineStore(() => {
     isWaking,
     landed,
     mention,
+    moved,
     pick,
     refused,
-    runCommand,
     send,
     sent,
     stop,
+    switchMode,
     text,
     unattach,
     upload,

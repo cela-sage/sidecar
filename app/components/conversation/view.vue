@@ -34,6 +34,13 @@ const model = computed(() => {
   return newest && newest.at > pick.at ? live.model.value : pick.model;
 });
 
+const mode = computed(() => {
+  const move = prompt.moved[key.value];
+  if (!move) return live.mode.value;
+  const newest = live.stream.value.findLast((turn) => turn.mode);
+  return newest && newest.at > move.at ? live.mode.value : move.mode;
+});
+
 const blocks = computed<Block[]>(() => {
   const out: Block[] = [];
   for (const [at, turn] of live.stream.value.entries()) {
@@ -153,7 +160,7 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
       v-if="key"
       :has-history="!!blocks.length"
       :is-busy="isBusy"
-      :mode="live.mode.value"
+      :mode="mode"
       :model="model"
       :name="name"
     />

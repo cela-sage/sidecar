@@ -24,7 +24,7 @@ const pick = ({ id, command }: SessionMode): void => {
     return;
   }
   close();
-  void prompt.runCommand({ name: command, args: "" });
+  void prompt.switchMode({ id, command });
 };
 
 const attach = (): void => {
