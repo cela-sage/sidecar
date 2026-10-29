@@ -69,6 +69,11 @@ export function claudeBinary(): string {
   return existsSync(installed) ? installed : "claude";
 }
 
+// Inherited CLAUDE* variables would make a session started from here a child of this process's own.
+export function sessionEnv(): NodeJS.ProcessEnv {
+  return Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("CLAUDE")));
+}
+
 async function fromCli(): Promise<JobEntry[] | undefined> {
   let raw: string;
   try {

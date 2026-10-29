@@ -2,7 +2,7 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import type { SessionStatus } from "../../../shared/types/session.ts";
 import { readTextSafe } from "../../../lib/files.ts";
-import { isSessionId, registryHome } from "./paths.ts";
+import { isSessionId, keyOf, registryHome } from "./paths.ts";
 
 export interface RegistryEntry {
   pid: number;
@@ -84,4 +84,27 @@ export function liveEntries(): RegistryEntry[] {
     byId.set(entry.id, seen ? newest(seen, entry) : entry);
   }
   return [...byId.values()];
+}
+
+// The newest live process under the key wins: a resumed session leaves its old pid's entry behind.
+export function entryOf(key: string): RegistryEntry | undefined {
+  const [entry] = liveEntries()
+    .filter((one) => keyOf(one.id) === key)
+    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  return entry;
+}
+
+export function keyFileOf(pid: number): string | undefined {
+  let names: string[];
+  try {
+    names = readdirSync(registryHome());
+  } catch {
+    return undefined;
+  }
+  const name = names.find((one) => {
+    const [left, hash, key, extra] = one.split(".");
+    return left === String(pid) && !!hash && !!key && !extra;
+  });
+  if (!name) return undefined;
+  return join(registryHome(), name);
 }

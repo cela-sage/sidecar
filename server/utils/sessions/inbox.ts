@@ -1,27 +1,10 @@
-import { readdirSync } from "node:fs";
 import { createConnection } from "node:net";
-import { join } from "node:path";
 import { readTextSafe } from "../../../lib/files.ts";
-import { keyOf, registryHome } from "./paths.ts";
-import { liveEntries } from "./registry.ts";
+import { keyOf } from "./paths.ts";
+import { entryOf, keyFileOf } from "./registry.ts";
 import { marked } from "./relay.ts";
 
 const HANG_BUDGET_MS = 2000;
-
-export function keyFileOf(pid: number): string | undefined {
-  let names: string[];
-  try {
-    names = readdirSync(registryHome());
-  } catch {
-    return undefined;
-  }
-  const name = names.find((one) => {
-    const [left, hash, key, extra] = one.split(".");
-    return left === String(pid) && !!hash && !!key && !extra;
-  });
-  if (!name) return undefined;
-  return join(registryHome(), name);
-}
 
 export type SendOptions = {
   socketPath: string;
@@ -37,11 +20,8 @@ export type DeliverOptions = { key: string; text: string; slug?: string };
 export type DeliverResult =
   { delivered: true; session: string } | { delivered: false; reason: "no-live-session" | "refused-by-inbox" };
 
-// The newest live process under the key wins: a resumed session leaves its old pid's entry behind.
 export async function deliver({ key, text, slug }: DeliverOptions): Promise<DeliverResult> {
-  const [entry] = liveEntries()
-    .filter((one) => keyOf(one.id) === key)
-    .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+  const entry = entryOf(key);
   if (!entry) return { delivered: false, reason: "no-live-session" };
   const token = readTextSafe(keyFileOf(entry.pid))?.trim();
   if (!entry.messagingSocketPath || !token) return { delivered: false, reason: "refused-by-inbox" };

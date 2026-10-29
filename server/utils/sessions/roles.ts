@@ -5,7 +5,7 @@ import { promisify } from "node:util";
 import { SidecarConfig } from "../../../lib/sidecar/config.ts";
 import { configRoot } from "../../../lib/sidecar/paths.ts";
 import type { Role } from "../../../shared/types/task.ts";
-import { claudeBinary } from "./jobs.ts";
+import { claudeBinary, sessionEnv } from "./jobs.ts";
 
 export interface Launch {
   agent: string;
@@ -33,11 +33,9 @@ const fileOf = (role: Role): string | undefined => {
   return existsSync(path) ? path : undefined;
 };
 
-// What relay --new runs: inherited CLAUDE* variables would make the new session a child of the sidecar's own.
 const launch = async ({ agent, cwd, prompt, name }: Launch): Promise<Launched> => {
-  const env = Object.fromEntries(Object.entries(process.env).filter(([key]) => !key.startsWith("CLAUDE")));
   const args = ["--bg", "--agent", agent, ...(name ? ["--name", name] : []), prompt];
-  const ran = await run(claudeBinary(), args, { cwd, env, timeout: START_MS }).catch(
+  const ran = await run(claudeBinary(), args, { cwd, env: sessionEnv(), timeout: START_MS }).catch(
     (error: Error & { stderr?: string }) => ({ failed: (error.stderr || error.message).trim() }),
   );
   if ("failed" in ran) return ran;
