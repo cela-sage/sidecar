@@ -7,6 +7,27 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.50.0
+
+### Added
+
+- **A finished state sits between running and done.** A Task Lead's `done` moves the task to finished, which reads
+  In progress in the tree with the needs-you mark, heads its project's tasks, shows a red Finished step on the task
+  and waits on your check. Mode's `artifact stamp --state` does not list `finished` yet, so only the lane writes it.
+- **Done is your mark alone.** Done in the task's strip, Mark done in the tree row's menu and `sidecar task <slug>
+  done` typed at your own terminal move the task to Done and file it in the history as your decision, which your
+  decisions filter lists.
+- **A task with a Task Lead working under it reads In progress whatever its state,** from the turn bus, and its own
+  status returns when the turn ends.
+
+### Changed
+
+- **The Done fold lists done alone,** so a task someone still works on never sits in it.
+- **A lead's `done` on a task you already marked leaves it Done.**
+- **The sidecar rule says `done` means finished and waits on your check,** and that a conversation leads one task only.
+  A conversation started before this version keeps the old wording, but its `done` files finished all the same.
+- Nothing migrates: tasks that were Done stay Done.
+
 ## 0.49.0
 
 ### Added

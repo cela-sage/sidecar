@@ -141,7 +141,8 @@ screen, with the toast a new page gets, and one said while the sidecar was stopp
 
 A task is a `.md` in the artifacts folder whose stamp holds a state, which the Mode plugin writes with
 `artifact stamp <slug> --project cela --state running`. The state is one of unassigned, assigned, assessed,
-running, blocked, waiting and done, and a task is unassigned exactly while its project is empty. A task picked
+running, blocked, waiting, finished and done, and a task is unassigned exactly while its project is empty. Done is
+your mark alone: a Task Lead's work ends in finished, and only you move it to done. A task picked
 in the tree opens in the main panel in place of the conversation, and the sheet shows where the task is in its
 life, its four parts, and the conversations on it: a conversation is the task's when its title has a role token and the task's slug, as
 `[Cela] TL sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
@@ -187,7 +188,10 @@ spinner while it works, red when a task or
 its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
 else, a check once it is idle. A conversation works only while the turn bus says it has a turn open, through
 `conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
-task in progress spins only while one of its Task Leads works. What a fold of done tasks or done Task Leads holds sits one level under it.
+task in progress spins only while one of its Task Leads works. A task with a Task Lead working under it reads In progress
+whatever its state, and its own status comes back when the turn ends, so a Done fold never lists a task someone still
+works on. A finished task sits under In progress with the red mark and heads its project's tasks, since it waits on
+your mark, and the Done fold lists done alone. What a fold of done tasks or done Task Leads holds sits one level under it.
 Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead while the lead's own row is
 folded away, and the row in front has an ink bar. Clicking a conversation brings it in front, and clicking a
 task opens it in the main panel in place of the conversation, on any screen, until you pick a conversation again.
@@ -195,7 +199,8 @@ task opens it in the main panel in place of the conversation, on any screen, unt
 The task opens as its sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in
 its bar, and esc closes it back to the conversation. The document renders like any `.md` in Artifacts, under the task's title and its strip, Backlog,
 Assigned, Assessed, In progress and Done, where clicking a step moves the task there through the same lane once
-it is on a project, and an escalation that settles puts a blocked task back in progress. The conversations on
+it is on a project, and an escalation that settles puts a blocked task back in progress. A finished task shows a red
+Finished step before Done, and clicking Done there is your mark, filed in the history as your decision. The conversations on
 the task sit in a rail on the right that the toggle hides, remembered as `sc:task-rail`.
 Agents move the same states through the lane's verbs. Dropping a backlog row on a project, or pressing its Route to, Haiku's suggestion through
 `Agent.haiku`, a `claude -p` in safe mode at low effort with no tools on your Claude Code login, given the
@@ -210,7 +215,8 @@ for any role. New task, or N, drafts a row in the backlog,
 writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
 
 Right-click on a task row, in the backlog or under a project, opens its menu. Attach hands the task's lead to
-`sidecar terminal`, and is off while the task has none. Rename turns the row into the New task field with the
+`sidecar terminal`, and is off while the task has none. Mark done is your mark, off on a task with no project or
+already Done. Rename turns the row into the New task field with the
 title in it, and Enter writes it through `PATCH /api/tasks/:slug {title}`, which rewrites the stamp title and the
 heading and keeps the file name, so every link by slug holds. Remove, like a backlog row's trash, goes through
 `DELETE /api/tasks/:slug` in any state: it stops every live conversation titled as one of the task's Task Leads,
@@ -424,7 +430,7 @@ sidecar task <slug> hire "a tester, to drive the CLI, Sonnet xhigh"
 sidecar task <slug> judge "Yours, it sets the budget of every task" --pick 1
 sidecar task <slug> judge "The transcripts settle it" --pick 1 --settle  # within the Project Lead's reach
 sidecar task <slug> decide 1                          # or decide "your own words"; --thread <n> names one
-sidecar task <slug> done
+sidecar task <slug> done                              # a lead's: finished, waiting on your mark; at your own terminal: Done
 ```
 
 Each verb rewrites the stamp in the layout Mode writes, appends to the task's history and publishes on the
@@ -433,7 +439,10 @@ holding its options, the Project Lead's verdict and pick, and in the end the dec
 deciding it puts the task back to running and tells the conversation that asked, under the `[[sidecar]]`
 marker. A hire is the same thread with Approve and Refuse, and blocks nothing. Who called is read off the
 conversation's title: a role token makes it that role, and no token makes it you, except that a decide is always
-yours, whichever conversation runs it. A judge alone is the Project Lead's read and waits on you, while
+yours, whichever conversation runs it. A done from a role conversation moves the task to finished, which waits on
+your mark, and a done typed at your own terminal, from the task's status control or from the tree row's menu is your
+mark: the task goes to Done and the history files it as your decision, the way a decide does. A lead's done on a task
+you already marked leaves it Done, and nothing migrates, so tasks that were Done stay Done. A judge alone is the Project Lead's read and waits on you, while
 `judge --settle` settles one within its reach the way a decide does, filed as the Project Lead's decision under
 its title, so it stays out of your decisions and a later decide on that thread is refused as settled. `--settle`
 with no verdict settles the verdict already standing, which lets a Task Lead close one the Project Lead judged.
