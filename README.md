@@ -264,7 +264,9 @@ lines, and leaves a read's file and an edit's receipt out.
 
 Claude's prose renders as everywhere else, with more in the chat. A fence named as `ts [src/menu.ts:3-9]`, or
 with the path bare after the language, gets a caption that opens Files at those lines with them selected, and
-every fence a Copy. An image, video or audio file named by its path in backticks stays a link to Files in the
+every fence a Copy. A fence whose first line starts with `! `, Claude Code's mark for a command you run yourself,
+and an inline code span that does, get a Run beside it, which opens the dock on Run and runs the command without
+its `!` in a new run tab, as described under Run configurations. An image, video or audio file named by its path in backticks stays a link to Files in the
 sentence and renders under its paragraph in the order named, the picture on the canvas, the video with its own
 glass controls, the audio with a waveform decoded from the file, each with the path and its type and size, and a
 path that is not on disk draws nothing, which `GET /api/sessions/:key/files/stat` answers with a 200 either
@@ -381,6 +383,11 @@ and its screen, marked passed, stopped or failed, and a failed one shows the lin
 screen, or its last 15 lines when none does, and Send to Claude adds them to the prompt of the conversation in
 front as a block labelled with the run.
 
+The Run on a command Claude suggests with a leading `! ` starts one more run tab every time you press it, focused and
+named by the command's first words, past a leading `cd` and any flag. It runs in the folder of the conversation
+unless the command moves itself with `cd`, and a fence with several `!` lines runs them in order as one script. It
+is no configuration, so nothing is saved to `runs.json` and Restart does not know it.
+
 Ask the Assistant for one opens the door with a draft for the project, and the Assistant writes the
 configuration with the CLI, which keeps it in `~/.claude/sidecar/runs.json` by project and tells every open
 sidecar through `runs.changed`:
@@ -394,11 +401,12 @@ sidecar run <project> remove "<name>"
 ```
 GET  /api/runs/<project>                                            ->  RunGroup[]
 POST /api/runs/<project>  {"config":"<id>","cols":<n>,"rows":<n>}   ->  DockTab
+POST /api/runs/<project>  {"command":"<shell>","folder"?:"<absolute>","cols":<n>,"rows":<n>}  ->  DockTab
 POST /api/dock/<id>/stop                                            ->  {"stopped":true}
 ```
 
-Both POSTs refuse an origin that is not the sidecar's own, and a run's command comes from the configuration the
-server reads, never from the request.
+Both POSTs refuse an origin that is not the sidecar's own. A configuration's command comes from what the server
+reads, and only the `command` shape carries its own, the way the websocket types into a shell.
 
 ### The task lane
 

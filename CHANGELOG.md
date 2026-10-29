@@ -7,6 +7,16 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.49.0
+
+### Added
+
+- **A command Claude suggests with a leading `!` has a Run.** A fence whose first line starts with `! `, or an inline
+  code span that does, shows a Run beside Copy that opens the dock on Run and runs the command without its `!` in a
+  new, focused run tab named by its first words. It runs in the conversation's folder, a fence with several `!`
+  lines runs them in order as one script, and nothing is saved to `runs.json`. `POST /api/runs/<project>` takes a
+  `command` with an optional `folder` beside its `config`.
+
 ## 0.48.0
 
 ### Added
