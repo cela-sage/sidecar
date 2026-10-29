@@ -658,7 +658,9 @@ the tool's result and so closes the dialog. However the call settles, a pick in 
 interrupting the turn, the hook closes the question with `DELETE /api/questions/<tool id>`, which also ends its
 poll. With the sidecar down it tries again every five seconds, and the dialog answers as it always did. A sidecar
 that restarted under an open question has forgotten it and answers the poll with a 404, which makes the hook announce
-the question again, so it is back in the list about ten seconds after the server is up.
+the question again, so it is back in the list within five seconds of the server being up and takes a pick at once. The
+server answers a body it cannot read with a 400, and the hook's rest between retries is a `sleep` process, because a
+hook's ten second budget counts a clock wait and no other call.
 
 A tool use that needs your permission runs the same race. The mod's `classic.PermissionRequest` hook, which the engine
 runs beside the terminal's dialog, opens a question headed with the tool and asking what it runs, a command, a path or

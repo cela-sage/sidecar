@@ -7,6 +7,17 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.55.2
+
+### Fixed
+
+- **A question or a permission prompt that comes back after a sidecar restart takes a pick at once,** where 0.55.0
+  refused picks for five seconds while the mod rested.
+
+### Changed
+
+- **`POST /api/questions/:ref` answers 400 for a body it cannot read,** where it answered 200 with `asked: false`.
+
 ## 0.55.1
 
 ### Fixed
