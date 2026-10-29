@@ -14,6 +14,7 @@ const LABELS: Record<Face, string> = {
 const sc = useSidecar();
 const chrome = useChrome();
 const review = useReview();
+const layout = $layout();
 
 // Counted only from what is already held, so the row never reads a face's data before that face opens.
 const counts = computed<Partial<Record<Face, number>>>(() => {
@@ -24,30 +25,59 @@ const counts = computed<Partial<Record<Face, number>>>(() => {
   ];
   return Object.fromEntries(held.filter(([, count]) => count > 0));
 });
-
-const options = computed(() =>
-  chrome.view.faces.value.map((face) => ({
-    count: counts.value[face],
-    hint: `${LABELS[face]} of this conversation`,
-    label: LABELS[face],
-    value: face,
-  })),
-);
-
-const face = computed<Face>({
-  get: () => chrome.view.current.value,
-  set: (next) => chrome.view.set(next),
-});
 </script>
 
 <template>
   <nav class="faces" aria-label="Faces of this conversation">
-    <UiSegmented v-model="face" data-region="view-switcher" :options="options" />
+    <div class="tabs" data-region="view-switcher" role="tablist">
+      <button
+        v-for="face in chrome.view.faces.value"
+        :key="face"
+        class="tab plain-button focusable"
+        role="tab"
+        type="button"
+        :aria-selected="face === chrome.view.current.value"
+        :data-tip="`${LABELS[face]} of this conversation`"
+        :data-value="face"
+        @click="chrome.view.set(face)"
+      >
+        {{ LABELS[face] }}
+        <span v-if="layout.hasCounts && counts[face]" class="count">{{ counts[face] }}</span>
+      </button>
+    </div>
   </nav>
 </template>
 
 <style scoped>
 .faces {
-  @apply flex h-11.5 flex-none items-center border-b border-b-border px-4.5 pb-2.5;
+  @apply flex h-10 flex-none items-stretch border-b border-b-border px-3.5;
+}
+
+.tabs {
+  @apply flex items-stretch gap-0.5;
+}
+
+.tab {
+  @apply inline-flex items-center gap-1.5 border-0 bg-transparent px-2.5 typo-body-strong whitespace-nowrap text-muted transition-[color,box-shadow] duration-(--duration-fast) ease-out;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .tab:hover {
+    @apply text-fg;
+  }
+}
+
+.tab[aria-selected="true"] {
+  @apply text-fg inset-shadow-[0_-2px_0_var(--ink)];
+}
+
+.count {
+  @apply typo-mono-micro font-medium text-muted;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab {
+    @apply transition-none;
+  }
 }
 </style>
