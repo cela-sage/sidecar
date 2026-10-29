@@ -51,4 +51,5 @@ test("a compaction reads its sizes in thousands", () => {
     "Compacted · 124k → 32k · 10:52",
   );
   assert.equal(Usage.compacted(turn, time), "Compacted");
+  assert.equal(Usage.kilo(1_000_000), "1M");
 });

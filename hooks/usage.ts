@@ -3,10 +3,9 @@ import type { SessionContextBreakdown, SessionUsage } from 'claude-code'
 export interface UsageReport {
   context: { window: number; tokens?: number; percent?: number }
   rateLimits: SessionUsage['rateLimits']
+  isCompacting?: true
   breakdown?: {
     model: string
-    tokens: number
-    window: number
     parts: { label: string; tokens: number }[]
     autoCompactPercent?: number
   }
@@ -33,25 +32,24 @@ const partsOf = ({ categories }: SessionContextBreakdown): { label: string; toke
 }
 
 export const Usage = {
-  // A window no response has measured yet, fresh or just compacted, is read from the breakdown's own estimate.
-  describe: ({ context, rateLimits }: SessionUsage): UsageReport => {
-    const { breakdown } = context
+  // No response yet means the size comes from the breakdown, which counts the compaction window, so shares are restated on the model's window.
+  describe: (
+    { context, rateLimits }: SessionUsage,
+    { tokens: known, isCompacting }: { tokens?: number; isCompacting?: boolean } = {},
+  ): UsageReport => {
+    const { breakdown, window } = context
+    const tokens = known ?? context.tokens ?? breakdown?.totalTokens
     return {
-      context: {
-        window: context.window,
-        tokens: context.tokens ?? breakdown?.totalTokens,
-        percent: context.percent ?? breakdown?.percentage,
-      },
+      context: { window, tokens, percent: tokens ? Math.round((tokens / window) * 100) : undefined },
       rateLimits,
+      ...(isCompacting ? { isCompacting } : {}),
       ...(breakdown
         ? {
             breakdown: {
               model: breakdown.model,
-              tokens: breakdown.totalTokens,
-              window: breakdown.rawMaxTokens,
               parts: partsOf(breakdown),
               ...(breakdown.autoCompactThreshold
-                ? { autoCompactPercent: Math.round((breakdown.autoCompactThreshold / breakdown.rawMaxTokens) * 100) }
+                ? { autoCompactPercent: Math.round((breakdown.autoCompactThreshold / window) * 100) }
                 : {}),
             },
           }

@@ -17,11 +17,10 @@ const Reading = z.object({
   rateLimits: z.array(
     z.object({ kind: z.string().min(1), percentUsed: z.number().min(0), resetsAt: z.string().optional() }),
   ),
+  isCompacting: z.literal(true).optional(),
   breakdown: z
     .object({
       model: z.string(),
-      tokens: z.number().min(0),
-      window: z.number().positive(),
       parts: z.array(z.object({ label: z.string().min(1), tokens: z.number().min(0) })),
       autoCompactPercent: z.number().min(0).optional(),
     })

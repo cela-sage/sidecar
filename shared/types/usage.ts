@@ -17,8 +17,6 @@ export interface ContextPart {
 
 export interface ContextBreakdown {
   model: string;
-  tokens: number;
-  window: number;
   parts: ContextPart[];
   autoCompactPercent?: number;
 }
@@ -26,5 +24,6 @@ export interface ContextBreakdown {
 export interface SessionUsage {
   context: ContextFigures;
   rateLimits: RateLimit[];
+  isCompacting?: true;
   breakdown?: ContextBreakdown;
 }

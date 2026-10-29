@@ -1,24 +1,15 @@
 import type { Topics } from "~~/shared/types/events";
 import type { RateLimit, SessionUsage } from "~~/shared/types/usage";
 
-interface Compacting {
-  from: number;
-}
-
 export const $usage = defineStore(() => {
   const sc = useSidecar();
   const prompt = $prompt();
   const limits = ref<RateLimit[]>([]);
   const held = ref<Partial<Record<string, SessionUsage>>>({});
-  const compacting = ref<Partial<Record<string, Compacting>>>({});
   const reading = ref<string>();
 
   const front = computed(() => held.value[sc.sessionKey.value ?? ""]);
-  const isCompacting = computed(() => !!compacting.value[sc.sessionKey.value ?? ""]);
-
-  const settle = (key: string): void => {
-    compacting.value = Object.fromEntries(Object.entries(compacting.value).filter(([one]) => one !== key));
-  };
+  const isCompacting = computed(() => !!front.value?.isCompacting);
 
   const loadPlan = async (): Promise<void> => {
     const reply = await $fetch<{ rateLimits: RateLimit[] }>("/api/usage").catch(() => undefined);
@@ -30,11 +21,7 @@ export const $usage = defineStore(() => {
     const reply = await $fetch<{ usage?: SessionUsage }>(`/api/sessions/${encodeURIComponent(key)}/usage`, {
       query,
     }).catch(() => undefined);
-    if (!reply) return;
-    held.value = { ...held.value, [key]: reply.usage };
-    const started = compacting.value[key];
-    const tokens = reply.usage?.context.tokens;
-    if (started && tokens && tokens < started.from) settle(key);
+    if (reply) held.value = { ...held.value, [key]: reply.usage };
   };
 
   const heard = ({ key }: Topics["usage.changed"]): void => {
@@ -56,16 +43,8 @@ export const $usage = defineStore(() => {
     if (reading.value === key) reading.value = undefined;
   };
 
-  const compact = async (key: string, focus: string): Promise<void> => {
-    const from = held.value[key]?.context.tokens ?? 0;
-    if ((await prompt.run(key, { name: "compact", args: focus.trim() })) !== "sent") return;
-    compacting.value = { ...compacting.value, [key]: { from } };
-  };
-
-  const stop = async (key: string): Promise<void> => {
-    settle(key);
-    await prompt.stop();
-  };
+  const compact = (key: string, focus: string): Promise<unknown> =>
+    prompt.run(key, { name: "compact", args: focus.trim() });
 
   watch(
     () => sc.sessionKey.value,
@@ -75,5 +54,5 @@ export const $usage = defineStore(() => {
     { immediate: true },
   );
 
-  return { compact, front, heard, isCompacting, limits, loadPlan, read, release, reload, stop };
+  return { compact, front, heard, isCompacting, limits, loadPlan, read, release, reload };
 });

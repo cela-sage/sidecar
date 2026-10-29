@@ -32,7 +32,7 @@ let rule: string | undefined
 
 const tell = async ($: EngineInterface, api: string, path: string, body: unknown): Promise<void> => {
   const id = await $.session.id()
-  void $.http
+  await $.http
     .fetch(`${api}/api/sessions/${id.slice(0, 8)}/${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -44,10 +44,16 @@ const tell = async ($: EngineInterface, api: string, path: string, body: unknown
 const tellCommands = async ($: EngineInterface, api: string): Promise<void> =>
   tell($, api, 'commands', Commands.describe(await $.command.list()))
 
-const tellUsage = async ($: EngineInterface, api: string, { breakdown = false } = {}): Promise<void> => {
+interface UsageTold {
+  breakdown?: boolean
+  tokens?: number
+  isCompacting?: boolean
+}
+
+const tellUsage = async ($: EngineInterface, api: string, { breakdown = false, tokens, isCompacting }: UsageTold = {}): Promise<void> => {
   const figures = await $.session.usage()
-  const usage = breakdown || !figures.context.tokens ? await $.session.usage({ breakdown: 'summary' }) : figures
-  await tell($, api, 'usage', Usage.describe(usage))
+  const usage = breakdown || !(tokens ?? figures.context.tokens) ? await $.session.usage({ breakdown: 'summary' }) : figures
+  await tell($, api, 'usage', Usage.describe(usage, { tokens, isCompacting }))
 }
 
 export const register: Register = (on, options) => {
@@ -122,6 +128,19 @@ export const register: Register = (on, options) => {
   on('session.measure', async ($, e, next) => {
     void tellUsage($, api).catch(() => undefined)
     return next(e)
+  })
+
+  // The engine measures nothing after a compaction until the next response, so the sizes come from the compaction itself.
+  on('session.compact', async ($, e, next) => {
+    if (e.trigger === 'precompute' || e.agentId) return next(e)
+    await tellUsage($, api, { isCompacting: true }).catch(() => undefined)
+    let compacted: Awaited<ReturnType<typeof next>> | undefined
+    try {
+      compacted = await next(e)
+      return compacted
+    } finally {
+      await tellUsage($, api, { tokens: compacted?.skip ? undefined : compacted?.tokensAfter }).catch(() => undefined)
+    }
   })
 
   // A delivery from the sidecar lands as Marco's own words, or runs here as Stop, a model or a Review button Claude never sees.

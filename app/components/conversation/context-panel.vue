@@ -4,22 +4,22 @@ const emit = defineEmits<{ done: [] }>();
 
 const sc = useSidecar();
 const usage = $usage();
+const prompt = $prompt();
 const focus = ref("");
 
 const key = computed(() => sc.sessionKey.value ?? "");
 const breakdown = computed(() => usage.front?.breakdown);
+const size = computed(() => usage.front?.context.window ?? 1);
+const used = computed(() => usage.front?.context.tokens ?? 0);
 const parts = computed(() =>
-  (breakdown.value?.parts ?? []).map((part) => ({
-    ...part,
-    width: `${(part.tokens / (breakdown.value?.window ?? 1)) * 100}%`,
-  })),
+  (breakdown.value?.parts ?? []).map((part) => ({ ...part, width: `${(part.tokens / size.value) * 100}%` })),
 );
 const total = computed(() =>
-  breakdown.value
-    ? `${Usage.kilo(breakdown.value.tokens)} of ${Usage.kilo(breakdown.value.window)} · ${SessionModels.nameOf(breakdown.value.model)}`
+  breakdown.value && used.value
+    ? `${Usage.kilo(used.value)} of ${Usage.kilo(size.value)} · ${SessionModels.nameOf(breakdown.value.model)}`
     : "",
 );
-const free = computed(() => Math.max(0, (breakdown.value?.window ?? 0) - (breakdown.value?.tokens ?? 0)));
+const free = computed(() => Math.max(0, size.value - used.value));
 const note = computed(() => {
   if (usage.isCompacting) return "Summarizing the conversation";
   if (isBusy) return "Claude is working. Compact once it stops.";
@@ -86,7 +86,7 @@ watch(
     </label>
     <div class="foot">
       <span class="note" :class="{ shimmer: usage.isCompacting }">{{ note }}</span>
-      <UiButton v-if="usage.isCompacting" data-tip="Stop · {esc}" size="xs" variant="outline" @click="usage.stop(key)">
+      <UiButton v-if="usage.isCompacting" data-tip="Stop · {esc}" size="xs" variant="outline" @click="prompt.stop()">
         Stop
       </UiButton>
       <button

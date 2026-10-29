@@ -4,6 +4,7 @@ import type { Engine, TestBody } from 'claude-code/testing'
 import { Commands } from '../hooks/commands'
 import { Control } from '../hooks/control'
 import { Relay } from '../hooks/relay'
+import { Usage } from '../hooks/usage'
 
 type On = Parameters<TestBody>[1]
 
@@ -194,8 +195,6 @@ test('a window just compacted tells the sidecar its estimate, folded into the ro
     rateLimits: [{ kind: 'five_hour', percentUsed: 42, resetsAt: '2026-01-01T14:20:00Z' }],
     breakdown: {
       model: 'claude-opus-5-5',
-      tokens: 63_000,
-      window: 200_000,
       parts: [
         { label: 'Messages', tokens: 40_000 },
         { label: 'Memory files', tokens: 3000 },
@@ -227,6 +226,17 @@ test('a breakdown control tells the sidecar the window broken down, though the f
 
   expect(result).toEqual({ consumed: 'sidecar breakdown' })
   expect(posted.map(one => one.breakdown?.parts.length)).toEqual([4])
+})
+
+test('a compaction in flight is flagged, and the size it ended at stands in for the figure the engine lacks', () => {
+  const usage = { startedAt: 0, rateLimits: [], context: { window: 200_000, tokens: 106_000 } }
+
+  expect(Usage.describe(usage, { isCompacting: true })).toEqual({
+    context: { window: 200_000, tokens: 106_000, percent: 53 },
+    rateLimits: [],
+    isCompacting: true,
+  })
+  expect(Usage.describe(usage, { tokens: 23_000 }).context).toEqual({ window: 200_000, tokens: 23_000, percent: 12 })
 })
 
 test('a delivery the session takes is told to the sidecar as it lands, and a control or a real peer is not', async ($, on) => {

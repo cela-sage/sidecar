@@ -83,7 +83,10 @@ const note = (list: PlanRow[], now: number): PlanNote | undefined => {
   };
 };
 
-const kilo = (tokens: number): string => (tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens));
+const kilo = (tokens: number): string => {
+  if (tokens >= 1_000_000) return `${Number((tokens / 1_000_000).toFixed(1))}M`;
+  return tokens >= 1000 ? `${Math.round(tokens / 1000)}k` : String(tokens);
+};
 
 const compacted = (
   { at, sizes, text }: { at: number; sizes?: { before: number; after: number }; text: string },
