@@ -272,9 +272,12 @@ way. A web link previews on hover with the page's image, title and host from `/a
 The prompt attaches files, from the paperclip, a paste or a drop, and blocks of text that another part of the
 sidecar hands it through `$prompt().attach({ label, text })`, each a removable chip that goes into the message
 under its label. Enter sends, a message sent mid-turn queues behind it, and with the field empty Stop, or esc,
-ends the running turn through `POST /api/sessions/:key/stop`. The model picker shows the session's model, read
-from its newest turn, and lists Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 with Older models by family, and
-a pick runs `/model` in the session through `POST /api/sessions/:key/model` once its turn ends. The prompt keeps
+ends the running turn through `POST /api/sessions/:key/stop`. Stop shows as soon as the turn bus has the turn
+open, before its first block lands. The model picker shows the session's model, read from its newest turn, and
+lists Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 with Older models by family, and a pick runs `/model` in the
+session through `POST /api/sessions/:key/model` once its turn ends. With history to re-read, Claude Code asks to
+confirm the switch in a dialog only its terminal shows, so the pick warns first, and Confirm in your terminal
+sends it and attaches the session, where the dialog waits. The prompt keeps
 clear of the door unless the terminal dock is open under it, and each conversation keeps its own draft.
 
 ### Following the terminal

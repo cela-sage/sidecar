@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.44.2
+
+### Fixed
+
+- **Stop shows as soon as a turn starts,** because the chat reads busy from the turn bus rather than waiting for
+  the turn's first block.
+- **A model pick in a conversation with history warns first,** because Claude Code confirms that switch in a
+  dialog only the terminal shows, and Confirm in your terminal sends it and attaches the session to answer it.
+
 ## 0.44.1
 
 ### Changed
