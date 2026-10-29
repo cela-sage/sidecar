@@ -7,6 +7,24 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.51.0
+
+### Added
+
+- **A message to a conversation no process runs wakes it.** The sidecar resumes the session in the background with
+  `claude --bg --resume`, waits for its inbox and delivers, so the chat, the door, the notes, a task's message box,
+  an escalation's answer, a handoff and a review action land on a lead whose process died. The conversation keeps its
+  title and its role, and messages sent while it wakes share one resume.
+- **The chat, the door and the notes say Waking while it resumes,** in place of the refusal.
+- **`relay <key> "<text>"` wakes a key the tree knows but no process runs,** and prints `woke  <key>` before
+  `delivered`.
+
+### Changed
+
+- **`no-live-session` now means nothing ran under the key and none would wake,** and its messages say the
+  conversation didn't wake. Stop and the command list never start a process.
+- **`keyFileOf` moved from `server/utils/sessions/inbox.ts` to `registry.ts`,** where `relay` in Notes now imports it.
+
 ## 0.50.0
 
 ### Added

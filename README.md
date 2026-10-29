@@ -325,6 +325,16 @@ printed under it, and a name the session does not have prints the reason under i
 for the turn to end, and a conversation started before 0.48.0 has to be restarted before it runs one, since its
 mod hands the command to Claude as words.
 
+A message to a conversation the tree knows but no process runs wakes it first. `deliver` in
+`server/utils/sessions/inbox.ts` resumes the session in the background with `claude --bg --resume <id>`, from its own
+folder and with every inherited `CLAUDE*` variable dropped, waits up to 15 seconds for its inbox and then sends. The
+resumed session keeps its key, its title and its role, since Claude Code restores the saved name, agent, model and
+effort, and messages sent while it wakes share one resume. The chat and the door say Waking in place of the
+refusal, the notes' button reads Waking…, and a conversation that was never on disk or does not come up in time
+still answers `no-live-session`. A task's message box, an escalation's answer, a handoff and a review action wake the
+same way, while Stop and the command list never start a process. `relay <key> "<text>"` in Notes wakes a known key
+through the same function and prints `woke  <key>` before `delivered`.
+
 ### Following the terminal
 
 `sidecar terminal`, started once in the terminal you use for Claude Code, owns a pty there that opens on agent
