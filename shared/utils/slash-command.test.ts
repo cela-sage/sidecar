@@ -16,6 +16,13 @@ test("a path or a slash later in the text is a message", () => {
   assert.equal(SlashCommand.parse("/"), undefined);
 });
 
+test("typing after the slash lists the names that start with it first, then the ones that contain it", () => {
+  const list = ["batch", "decode", "compact", "context"].map((name) => ({ name, description: "", source: "builtin" as const }));
+  assert.deepEqual(SlashCommand.matching(list, "co").map((one) => one.name), ["compact", "context", "decode"]);
+  assert.deepEqual(SlashCommand.matching(list, "").map((one) => one.name), ["batch", "decode", "compact", "context"]);
+  assert.deepEqual(SlashCommand.matching(list, "zz"), []);
+});
+
 test("a command that draws a screen is refused as typed, and bare only when it has no arguments", () => {
   assert.equal(SlashCommand.needsTerminal({ screen: "always" }, "all"), true);
   assert.equal(SlashCommand.needsTerminal({ screen: "bare" }, ""), true);

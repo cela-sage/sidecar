@@ -1,5 +1,6 @@
 <script lang="ts" setup>
 import { ArrowUp, Paperclip, TextQuote } from "@lucide/vue";
+import type { SessionCommand } from "~~/shared/types/command";
 
 const {
   hasHistory = false,
@@ -15,13 +16,40 @@ const picker = useTemplateRef<HTMLInputElement>("picker");
 
 const canStop = computed(() => isBusy && prompt.isEmpty);
 
+const cursor = ref(0);
+const isDismissed = ref(false);
+const typing = computed(() => (isDismissed.value ? undefined : /^\/(?<query>[^\s/]*)$/.exec(prompt.text)?.groups));
+const rows = computed(() => (typing.value ? SlashCommand.matching(prompt.commands, typing.value.query ?? "") : []));
+
+const complete = (row: SessionCommand): void => {
+  prompt.text = `/${row.name} `;
+  box.value?.focus();
+};
+
+const STEPS: Partial<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 };
+
+const isPlainEnter = (event: KeyboardEvent): boolean =>
+  event.key === "Enter" && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey;
+
+const onListing = (event: KeyboardEvent): boolean => {
+  const step = STEPS[event.key];
+  const row = rows.value[cursor.value];
+  if (step) cursor.value = Math.min(Math.max(cursor.value + step, 0), rows.value.length - 1);
+  else if (row && (event.key === "Tab" || (isPlainEnter(event) && typing.value?.query !== row.name))) complete(row);
+  else if (event.key === "Escape") isDismissed.value = true;
+  else return false;
+  event.preventDefault();
+  return true;
+};
+
 const uploadAll = (files: File[]): void => {
   for (const file of files) void prompt.upload(file);
 };
 
 const onKey = (event: KeyboardEvent): void => {
   if (event.isComposing) return;
-  if (event.key === "Enter" && !event.shiftKey && !event.altKey && !event.metaKey && !event.ctrlKey) {
+  if (rows.value.length && onListing(event)) return;
+  if (isPlainEnter(event)) {
     event.preventDefault();
     void prompt.send();
   } else if (event.key === "Escape" && isBusy) {
@@ -53,11 +81,27 @@ watch(
   () => prompt.focusAsked,
   () => void nextTick(() => box.value?.focus()),
 );
+
+watch(
+  () => prompt.text,
+  () => {
+    isDismissed.value = false;
+    cursor.value = 0;
+  },
+);
 </script>
 
 <template>
   <div class="dock" data-region="conversation-prompt" :data-docked="dock.isOpen && dock.isReady">
     <div class="box" @dragover.prevent @drop="onDrop">
+      <ConversationCommands
+        v-if="rows.length"
+        class="picker"
+        :cursor="cursor"
+        :rows="rows"
+        @pick="complete"
+        @point="cursor = $event"
+      />
       <div v-if="prompt.blocks.length || prompt.files.length" class="attached">
         <ComposerPiece
           v-for="one in prompt.blocks"
@@ -136,7 +180,11 @@ watch(
 }
 
 .box {
-  @apply flex flex-col gap-1.5 rounded-2xl border border-border-strong bg-raised pt-2.5 pr-2.5 pb-2 pl-3.5 shadow-sm transition-colors duration-(--duration-fast) ease-out;
+  @apply relative flex flex-col gap-1.5 rounded-2xl border border-border-strong bg-raised pt-2.5 pr-2.5 pb-2 pl-3.5 shadow-sm transition-colors duration-(--duration-fast) ease-out;
+}
+
+.picker {
+  @apply absolute right-0 bottom-full left-0 z-3 mb-2;
 }
 
 .box:focus-within {

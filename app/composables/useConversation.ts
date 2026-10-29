@@ -4,7 +4,7 @@ import type { MascotState } from "~/components/claude/mascot.vue";
 import type { Maybe, MaybeComputed } from "~/composables/useSidecar";
 import { BusyRules, type Busy } from "~~/shared/utils/busy";
 
-const Kind = z.enum(["thinking", "narration", "answer", "acting", "note", "drop", "done", "end"]);
+const Kind = z.enum(["thinking", "narration", "answer", "acting", "note", "command", "printed", "drop", "done", "end"]);
 
 const Call = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("read"), path: z.string(), from: z.number().optional(), to: z.number().optional() }),

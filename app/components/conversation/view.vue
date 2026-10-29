@@ -7,10 +7,12 @@ type Block =
   | { kind: "said" | "note"; key: string; turn: ConversationTurn }
   | { kind: "you"; key: string; turn: ConversationTurn; text: string; images: string[] }
   | { kind: "pictures"; key: string; paths: string[] }
+  | { kind: "ran"; key: string; line?: string; printed: string[] }
   | { kind: "tools"; key: string; turns: ConversationTurn[] };
 
 const sc = useSidecar();
 const prompt = $prompt();
+const terminal = $terminal();
 const busy = $busy();
 const tree = useOrgTree();
 const live = useConversation(() => sc.sessionKey.value);
@@ -37,6 +39,11 @@ const blocks = computed<Block[]>(() => {
     if (turn.kind === "acting") {
       if (last?.kind === "tools") last.turns.push(turn);
       else out.push({ kind: "tools", key: id, turns: [turn] });
+    } else if (turn.kind === "command") {
+      out.push({ kind: "ran", key: id, line: turn.text, printed: [] });
+    } else if (turn.kind === "printed") {
+      if (last?.kind === "ran") last.printed.push(turn.text);
+      else out.push({ kind: "ran", key: id, printed: [turn.text] });
     } else if (turn.role === "user") {
       const pasted = PastedImages.sourcesOf(turn.text);
       const attached = AttachedFiles.imagesOf(turn.text);
@@ -57,8 +64,12 @@ const partsOf = ({ images, text }: Extract<Block, { kind: "you" }>) =>
 
 // A message queued behind a running turn reaches the stream only once delivered, so the sent copy stands in until then.
 const landedOf = (one: PromptSent): boolean =>
-  live.stream.value.some((turn) => turn.role === "user" && turn.at >= one.at - 5000 && turn.text.trim() === one.text);
+  live.stream.value.some(
+    (turn) =>
+      (turn.role === "user" || turn.kind === "command") && turn.at >= one.at - 5000 && turn.text.trim() === one.text,
+  );
 const pending = computed(() => prompt.sent.filter((one) => one.key === key.value && !landedOf(one)));
+const refusal = computed(() => prompt.refused[key.value]);
 
 watch(
   () => live.stream.value.length,
@@ -92,6 +103,10 @@ watch(
           <div v-else-if="block.kind === 'pictures'" class="you">
             <ProseMediaSet class="pictures" :conversation="key" :paths="block.paths.join('\n')" />
           </div>
+          <div v-else-if="block.kind === 'ran'" class="ran">
+            <p v-if="block.line" class="line"><span class="arrow" aria-hidden="true">❯</span>{{ block.line }}</p>
+            <pre v-for="(text, at) in block.printed" :key="at" class="printed">{{ text }}</pre>
+          </div>
           <p v-else-if="block.kind === 'note'" class="note mono-meta">{{ block.turn.text }}</p>
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
           <ConversationTools
@@ -101,10 +116,20 @@ watch(
             :turns="block.turns"
           />
         </template>
-        <div v-for="one in pending" :key="one.at" class="you" data-pending="true">
-          <p class="bubble">{{ one.text }}</p>
-          <span class="typed mono-meta">{{ isBusy ? "queued behind the turn in flight" : "sending" }}</span>
-        </div>
+        <template v-for="one in pending" :key="one.at">
+          <div v-if="SlashCommand.parse(one.text)" class="ran" data-pending="true">
+            <p class="line"><span class="arrow" aria-hidden="true">❯</span>{{ one.text }}</p>
+            <span class="queued mono-meta">{{ isBusy ? "queued behind the turn in flight" : "sending" }}</span>
+          </div>
+          <div v-else class="you" data-pending="true">
+            <p class="bubble">{{ one.text }}</p>
+            <span class="typed mono-meta">{{ isBusy ? "queued behind the turn in flight" : "sending" }}</span>
+          </div>
+        </template>
+        <p v-if="refusal" class="refused" role="status">
+          <span>Run /{{ refusal.name }} in your terminal</span>
+          <UiButton size="xs" variant="outline" @click="terminal.attach(key)">Attach</UiButton>
+        </p>
         <p v-if="isBusy" class="busy" role="status">
           <ClaudeMascot :size="20" :state="live.mascot.value" />
           <span class="busy-line shimmer">{{ live.step.value || "Working" }}</span>
@@ -155,6 +180,34 @@ watch(
 
 .note {
   @apply m-0 self-center text-subtle normal-case;
+}
+
+.ran {
+  @apply flex flex-col gap-1 font-mono typo-mono-meta;
+}
+
+.ran[data-pending="true"] {
+  @apply opacity-60;
+}
+
+.line {
+  @apply m-0 flex gap-2 text-fg;
+}
+
+.arrow {
+  @apply flex-none text-subtle;
+}
+
+.printed {
+  @apply m-0 ml-4 font-mono whitespace-pre-wrap text-muted;
+}
+
+.queued {
+  @apply ml-4 text-muted normal-case;
+}
+
+.refused {
+  @apply m-0 flex items-center gap-2.5 typo-caption text-muted;
 }
 
 .said {
