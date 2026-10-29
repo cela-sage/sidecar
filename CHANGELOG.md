@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.45.0
+
+### Added
+
+- **The dock's tabs close and reorder.** Each tab shows an × while you hover it and while it is selected. Closing a
+  shell ends it, closing a run that still runs stops it with Ctrl+C first, and closing a conversation's tab detaches
+  it the way Ctrl+Z does, so the conversation keeps running. Drag a tab to move it: the order is kept per project in
+  the browser as `sc:dock-order`. `POST /api/dock/<id>/close` is the new route behind the ×.
+
 ## 0.44.7
 
 ### Fixed

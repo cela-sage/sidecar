@@ -303,11 +303,14 @@ same way an Attach to the follower detaches the dock's tab for that conversation
 Each project has its own terminal, docked at the bottom of the conversation's main panel and opened with the
 header's terminal button or ⌥F12. Its header switches between Terminal and Run, names the project in front,
 and lists that project's tabs: each shell is your login shell in the project's folder, named after what runs
-in it, New terminal (⌘T in the desktop app) opens another, and Hide puts the dock away. The first time the dock
+in it, New terminal (⌘T in the desktop app) opens another, and Hide puts the dock away. A tab shows an × while you
+hover it and while it is selected: closing a shell ends it, closing a run that still runs stops it first as Stop
+does, a finished run's tab just leaves, and closing a conversation's tab detaches it like Ctrl+Z and leaves it
+running. Drag a tab to reorder the row, which the browser keeps per project as `sc:dock-order`. The first time the dock
 shows a project it opens a shell there. A tab belongs to the project of the conversation in front, so moving to
 another project's conversation shows its tabs, while the shells you left keep running and the dock says so,
 `Cela · 2 shells still running`. The server holds the shells, so a reload or a second window finds them with
-their last screens, and they end when you `exit` them or the server stops. Attach while the dock is open runs
+their last screens, and they end when you `exit` or close them or the server stops. Attach while the dock is open runs
 `claude attach <key>` in a tab of its own, Ctrl+Z there detaches it, and a conversation in another project
 takes the sidecar there, the way any pick does. The terminal draws on the dark tokens in both themes, through
 `data-theme="dark"` on its body, which `@cela/design` honours on any element. Run holds the project's runs,
@@ -317,6 +320,7 @@ described under Run configurations.
 GET  /api/dock                                                               ->  DockTab[]
 POST /api/dock/shell    {"project":"<key>","folder"?:"<absolute>","cols":<n>,"rows":<n>}  ->  DockTab
 POST /api/dock/session  {"project":"<key>","key":"<8-hex>","cols":<n>,"rows":<n>}         ->  DockTab
+POST /api/dock/<id>/close                                                    ->  {"closed":true}
 WS   /api/dock/<id>     up: {"kind":"input","data":"…"} | {"kind":"resize","cols":<n>,"rows":<n>}, down: the pty's output
 ```
 
