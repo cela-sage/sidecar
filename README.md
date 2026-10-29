@@ -224,7 +224,9 @@ and key. Open brings it in front, Attach in your terminal hands it to the dock o
 the prompt adds it to the chat's prompt as the door's `@<title> (<key>)`, Reveal in the tree opens its project,
 scrolls to its row and lights it, Copy id copies the key, Rename turns the menu into a field with the full title
 in it, and Enter writes it through `PATCH /api/sessions/<key>`, and Remove stops it through
-`DELETE /api/sessions/<key>` with the transcript staying on disk.
+`DELETE /api/sessions/<key>` with the transcript staying on disk. A background session the daemon owns ends
+through `claude stop <key>` and then `claude rm <key>`, because the daemon resumes one that only got a signal,
+and the row goes once `claude agents` no longer lists it. Any other process still gets SIGTERM.
 
 A conversation named by its key alone in backticks, as the sidecar's rule asks, or as `@<key>` or the door's
 `@<title> (<key>)`, in the chat, an answer in the door, a comment thread or a side question, draws as its tree

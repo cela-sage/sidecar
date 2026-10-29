@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.44.4
+
+### Fixed
+
+- **Remove ends a background session for good,** from the tree's menu and from a task's Remove of its leads.
+  The daemon resumed one within seconds of the SIGTERM it got before, so it now goes through `claude stop` and
+  `claude rm`, and its row leaves once `claude agents` no longer lists it. A job in worktree isolation the daemon
+  lists goes the same way.
+
 ## 0.44.3
 
 ### Fixed
