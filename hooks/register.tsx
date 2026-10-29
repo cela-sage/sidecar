@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { Register } from 'claude-code'
+import type { EngineInterface, Register } from 'claude-code'
 
 import { Commands } from './commands'
 import { Control } from './control'
@@ -28,6 +28,17 @@ let sidecar: Sidecar | undefined
 let door: Door | undefined
 let pointed = 0
 let rule: string | undefined
+
+const tellCommands = async ($: EngineInterface, api: string): Promise<void> => {
+  const [list, id] = await Promise.all([$.command.list(), $.session.id()])
+  void $.http
+    .fetch(`${api}/api/sessions/${id.slice(0, 8)}/commands`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(Commands.describe(list)),
+    })
+    .catch(() => undefined)
+}
 
 export const register: Register = (on, options) => {
   const url = String(options.url ?? 'http://sidecar.localhost:4747').replace(/\/$/, '')
@@ -91,6 +102,7 @@ export const register: Register = (on, options) => {
         toast: text => $.ui.toast(text),
       },
     })
+    void tellCommands($, api).catch(() => undefined)
     return next(e)
   })
 
@@ -122,14 +134,7 @@ export const register: Register = (on, options) => {
       return { consumed: 'sidecar command' }
     }
     if (control?.do === 'commands') {
-      const [list, id] = await Promise.all([$.command.list(), $.session.id()])
-      void $.http
-        .fetch(`${api}/api/sessions/${id.slice(0, 8)}/commands`, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(Commands.describe(list)),
-        })
-        .catch(() => undefined)
+      await tellCommands($, api)
       return { consumed: 'sidecar commands' }
     }
     if (await receiveReview({ text: body, sessionId: () => $.session.id() })) return { consumed: 'sidecar review action' }

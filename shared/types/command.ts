@@ -7,6 +7,7 @@ export interface SessionCommand {
   name: string;
   description: string;
   source: CommandSource;
+  plugin?: string;
   screen?: CommandScreen;
   aliases?: string[];
 }

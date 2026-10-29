@@ -75,6 +75,7 @@ test('a commands control tells the sidecar what the session can run, and which o
       { name: 'status', description: 'Open the Settings interface', source: 'builtin' },
       { name: 'model', description: 'Switch the AI model', source: 'builtin' },
       { name: 'usage', description: 'Show session cost', source: 'builtin' },
+      { name: 'mode:ic', description: 'The all-rounder, alone', source: 'plugin', plugin: 'mode' },
     ],
   }))
   on('http.fetch', (_, e) => {
@@ -92,9 +93,31 @@ test('a commands control tells the sidecar what the session can run, and which o
         { name: 'status', description: 'Open the Settings interface', source: 'builtin', screen: 'always' },
         { name: 'model', description: 'Switch the AI model', source: 'builtin', screen: 'bare' },
         { name: 'usage', description: 'Show session cost', source: 'builtin', screen: 'always', aliases: ['cost', 'stats'] },
+        { name: 'mode:ic', description: 'The all-rounder, alone', source: 'plugin', plugin: 'mode' },
       ],
     },
   ])
+})
+
+test('a session tells the sidecar what it can run as it starts, before anyone asks', async ($, on) => {
+  const posted: string[] = []
+  mock.clock(on)
+  mock.env(on, { HOME: '/home' })
+  on('session.id', () => ({ value: 'abcdef0123456789' }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('command.register', () => ({ value: { command: 'sidecar' } }))
+  on('command.list', () => ({ value: [{ name: 'compact', description: 'Free up context', source: 'builtin' }] }))
+  on('http.fetch', (_, e) => {
+    if (e.init?.method === 'POST') posted.push(`${new URL(e.url).pathname} ${String(e.init.body)}`)
+    return { value: { status: 204, ok: true, headers: {}, text: '' } }
+  })
+
+  await $.session.start({ cwd: '/r', surface: null, isInteractive: false })
+  await new Promise(done => setTimeout(done, 10))
+
+  expect(posted).toContain(
+    '/api/sessions/abcdef01/commands [{"name":"compact","description":"Free up context","source":"builtin"}]',
+  )
 })
 
 test('a delivery the session takes is told to the sidecar as it lands, and a control or a real peer is not', async ($, on) => {

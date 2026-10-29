@@ -4,6 +4,7 @@ export interface SessionCommand {
   name: string
   description: string
   source: CommandInfo['source']
+  plugin?: string
   screen?: 'always' | 'bare'
   aliases?: string[]
 }
@@ -36,10 +37,17 @@ const screenOf = (name: string): SessionCommand['screen'] => {
 
 export const Commands = {
   describe: (list: CommandInfo[]): SessionCommand[] =>
-    list.map(({ name, description, source }) => {
+    list.map(({ name, description, source, plugin }) => {
       const screen = screenOf(name)
       const aliases = ALIASES[name]
-      return { name, description, source, ...(screen ? { screen } : {}), ...(aliases ? { aliases } : {}) }
+      return {
+        name,
+        description,
+        source,
+        ...(plugin ? { plugin } : {}),
+        ...(screen ? { screen } : {}),
+        ...(aliases ? { aliases } : {}),
+      }
     }),
 
   needsTerminal: (name: string, args: string): boolean => {

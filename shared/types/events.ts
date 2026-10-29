@@ -14,6 +14,7 @@ export interface Topics {
   "conversation.unseen": ConversationUnseen;
   "question.changed": QuestionChanged;
   "message.landed": { key: string; text: string };
+  "commands.changed": { key: string };
 }
 
 /** Unseen since the turn that ended at `endedAt`, seen once a frame comes without it. */
