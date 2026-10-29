@@ -73,6 +73,12 @@ const finish = (one: Live, exitCode: number): void => {
   else one.tab = { ...one.tab, status: "failed", failing: RunOutput.failingLines(one.backlog) };
 };
 
+const forget = (one: Live): void => {
+  live.delete(one.tab.id);
+  for (const viewer of one.viewers) viewer.close(1000, "the terminal ended");
+  changed();
+};
+
 const keep = (tab: DockTab, pty: IPty, viewers = new Set<DockViewer>()): DockTab => {
   const one: Live = { tab, pty, backlog: "", viewers };
   live.set(tab.id, one);
@@ -85,11 +91,8 @@ const keep = (tab: DockTab, pty: IPty, viewers = new Set<DockViewer>()): DockTab
   pty.onExit(({ exitCode }) => {
     clearTimeout(one.retitle);
     if (live.get(tab.id) !== one) return;
-    if (tab.kind === "run") finish(one, exitCode);
-    else {
-      live.delete(tab.id);
-      for (const viewer of one.viewers) viewer.close(1000, "the terminal ended");
-    }
+    if (tab.kind !== "run") return forget(one);
+    finish(one, exitCode);
     changed();
   });
   changed();
