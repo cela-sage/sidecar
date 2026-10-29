@@ -2,7 +2,7 @@ import { resolve } from "node:path";
 import { isFile } from "~~/lib/files";
 import { Media } from "~~/server/utils/media";
 import { originalOf } from "~~/server/utils/review/ledger";
-import { isReachable } from "~~/server/utils/sessions/files";
+import { isReadable } from "~~/server/utils/sessions/files";
 import { SentImages } from "~~/server/utils/sessions/sent-images";
 
 const notHere = () => createError({ statusCode: 404, statusMessage: "not here" });
@@ -11,7 +11,7 @@ const notHere = () => createError({ statusCode: 404, statusMessage: "not here" }
 export default defineEventHandler((event): Promise<unknown> | Buffer => {
   const key = getRouterParam(event, "key") || "";
   const path = resolve("/", getRouterParam(event, "path", { decode: true }) ?? "");
-  const isReached = originalOf({ key, path }).kind !== "untracked" || isReachable({ key, path });
+  const isReached = originalOf({ key, path }).kind !== "untracked" || isReadable({ key, path });
   const isOnDisk = isFile(path);
   const pasted = isReached && isOnDisk ? undefined : SentImages.find({ key, path });
   if (isOnDisk && (isReached || pasted)) {

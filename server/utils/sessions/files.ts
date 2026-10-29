@@ -4,6 +4,7 @@ import type { FileAction, FileContent, FileSave, SessionFile, SessionFiles } fro
 import { readTextSafe } from "../../../lib/files.ts";
 import { reviewEdited } from "../review/edited.ts";
 import { cwdOf, isInside } from "../tree/index.ts";
+import { Mentioned } from "./mentioned.ts";
 import { turnsOf } from "./receipts.ts";
 
 const MAX_BYTES = 4 * 1024 * 1024;
@@ -54,6 +55,10 @@ export function isReachable({ key, path }: { key: string; path: string }): boole
   return (!!root && isInside(root, path)) || filesOf({ key }).files.some((file) => file.path === path);
 }
 
+export function isReadable({ key, path }: { key: string; path: string }): boolean {
+  return isReachable({ key, path }) || Mentioned.has({ key, path });
+}
+
 export function readDisk(path: string): FileContent {
   let size: number;
   try {
@@ -67,7 +72,7 @@ export function readDisk(path: string): FileContent {
 }
 
 export function contentOf({ key, path }: { key: string; path: string }): FileContent {
-  return isReachable({ key, path }) ? readDisk(path) : { path, reason: "not-touched" };
+  return isReadable({ key, path }) ? readDisk(path) : { path, reason: "not-touched" };
 }
 
 // Only over the text the editor opened, so a turn that changed the file in the meantime is never clobbered.
