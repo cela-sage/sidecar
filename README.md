@@ -393,9 +393,11 @@ how many tasks wait in the inbox. The pill and the panel are one surface: a clic
 the panel's with the drawer curve over `--duration-base`, the collapse shrinks it back over `--duration-snappy`,
 the panel's height eases the same way as its content grows, and reduced motion leaves only the crossfade. ⌥↵ and
 esc open and close it at once, since the motion contract never animates a keyboard toggle. Ask, or ⌥↵, opens it on the assistant, the newest live conversation titled
-with EA, and what you write goes to it through `/api/sessions/:key/message`, with a removable chip for what you
-are looking at: the conversation in front, or the open task, whose slug goes with the message so it lands in
-that task's history. The door follows the assistant's turn off the conversation bus from a snapshot of its
+with EA, and what you write goes to it through `/api/sessions/:key/message`. What you are looking at, the
+conversation in front or the task in front, is offered above the field as a dashed suggestion and never goes with
+a message by itself: a click on it, or taking one of the prompt's suggestions, makes it the chip that goes with
+your message, × takes it off, and it starts again as a suggestion whenever what is in front changes. A task's
+slug goes with the message so it lands in that task's history. The door follows the assistant's turn off the conversation bus from a snapshot of its
 transcript, so the mascot and the step line under it say what it is doing now, reading a file, running a
 command or thinking, with a spinner on your message until it answers. Whether it works is read from
 `conversation.changed` for its key, and only the last open message carries that line. A message sent while it is
@@ -410,7 +412,9 @@ them to the waiting call, so the terminal's dialog closes and the model reads th
 terminal gives. The terminal stays a place to answer, with an Attach beside the options, and whichever answers
 first wins. A message typed in the field still waits in the queue behind the open question, and an answer
 the session never takes, one with no sidecar mod or already answered, says so and points at the terminal.
-The block goes back to working once the answer lands. The header picks another assistant or starts a new one. With no assistant running the door
+The block goes back to working once the answer lands. The header's Assistant name opens a menu of every
+assistant, each with its mark from the turn bus, as the tree draws it, and its key, and New assistant, whose next
+message starts one with no history. With no assistant running the door
 says so, and your message starts one through `POST /api/assistant`, which runs
 `claude --bg --agent executive-assistant` in the meta project's folder, both set by `assistant: { agent, project }`
 in `~/.claude/sidecar/config.json`. An @ in the field lists everyone in the tree, and picking one writes their

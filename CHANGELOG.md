@@ -7,6 +7,16 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.41.0
+
+### Changed
+
+- **The door's context is a suggestion.** The conversation or task in front shows as a dashed `+ about` chip above
+  the field and goes with a message only once you click it or take one of the prompt's suggestions, and it starts
+  again as a suggestion whenever what is in front changes. Before, it went with every message unless removed.
+- **The assistants menu marks each assistant from the turn bus,** as the tree does, so one whose turn ended no
+  longer spins.
+
 ## 0.40.0
 
 ### Added
