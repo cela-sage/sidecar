@@ -65,6 +65,21 @@ describe("RunConfigs", () => {
     assert.equal(RunConfigs.groupsOf(project).at(-1)?.source, "package.json");
   });
 
+  it("names an ad-hoc command by its first words, past a leading cd and any flag, and never saves it", () => {
+    const named = (command: string): string => RunConfigs.adhoc({ command }).name;
+    assert.equal(named("git push -u origin feature/AI-694/cash-isa"), "git push origin");
+    assert.equal(named("cd ~/Notes/projects/Moneyfarm/mcp && git push -u origin x"), "git push origin");
+    assert.equal(named("cd ~/Notes"), "cd ~/Notes");
+    assert.equal(named("pnpm run build-everything-for-production-now\npnpm test"), "pnpm run build-everything-f…");
+    const [one, two] = [RunConfigs.adhoc({ command: "ls", folder }), RunConfigs.adhoc({ command: "ls" })];
+    assert.notEqual(one.id, two.id);
+    assert.equal(one.folder, folder);
+    assert.deepEqual(
+      RunConfigs.groupsOf(project).filter((group) => group.source === "assistant"),
+      [],
+    );
+  });
+
   it("finds nothing in a project folder that does not exist", () => {
     assert.deepEqual(RunConfigs.groupsOf({ ...project, folder: join(root, "gone") }), []);
   });

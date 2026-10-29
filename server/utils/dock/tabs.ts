@@ -5,7 +5,7 @@ import { basename } from "node:path";
 import type { IPty } from "node-pty";
 import * as Events from "../../../lib/sidecar/events.ts";
 import type { DockKind, DockSize, DockTab } from "../../../shared/types/dock.ts";
-import type { RunConfig } from "../../../shared/types/runs.ts";
+import type { RunCommand } from "../../../shared/types/runs.ts";
 import { RunOutput } from "../runs/failing.ts";
 import { claudeBinary } from "../sessions/jobs.ts";
 import { Pty } from "./pty.ts";
@@ -27,7 +27,7 @@ export interface SessionOpening extends DockSize {
 
 export interface RunOpening extends DockSize {
   project: string;
-  config: RunConfig;
+  config: RunCommand;
 }
 
 interface Live {

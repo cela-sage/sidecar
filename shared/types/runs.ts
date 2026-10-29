@@ -14,6 +14,8 @@ export interface RunConfig {
   repo?: string;
 }
 
+export type RunCommand = Pick<RunConfig, "id" | "name" | "command" | "folder">;
+
 export interface RunGroup {
   source: RunSource;
   repo?: string;

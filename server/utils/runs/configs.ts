@@ -1,8 +1,10 @@
+import { randomUUID } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { homedir } from "node:os";
 import { dirname, isAbsolute, join } from "node:path";
 import z from "zod";
 import { Sidecar } from "../../../lib/sidecar/paths.ts";
-import type { RunConfig, RunGroup } from "../../../shared/types/runs.ts";
+import type { RunCommand, RunConfig, RunGroup } from "../../../shared/types/runs.ts";
 import type { Project } from "../../../shared/types/task.ts";
 
 const Manifest = z.object({ scripts: z.record(z.string(), z.string()).optional() });
@@ -20,6 +22,9 @@ const LOCKS: [string, string][] = [
 ];
 // A rule name at the start of a line, never a .PHONY-style special, a pattern rule or a := assignment.
 const TARGET = /^([A-Za-z0-9][A-Za-z0-9_.-]*)\s*:(?!=)/gm;
+const LEADING_CD = /^(?:cd\s+\S+\s*(?:&&|;)\s*)+/;
+const NAME_WORDS = 3;
+const NAME_LENGTH = 28;
 
 const store = (): string => join(Sidecar.home(), "runs.json");
 
@@ -107,6 +112,25 @@ const groupsOf = (project: Project): RunGroup[] => {
   return [...repos, ...(theirs.length ? [{ source: "assistant" as const, configs: theirs }] : [])];
 };
 
+const nameOf = (command: string): string => {
+  const [line = ""] = command.split("\n");
+  const rest = line.replace(LEADING_CD, "") || line;
+  const name = rest
+    .split(/\s+/)
+    .filter((word) => word && !word.startsWith("-"))
+    .slice(0, NAME_WORDS)
+    .join(" ");
+  const shown = name || rest;
+  return shown.length > NAME_LENGTH ? `${shown.slice(0, NAME_LENGTH - 1)}…` : shown;
+};
+
+const adhoc = ({ command, folder }: { command: string; folder?: string }): RunCommand => ({
+  id: `command:${randomUUID()}`,
+  name: nameOf(command),
+  command,
+  folder: folder ?? homedir(),
+});
+
 const find = (project: Project, id: string): RunConfig | undefined =>
   groupsOf(project)
     .flatMap((group) => group.configs)
@@ -128,4 +152,4 @@ const remove = (project: string, name: string): boolean => {
   return true;
 };
 
-export const RunConfigs = { find, groupsOf, remove, write };
+export const RunConfigs = { adhoc, find, groupsOf, remove, write };

@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { after, before, describe, it } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import type { RunConfig } from "../../../shared/types/runs.ts";
+import { RunConfigs } from "../runs/configs.ts";
 import { DockTabs } from "./tabs.ts";
 
 const size = { cols: 80, rows: 24 };
@@ -16,7 +17,7 @@ const until = async (done: () => boolean): Promise<void> => {
 
 const holds = (id: string): boolean => DockTabs.list().some((one) => one.id === id);
 
-describe("DockTabs.close", () => {
+describe("DockTabs", () => {
   const root = mkdtempSync(join(tmpdir(), "dock-"));
   const config = (command: string): RunConfig => ({
     id: command,
@@ -52,6 +53,20 @@ describe("DockTabs.close", () => {
     assert.ok(await DockTabs.close(id));
     assert.ok(!holds(id));
     assert.ok(Date.now() - started < 2000, "Ctrl+C ended it, not the kill that follows three seconds later");
+  });
+
+  it("runs an ad-hoc script line by line in its folder and keeps its tab with the status", async () => {
+    const { id, title } = await DockTabs.run({
+      project: "acme",
+      config: RunConfigs.adhoc({ command: "echo first\npwd", folder: root }),
+      ...size,
+    });
+    let seen = "";
+    DockTabs.join(id, { send: (data) => (seen += data), close: () => {} });
+    await until(() => DockTabs.list().find((one) => one.id === id)?.status === "passed");
+    assert.equal(title, "echo first");
+    assert.ok(seen.indexOf("first") < seen.indexOf(root), "each line ran in order, in the folder");
+    assert.ok(await DockTabs.close(id));
   });
 
   it("lets a finished run just leave, and refuses a tab it does not hold", async () => {
