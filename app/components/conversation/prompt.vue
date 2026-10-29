@@ -4,6 +4,7 @@ import { ArrowUp, Paperclip, TextQuote, X } from "@lucide/vue";
 const { isBusy, model, name } = defineProps<{ isBusy: boolean; model?: string; name: string }>();
 
 const prompt = $prompt();
+const dock = $dock();
 const box = useTemplateRef<HTMLTextAreaElement>("box");
 const picker = useTemplateRef<HTMLInputElement>("picker");
 
@@ -50,7 +51,7 @@ watch(
 </script>
 
 <template>
-  <div class="dock" data-region="conversation-prompt">
+  <div class="dock" data-region="conversation-prompt" :data-docked="dock.isOpen && dock.isReady">
     <div class="box" @dragover.prevent @drop="onDrop">
       <div v-if="prompt.blocks.length || prompt.files.length" class="attached">
         <span v-for="one in prompt.blocks" :key="one.id" class="piece" :data-tip="one.text.slice(0, 400)">
@@ -128,10 +129,14 @@ watch(
 </template>
 
 <style scoped>
-/* The door's pill sits at the panel's bottom right, so the prompt keeps clear of it and of the notes above the dock. */
+/* Clear of the door's pill and the notes, which float over the panel's bottom unless the terminal dock is under it. */
 .dock {
   @apply mx-auto box-border w-full max-w-175 flex-none pr-34 pl-6;
   padding-bottom: max(--spacing(3.5), calc(var(--dock-h, 0px) + var(--gutter)));
+}
+
+.dock[data-docked="true"] {
+  @apply pr-6 pb-3.5;
 }
 
 .box {
