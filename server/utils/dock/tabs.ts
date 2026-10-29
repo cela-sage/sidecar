@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { basename } from "node:path";
 import type { IPty } from "node-pty";
 import * as Events from "../../../lib/sidecar/events.ts";
-import type { DockSize, DockTab } from "../../../shared/types/dock.ts";
+import type { DockKind, DockSize, DockTab } from "../../../shared/types/dock.ts";
 import type { RunConfig } from "../../../shared/types/runs.ts";
 import { RunOutput } from "../runs/failing.ts";
 import { claudeBinary } from "../sessions/jobs.ts";
@@ -157,6 +157,23 @@ const stop = async (id: string): Promise<boolean> => {
   return true;
 };
 
+// A session is detached, never killed, so its conversation keeps running.
+const CLOSE: Record<DockKind, (one: Live) => Promise<void>> = {
+  shell: async (one) => one.pty.kill(),
+  session: (one) => Pty.detach(one.pty),
+  run: async (one) => {
+    await stopping(one);
+    forget(one);
+  },
+};
+
+const close = async (id: string): Promise<boolean> => {
+  const one = live.get(id);
+  if (!one) return false;
+  await CLOSE[one.tab.kind](one);
+  return true;
+};
+
 const release = async (key: string): Promise<void> => {
   const held = holding(key);
   if (held) await Pty.detach(held.pty);
@@ -184,4 +201,4 @@ const resize = (id: string, { cols, rows }: DockSize): void => {
   if (one && !one.ended) one.pty.resize(cols, rows);
 };
 
-export const DockTabs = { join, leave, list, release, resize, run, session, shell, stop, write };
+export const DockTabs = { close, join, leave, list, release, resize, run, session, shell, stop, write };
