@@ -7,6 +7,28 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.57.0
+
+### Added
+
+- **Typing `/` suggests commands and skills in the door too,** listing the conversation it routes to, and a picked
+  command runs there through the chat's path, with the same refusal for one only the terminal can show. Both menus open
+  on the keystroke, since the chat loads its list when the conversation opens instead of at the first slash, and a row
+  says where its command comes from: `user` for yours, the plugin's name, or `mcp`, and nothing for a builtin.
+- **The server keeps each conversation's last command list** in `~/.claude/sidecar/commands/<key>.json`, and the mod
+  posts its list at `session.start`, so one is there before anyone types. A conversation that never answered, one
+  older than 0.48.0 or asleep, reads the newest list from one in the same folder, else from any. A change in a list
+  reaches open pages as the `commands.changed` event.
+
+### Changed
+
+- **`GET /api/sessions/:key/commands` answers at once with the last list held** and asks the session for a fresh one in
+  the background, where it waited up to three seconds and answered `[]` when the session said nothing. It answers `[]`
+  for a key that is not eight hex characters.
+- **A command typed in the door runs in the conversation it routes to,** where it went as a plain message. A
+  conversation started before 0.57.0 keeps its old mod, which answers the ask as before but posts no list at start and
+  names no plugin.
+
 ## 0.56.0
 
 ### Added

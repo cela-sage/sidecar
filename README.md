@@ -336,10 +336,17 @@ clear of the door unless the terminal dock is open under it, and each conversati
 A message that opens with `/` and a name is a command, and the session runs it as the terminal would, a skill
 included: `/compact`, `/effort status`, `/mode:ic new nav`. It goes through `POST /api/sessions/:key/command` as
 `{ name, args }`, and a slash later in the text, or a path such as `/Users/me/notes`, stays a message. Typing the
-slash lists the commands and skills the session has, from `GET /api/sessions/:key/commands`, which asks the
-session itself for them: ↑ and ↓ move, Tab or Enter completes the name, and esc closes the list. A command
-that draws a screen only the terminal can show, such as `/config`, `/status`, `/usage` and `/stats`, is not sent:
-the chat says to run it in your terminal and offers Attach. `/config`, `/model`, `/mcp` and a few more draw their
+slash lists the commands and skills the session has, on the keystroke, in the chat's prompt and in the door's field
+alike (the door lists the conversation it routes to, and sends a picked command there): ↑ and ↓ move, Tab or Enter
+completes the name, and esc closes the list. A row reads as Claude Code's does, the name and its line, then where it
+comes from, `user` for yours, the plugin's name, or `mcp`, and nothing for a builtin. The list is loaded when the
+conversation opens and again when it changes, from `GET /api/sessions/:key/commands`, which answers at once with the
+last list the session gave and asks the session in the background for a fresh one. The server keeps that last list
+per conversation in `~/.claude/sidecar/commands/<key>.json`, the mod posts it at `session.start` so one is there before
+anyone types, and a conversation that never answered, one older than 0.48.0 or asleep, gets the newest list from a
+conversation in the same folder, else the newest from any. A change in a list reaches open pages as `commands.changed`.
+A command that draws a screen only the terminal can show, such as `/config`, `/status`, `/usage` and `/stats`, is not
+sent: the chat says to run it in your terminal and offers Attach, and the door says so under the command. `/config`, `/model`, `/mcp` and a few more draw their
 screen only without arguments. The chat draws a command as Claude Code does, `❯ /compact` with what the command
 printed under it, and a name the session does not have prints the reason under it. A command sent mid-turn waits
 for the turn to end, and a conversation started before 0.48.0 has to be restarted before it runs one, since its
@@ -734,8 +741,8 @@ that only quotes one is left alone. Stop aborts the main loop's running turn, wh
 `turn.start`, and a model runs `/model` with it once the session is idle. A command runs `$.command.run` with
 its name and arguments, so the session writes the rows the terminal would, and one the session refuses is written
 as a command row with the engine's reason under it. `commands` has the mod post the session's `$.command.list()`
-to `POST /api/sessions/:key/commands`, with the screen each command draws and its aliases, which the engine
-lists under one name. That turn id and the delivered bodies waiting for their rows live in the session state,
+to `POST /api/sessions/:key/commands`, with the plugin each command comes from, the screen it draws and its aliases,
+which the engine lists under one name, and the mod posts it unasked when the session starts. That turn id and the delivered bodies waiting for their rows live in the session state,
 so a reload of the mod keeps them:
 
 ```
