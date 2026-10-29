@@ -7,6 +7,14 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.44.7
+
+### Fixed
+
+- **No room is left for the traffic lights while the window is fullscreen,** where macOS hides them, so the tree's
+  header no longer opens on a blank corner there. The shell tells the page when the window enters and leaves
+  fullscreen. Takes a rebuild of the desktop app, `sidecar update`, then quit and reopen it.
+
 ## 0.44.6
 
 ### Fixed
