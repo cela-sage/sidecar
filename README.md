@@ -277,7 +277,8 @@ open, before its first block lands. The model picker shows the session's model, 
 lists Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 with Older models by family, and a pick runs `/model` in the
 session through `POST /api/sessions/:key/model` once its turn ends. With history to re-read, Claude Code asks to
 confirm the switch in a dialog only its terminal shows, so the pick warns first, and Confirm in your terminal
-sends it and attaches the session, where the dialog waits. The prompt keeps
+sends it and attaches the session, where the dialog waits. The picker shows the pick until the next turn lands,
+which names the model the session really runs. The prompt keeps
 clear of the door unless the terminal dock is open under it, and each conversation keeps its own draft.
 
 ### Following the terminal
@@ -603,7 +604,8 @@ Claude Code frames a peer message, with the "Another Claude session sent a messa
 the frame off the row, and the conversation shows only what you wrote. A Review action, the chat's Stop and its
 model are the whole body under the marker, run by `session.receive` and never shown; a note that only quotes one
 is left alone. Stop aborts the main loop's running turn, whose id the mod holds from `turn.start`, and a model
-runs `/model` with it once the session is idle:
+runs `/model` with it once the session is idle. That turn id and the delivered bodies waiting for their rows live in
+the session state, so a reload of the mod keeps them:
 
 ```
 [[sidecar]]

@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.44.3
+
+### Fixed
+
+- **A model switch refused in the terminal stops showing in the picker** once the next turn lands, which names the
+  model the session really runs.
+- **Stop and the chat's own messages survive a reload of the mod,** because the running turn and the relayed bodies
+  now live in the session state. Before, a message queued across a plugin update showed the peer frame.
+
 ## 0.44.2
 
 ### Fixed
