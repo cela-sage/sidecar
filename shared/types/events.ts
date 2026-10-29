@@ -15,6 +15,7 @@ export interface Topics {
   "question.changed": QuestionChanged;
   "message.landed": { key: string; text: string };
   "commands.changed": { key: string };
+  "usage.changed": { key: string };
 }
 
 /** Unseen since the turn that ended at `endedAt`, seen once a frame comes without it. */

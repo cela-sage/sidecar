@@ -107,6 +107,10 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const key = text(data.key);
     return key ? { key } : undefined;
   },
+  "usage.changed": (data) => {
+    const key = text(data.key);
+    return key ? { key } : undefined;
+  },
 };
 
 export const TOPICS = Object.keys(PARSE) as Topic[];
