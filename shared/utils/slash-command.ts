@@ -26,7 +26,7 @@ const tagOf = ({ source, plugin }: Pick<SessionCommand, "source" | "plugin">): s
   return source === "plugin" ? (plugin ?? source) : source;
 };
 
-const TYPING =/^\/([^\s/]*)$/;
+const TYPING = /^\/([^\s/]*)$/;
 
 const typing = (text: string): { query: string } | undefined => {
   const hit = TYPING.exec(text);

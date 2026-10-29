@@ -22,7 +22,11 @@ const complete = (row: SessionCommand): void => {
   box.value?.focus();
 };
 
-const { cursor, onKey: onListing, rows } = useSlashMenu({
+const {
+  cursor,
+  onKey: onListing,
+  rows,
+} = useSlashMenu({
   text: () => prompt.text,
   commands: () => prompt.commands,
   complete,
@@ -67,7 +71,6 @@ watch(
   () => prompt.focusAsked,
   () => void nextTick(() => box.value?.focus()),
 );
-
 </script>
 
 <template>
