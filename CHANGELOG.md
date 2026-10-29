@@ -7,6 +7,18 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.53.0
+
+### Added
+
+- **A conversation whose turn just ended shows a small dot in place of the check until you open it.** Clicking its row
+  or bringing it in front any other way makes it the check, and a turn that ends while the conversation is in front in
+  a visible window never draws the dot. A question open, a wait and a working turn keep their marks over it, and a
+  project or a task shows the dot while one of its conversations does.
+- **The sidecar keeps which turns nobody opened in `~/.claude/sidecar/seen.json`,** with each turn's end time, so a
+  reload, the desktop app and Chrome agree. It publishes `conversation.unseen`, and `GET /api/sessions/unseen` and
+  `POST /api/sessions/<key>/seen` read and clear it.
+
 ## 0.52.0
 
 ### Added

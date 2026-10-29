@@ -186,9 +186,13 @@ and only a title with no known project lists under No project at the bottom. Eac
 or icon, and each row carries its mark: a
 spinner while it works, red when a task or
 its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
-else, a check once it is idle. A conversation works only while the turn bus says it has a turn open, through
+else, a small dot once its turn ended until you open it, then a check. A conversation works only while the turn bus says it has a turn open, through
 `conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
-task in progress spins only while one of its Task Leads works. A task with a Task Lead working under it reads In progress
+task in progress spins only while one of its Task Leads works. The dot clears when the conversation comes in front, by a click on its
+row or any other road, and a turn that ends while it is in front in a visible window never draws it. The sidecar
+keeps which turns nobody opened in `~/.claude/sidecar/seen.json` with each turn's end time, so a reload, the desktop
+app and Chrome agree. A question open or a wait keeps its red, amber or clock mark over the dot, and a project or a
+task shows the dot while one of its conversations does and nothing waits on you. A task with a Task Lead working under it reads In progress
 whatever its state, and its own status comes back when the turn ends, so a Done fold never lists a task someone still
 works on. A finished task sits under In progress with the red mark and heads its project's tasks, since it waits on
 your mark, and the Done fold lists done alone. What a fold of done tasks or done Task Leads holds sits one level under it.
@@ -543,6 +547,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `dock.changed`     | `tabs`                  | the server, when a dock tab opens, ends or its running program changes          | The dock's tabs and the shells still running, and each run's status and failing lines |
 | `runs.changed`     | `project`               | `sidecar run <project> add` and `remove`                                        | The run widget's menu reads the project again |
 | `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
+| `conversation.unseen` | `key`, `endedAt` | the turn bus, when a turn ends, and again without `endedAt` once the turn is looked at | The tree's dot, while `endedAt` is there |
 | `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion and again, without `questions`, when it settles | The door and the chat draw the question and its options |
 | `message.landed`   | `key`, `text`           | the server, when the mod tells it that a session took a sidecar message         | The chat shows the message as landed        |
 
@@ -564,7 +569,10 @@ quiet after a narration closes it. An open AskUserQuestion is in the transcript 
 reads like any tool still running, so the mod tells the server it waits on you, and that marks the conversation
 asking. Each flip is
 published as `conversation.changed`, and `GET /api/sessions/busy` returns the conversations with a turn open,
-which the app reads each time its event stream opens, since a restarted server knows none until they grow.
+which the app reads each time its event stream opens, since a restarted server knows none until they grow. A turn
+that ends also publishes `conversation.unseen` ahead of that change, and `GET /api/sessions/unseen` returns the
+conversations whose last turn nobody opened, each with its end time. `POST /api/sessions/<key>/seen` with the
+`endedAt` the window saw clears that turn and no newer one, so a click that races a turn ending leaves its dot.
 
 ## Asking Claude
 
