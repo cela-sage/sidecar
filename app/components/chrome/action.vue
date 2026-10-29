@@ -5,7 +5,16 @@ import type { Component } from "vue";
 // An inset one sits with others inside a single island instead of being an island of its own.
 export type ActionShape = "inset" | "island" | "pill";
 
-const { icon, isDisabled, isOn, isPressed, label, shape, tip } = defineProps<{
+const {
+  icon,
+  isDisabled,
+  isOn,
+  isPressed,
+  label,
+  shape,
+  size = "md",
+  tip,
+} = defineProps<{
   icon: Component;
   isDisabled?: boolean;
   /** A mode it arms, drawn in the primary colour. */
@@ -14,6 +23,7 @@ const { icon, isDisabled, isOn, isPressed, label, shape, tip } = defineProps<{
   isPressed?: boolean;
   label?: string;
   shape: ActionShape;
+  size?: "sm" | "md";
   tip: string;
 }>();
 
@@ -64,7 +74,7 @@ const emit = defineEmits<{ click: [event: MouseEvent] }>();
     :data-tip="tip"
     :disabled="isDisabled"
     :icon="icon"
-    size="md"
+    :size="size"
     :tone="isOn ? 'primary' : 'neutral'"
     @click="emit('click', $event)"
   >
