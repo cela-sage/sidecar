@@ -5,7 +5,7 @@ import { Titles, type RoleTitle } from "../../shared/utils/titles.ts";
 import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
 
 // Amber is a conversation outside a task waiting on you, red a task or its Task Lead waiting on you.
-export type Mark = "working" | "needs" | "waits" | "third" | "queued" | "completed" | "done";
+export type Mark = "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "done";
 
 export interface OrgConversation {
   key: string;
@@ -51,6 +51,7 @@ export interface OrgInput {
   projects: Project[];
   asking?: string[];
   busy?: Record<string, Busy>;
+  unseen?: string[];
   now?: number;
 }
 
@@ -67,6 +68,7 @@ interface Owned {
 interface Heard {
   asking: Set<string>;
   busy: Record<string, Busy>;
+  unseen: Set<string>;
 }
 
 interface Placing extends Heard {
@@ -74,7 +76,16 @@ interface Placing extends Heard {
   waiting?: boolean;
 }
 
-const RANK: Record<Mark, number> = { needs: 6, waits: 5, working: 4, third: 3, queued: 2, completed: 1, done: 0 };
+const RANK: Record<Mark, number> = {
+  needs: 7,
+  waits: 6,
+  working: 5,
+  unseen: 4,
+  third: 3,
+  queued: 2,
+  completed: 1,
+  done: 0,
+};
 const TASK_MARK: Record<TaskState, Mark> = {
   unassigned: "queued",
   assigned: "queued",
@@ -117,10 +128,17 @@ const stateOf = (session: LiveSession, { asking, busy }: Heard): AgentState => {
   return polled === "working" ? "completed" : polled;
 };
 
+const finishedOf = (session: LiveSession, { unseen }: Heard): Mark =>
+  unseen.has(session.key) ? "unseen" : "completed";
+
 const looseOf = (session: LiveSession, heard: Heard, name?: string): OrgConversation => {
   const title = session.name || session.cwd.split("/").filter(Boolean).at(-1) || session.key;
   const state = stateOf(session, heard);
-  const marks: Record<AgentState, Mark> = { working: "working", "needs input": "waits", completed: "completed" };
+  const marks: Record<AgentState, Mark> = {
+    working: "working",
+    "needs input": "waits",
+    completed: finishedOf(session, heard),
+  };
   return { key: session.key, title, name: name ?? title, mark: marks[state] };
 };
 
@@ -137,7 +155,7 @@ const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Pla
   const marks: Record<AgentState, Mark> = {
     working: "working",
     "needs input": isLead ? "needs" : "waits",
-    completed: waiting && isLead ? "third" : "completed",
+    completed: waiting && isLead ? "third" : finishedOf(session, heard),
   };
   return {
     key: session.key,
@@ -174,8 +192,16 @@ const projectsOf = (tasks: TaskMeta[], projects: Project[]): Project[] => {
   return [...projects, ...[...strays].map((key) => ({ key, name: key, token: key, folder: "" }))];
 };
 
-const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, now = Date.now() }: OrgInput): OrgTree => {
-  const heard: Heard = { asking: new Set(asking), busy };
+const treeOf = ({
+  sessions,
+  tasks,
+  projects,
+  asking = [],
+  busy = {},
+  unseen = [],
+  now = Date.now(),
+}: OrgInput): OrgTree => {
+  const heard: Heard = { asking: new Set(asking), busy, unseen: new Set(unseen) };
   const inView = sessions.some((session) => typeof session.inView === "boolean");
   const listed = sessions.filter((session) => (inView ? session.inView : !session.archived || session.live));
   const placed = placedOf(listed);

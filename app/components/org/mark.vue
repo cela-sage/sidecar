@@ -7,6 +7,7 @@ export const MARK_LABEL: Record<Mark, string> = {
   waits: "Waits on your input",
   third: "Waits on someone else",
   queued: "Not started",
+  unseen: "Finished, not opened yet",
   completed: "Completed",
   done: "Done",
 };
@@ -33,6 +34,9 @@ const { mark } = defineProps<{ mark: Mark }>();
     </svg>
     <svg v-else-if="mark === 'queued'" class="hollow" viewBox="0 0 12 12" aria-hidden="true">
       <circle cx="6" cy="6" r="2.75" />
+    </svg>
+    <svg v-else-if="mark === 'unseen'" class="dot" viewBox="0 0 12 12" aria-hidden="true">
+      <circle cx="6" cy="6" r="2.5" />
     </svg>
     <svg v-else class="check" viewBox="0 0 12 12" aria-hidden="true">
       <path d="M2.4 6.3 4.9 8.7 9.6 3.6" />
@@ -92,6 +96,10 @@ svg {
 .hollow {
   @apply stroke-muted;
   stroke-width: 1.5;
+}
+
+.dot circle {
+  @apply fill-primary;
 }
 
 .check {

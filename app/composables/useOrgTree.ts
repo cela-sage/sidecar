@@ -7,6 +7,7 @@ export const useOrgTree = createSharedComposable((): ComputedRef<OrgTree> => {
   const task = $task();
   const desk = $desk();
   const busy = $busy();
+  const seen = $seen();
   return computed(() =>
     Org.treeOf({
       sessions: sc.sessions.value,
@@ -14,6 +15,7 @@ export const useOrgTree = createSharedComposable((): ComputedRef<OrgTree> => {
       projects: task.projects,
       asking: desk.asks.flatMap((ask) => (ask.kind === "escalation" && ask.from ? [ask.from] : [])),
       busy: busy.keys,
+      unseen: Object.keys(seen.keys),
     }),
   );
 });

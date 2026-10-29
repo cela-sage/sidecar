@@ -140,6 +140,39 @@ test("a running task whose Task Leads are idle does not spin, and one spins only
   assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: true } } })), "needs");
 });
 
+test("a finished turn nobody opened draws a dot in place of the check, and a question, a wait or a turn open outrank it", () => {
+  const meta = (slug: string, state: TaskMeta["task"]["state"]): TaskMeta => ({
+    slug,
+    title: slug,
+    kind: "page",
+    format: "md",
+    path: `/tmp/${slug}.md`,
+    task: { state, project: "cela" },
+  });
+  const input = {
+    projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
+    sessions: [
+      session({ key: "loose", name: "[Cela] sidecar zoom" }),
+      session({ key: "lead", name: "[Cela] TL board build" }),
+      session({ key: "held", name: "[Cela] TL held build" }),
+    ],
+    tasks: [meta("board", "running"), meta("held", "waiting")],
+    unseen: ["loose", "lead", "held"],
+  };
+  const markOf = (key: string, patch: Partial<Parameters<typeof Org.treeOf>[0]> = {}): string | undefined =>
+    Org.placeOf(Org.treeOf({ ...input, ...patch }), key)?.row.mark;
+
+  assert.deepEqual(
+    ["loose", "lead", "held"].map((key) => markOf(key)),
+    ["unseen", "unseen", "third"],
+  );
+  assert.equal(Org.treeOf(input).projects[0]?.tasks.find((one) => one.meta.slug === "board")?.mark, "unseen");
+  assert.equal(markOf("lead", { unseen: [] }), "completed");
+  assert.equal(markOf("lead", { busy: { lead: { doing: true, asking: false } } }), "working");
+  assert.equal(markOf("lead", { busy: { lead: { doing: true, asking: true } } }), "needs");
+  assert.equal(markOf("loose", { busy: { loose: { doing: true, asking: true } } }), "waits");
+});
+
 test("a finished task heads the list with the needs-you mark, and a lead with a turn open shows its task In progress", () => {
   const meta = (slug: string, state: TaskMeta["task"]["state"]): TaskMeta => ({
     slug,
