@@ -1,9 +1,7 @@
-<script lang="ts" setup>
+<script lang="ts">
 import type { Mark } from "~/utils/org";
 
-const { mark } = defineProps<{ mark: Mark }>();
-
-const LABEL: Record<Mark, string> = {
+export const MARK_LABEL: Record<Mark, string> = {
   working: "Working",
   needs: "Needs you",
   waits: "Waits on your input",
@@ -14,8 +12,12 @@ const LABEL: Record<Mark, string> = {
 };
 </script>
 
+<script lang="ts" setup>
+const { mark } = defineProps<{ mark: Mark }>();
+</script>
+
 <template>
-  <span class="mark" role="img" :aria-label="LABEL[mark]" :data-mark="mark">
+  <span class="mark" role="img" :aria-label="MARK_LABEL[mark]" :data-mark="mark">
     <svg v-if="mark === 'working'" class="spin spinner" viewBox="0 0 12 12" aria-hidden="true">
       <circle class="track" cx="6" cy="6" r="4.5" />
       <path class="arc" d="M6 1.5a4.5 4.5 0 0 1 4.5 4.5" />
