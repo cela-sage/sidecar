@@ -43,7 +43,7 @@ const sidecar = async ($: Engine, on: On, pick: () => string | undefined) => {
   const calls: string[] = []
   const asked: unknown[] = []
   const rests: (readonly string[])[] = []
-  const server = { knows: true }
+  const server = { isUp: true, knows: true }
   mock.clock(on)
   mock.env(on, { HOME: '/home' })
   on('session.id', () => ({ value: 'abcdef0123456789' }))
@@ -58,6 +58,7 @@ const sidecar = async ($: Engine, on: On, pick: () => string | undefined) => {
   })
   on('http.fetch', async (_, e) => {
     const method = e.init?.method ?? 'GET'
+    if (!server.isUp) throw new Error('ECONNREFUSED')
     calls.push(`${method} ${new URL(e.url).pathname.split('/').slice(2).join('/')}`)
     if (method === 'POST') {
       asked.push(JSON.parse(String(e.init?.body)))
@@ -86,19 +87,23 @@ test("a pick in the sidecar's chat answers the dialog, and the question closes",
   expect(calls.at(-1)).toMatch(/^DELETE questions\/permission-/)
 })
 
-test('a sidecar that restarted and forgot the ask is told again, and a pick then answers it', async ($, on) => {
+test('a sidecar that came back with no memory of the ask is told again, and a pick then answers it', async ($, on) => {
   let pick: string | undefined
   const { asked, calls, rests, server } = await sidecar($, on, () => pick)
   const waiting = $.classic.PermissionRequest(PUSH)
   await new Promise(done => setTimeout(done, 12))
 
+  server.isUp = false
   server.knows = false
+  await new Promise(done => setTimeout(done, 24))
+  server.isUp = true
   await new Promise(done => setTimeout(done, 24))
   pick = 'Allow once'
 
   expect(await waiting).toEqual({ decision: { behavior: 'allow' } })
   expect(asked).toHaveLength(2)
-  expect(rests).toEqual([['sleep', '5']])
+  expect(rests.length).toBeGreaterThan(0)
+  expect(rests.every(argv => argv.join(' ') === 'sleep 5')).toBe(true)
   expect(calls.at(-1)).toMatch(/^DELETE questions\/permission-/)
 })
 

@@ -46,7 +46,10 @@ const create = (api: string, host: DoorHost): Door => ({
         poll: async () => {
           await announced
           const res = await host.fetch(`${asked}/answer`).catch(() => undefined)
-          if (res?.status === 404 && !isClosed) announced = announce()
+          if (res?.status === 404 && !isClosed) {
+            announced = announce()
+            return (await announced)?.ok ? 'idle' : 'down'
+          }
           if (!res?.ok) return 'down'
           return (res.status === 200 && Question.answersOf(res.text)) || 'idle'
         },

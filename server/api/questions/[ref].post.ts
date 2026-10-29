@@ -8,7 +8,10 @@ export default defineEventHandler(async (event): Promise<{ asked: boolean }> => 
   const ref = getRouterParam(event, "ref") || "";
   const body = Body.safeParse(await readBody(event));
   const questions = body.success ? Questions.of(body.data.questions) : undefined;
-  if (!ref || !body.success || !questions) return { asked: false };
+  if (!ref || !body.success || !questions) {
+    setResponseStatus(event, 400);
+    return { asked: false };
+  }
   OpenQuestions.ask({ key: body.data.key, ref, questions });
   return { asked: true };
 });
