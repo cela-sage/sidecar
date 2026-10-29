@@ -7,6 +7,13 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.44.1
+
+### Changed
+
+- **The repo the conversation runs in heads the run menu** when its folder is inside one, so the first `dev` in
+  that order is the default pick.
+
 ## 0.44.0
 
 ### Added

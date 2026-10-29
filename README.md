@@ -323,7 +323,8 @@ and closing it leaves the shell running.
 The run widget in the conversation's header runs the project's commands without leaving the workspace. Its menu
 lists the `package.json` scripts and `Makefile` targets of every repo one level under the project's folder,
 grouped by repo and then by file, followed by the ones written for the project, with a filter at the top whose
-Enter runs the first match. A script runs through the runner its lockfile names, pnpm, bun or yarn, else npm, and
+Enter runs the first match. The repo the conversation runs in heads the list when its folder is inside one, and
+the first `dev` in that order, else the first entry, is the pick until you choose another. A script runs through the runner its lockfile names, pnpm, bun or yarn, else npm, and
 a target through `make`. The widget shows the picked configuration, remembered per project as `sc:run-picked`,
 with a breathing dot while it runs and a red mark when its last run failed. Run (⌃R) starts it, and while it runs
 Restart (⌘R) and Stop (⌘F2) take its place. ⌃R and ⌘R step aside while an artifact is in front, where ⌘R reloads
