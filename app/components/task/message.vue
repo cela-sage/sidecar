@@ -1,36 +1,57 @@
 <script lang="ts" setup>
+import type { CommandCall } from "~~/shared/utils/slash-command";
 import type { Delivery } from "~/stores/notes";
 
 const { conversation, name, slug } = defineProps<{ conversation: string; name: string; slug: string }>();
 
 const notes = $notes();
+const prompt = $prompt();
 const chrome = useChrome();
+const tree = useOrgTree();
 const words = ref("");
+
+const candidates = computed(() => Org.mentionable(tree.value, conversation));
+const commands = computed(() => prompt.commandsOf(conversation));
 
 const FAILED: Record<Exclude<Delivery, { delivered: true }>["reason"], string> = {
   "no-live-session": "isn't running and didn't wake, so the message stays here",
   "refused-by-inbox": "refused the message. It stays here, try again in a moment",
 };
 
+const run = async (command: CommandCall): Promise<void> => {
+  const ran = await prompt.run(conversation, command);
+  if (ran === "terminal") return chrome.toast(`Run /${command.name} in your terminal`, "warning");
+  if (ran === "failed") return;
+  words.value = "";
+  chrome.toast(`Ran /${command.name} in ${name}`, "success");
+};
+
 const send = async (): Promise<void> => {
   const text = words.value.trim();
   if (!text) return;
+  const command = SlashCommand.parse(text);
+  if (command) return run(command);
   const reply = await notes.deliver({ key: conversation, slug, text });
   if (!reply) return;
   if (!reply.delivered) return chrome.toast(`${name} ${FAILED[reply.reason]}`, "warning");
   words.value = "";
   chrome.toast(`Sent to ${name}, and it's in the task history`, "success");
 };
+
+onMounted(() => void prompt.load(conversation));
 </script>
 
 <template>
   <form class="message" data-region="task-message" @click.stop @submit.prevent="send">
-    <input
+    <ComposerInput
       v-model="words"
-      class="field"
-      type="text"
-      aria-label="Message this Task Lead"
+      :candidates="candidates"
+      class="entry"
+      :commands="commands"
+      label="Message this Task Lead"
+      opens="down"
       placeholder="Message this Task Lead"
+      @send="send"
     />
     <UiButton
       data-tip="Send · {↵}. It lands in the task history"
@@ -45,14 +66,14 @@ const send = async (): Promise<void> => {
 
 <style scoped>
 .message {
-  @apply ml-4 flex items-center gap-1.5 rounded-full border border-border bg-raised py-0.75 pr-0.75 pl-3;
+  @apply relative ml-4 flex items-center gap-1.5 rounded-full border border-border bg-raised py-0.75 pr-0.75 pl-3;
 }
 
 .message:focus-within {
   @apply border-border-strong;
 }
 
-.field {
-  @apply min-w-0 flex-1 border-0 bg-transparent p-0 font-sans typo-body text-fg outline-none placeholder:text-subtle;
+.entry {
+  @apply flex-1;
 }
 </style>
