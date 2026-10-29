@@ -21,22 +21,27 @@ const answersOf = (text: string): Answers | undefined => {
   }
 }
 
+const hear = async ({ poll, rest, isGone }: QuestionPort): Promise<Answers | undefined> => {
+  while (!isGone()) {
+    const heard = await poll()
+    if (typeof heard === 'object') return heard
+    if (heard === 'down') await rest()
+  }
+}
+
 // The terminal stays a place to answer: whichever of the dialog and the door answers first settles the call.
-const race = <T>(dialog: Promise<T>, { poll, rest, isGone }: QuestionPort): Promise<Raced<T>> => {
+const race = <T>(dialog: Promise<T>, port: QuestionPort): Promise<Raced<T>> => {
   let isSettled = false
   const fromDialog = dialog.then((result): Raced<T> => {
     isSettled = true
     return { from: 'dialog', result }
   })
   const fromDoor = async (): Promise<Raced<T>> => {
-    while (!isSettled && !isGone()) {
-      const heard = await poll()
-      if (typeof heard === 'object') return { from: 'door', answers: heard }
-      if (heard === 'down') await rest()
-    }
-    return isGone() ? { from: 'gone' } : fromDialog
+    const answers = await hear({ ...port, isGone: () => isSettled || port.isGone() })
+    if (answers) return { from: 'door', answers }
+    return port.isGone() ? { from: 'gone' } : fromDialog
   }
   return Promise.race([fromDialog, fromDoor()])
 }
 
-export const Question = { answersOf, race }
+export const Question = { answersOf, hear, race }

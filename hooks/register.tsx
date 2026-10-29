@@ -3,6 +3,7 @@ import type { Register } from 'claude-code'
 
 import { Commands } from './commands'
 import { Control } from './control'
+import { Door } from './door'
 import { Question } from './question'
 import { Relay } from './relay'
 import { receiveReview, registerReview, startReview, stopTurn } from './review/hooks'
@@ -21,9 +22,9 @@ type Sidecar = {
 
 // A burst of keys points once, and a keystroke never waits on the network.
 const POINT_EVERY_MS = 2000
-const SIDECAR_DOWN_RETRY_MS = 5000
 
 let sidecar: Sidecar | undefined
+let door: Door | undefined
 let pointed = 0
 let rule: string | undefined
 
@@ -64,6 +65,11 @@ export const register: Register = (on, options) => {
           })
           .catch(() => undefined),
     }
+    door = Door.create(api, {
+      id: () => $.session.id(),
+      fetch: (url, init) => $.http.fetch(url, init),
+      sleep: (ms, options) => $.clock.sleep(ms, options),
+    })
     await $.command.register({
       name: 'sidecar',
       description: 'The sidecar CLI: bare opens the sidecar on this conversation, starting it when it is down',
@@ -170,28 +176,10 @@ export const register: Register = (on, options) => {
   })
 
   on('tool.call', { tool: 'AskUserQuestion' }, async ($, e, next) => {
-    if (!e.tool_use_id) return next(e)
-    const asked = `${api}/api/questions/${encodeURIComponent(e.tool_use_id)}`
-    const close = () => void $.http.fetch(asked, { method: 'DELETE' }).catch(() => undefined)
-    const key = (await $.session.id()).slice(0, 8)
-    void $.http
-      .fetch(asked, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ key, questions: e.questions }),
-      })
-      .catch(() => undefined)
-    next.signal.addEventListener('abort', close, { once: true })
-    const raced = await Question.race(next(e), {
-      poll: async () => {
-        const res = await $.http.fetch(`${asked}/answer`).catch(() => undefined)
-        if (!res?.ok) return 'down'
-        return (res.status === 200 && Question.answersOf(res.text)) || 'idle'
-      },
-      rest: () => $.clock.sleep(SIDECAR_DOWN_RETRY_MS, { signal: next.signal }).catch(() => undefined),
-      isGone: () => next.signal.aborted,
-    })
-    close()
+    if (!e.tool_use_id || !door) return next(e)
+    const opened = await door.open({ ref: e.tool_use_id, questions: e.questions, signal: next.signal })
+    const raced = await Question.race(next(e), opened.port)
+    opened.close()
     if (raced.from === 'dialog') return raced.result
     if (raced.from === 'gone') return { deny: 'The question was dismissed.' }
     return { result: { questions: e.questions, answers: raced.answers } }
