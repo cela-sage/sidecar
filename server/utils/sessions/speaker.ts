@@ -44,17 +44,44 @@ export type Piece =
   | { kind: "command"; line: string }
   | { kind: "printed"; text: string };
 
+// The Compacted note stands in for the terminal's hint.
+const COMPACTED_HINT = /^Compacted \(.+ to see full summary\)$/;
+const HOOK_RECEIPT = /^(\w+) \[.*\] (completed successfully|failed)(?:: (.*))?$/;
+
+const printedOf = (text: string): Piece[] => {
+  const out: Piece[] = [];
+  let block: string[] = [];
+  const flush = (): void => {
+    const kept = block.join("\n").trim();
+    if (kept) out.push({ kind: "printed", text: kept });
+    block = [];
+  };
+  for (const line of text.split("\n")) {
+    if (COMPACTED_HINT.test(line)) continue;
+    const hook = HOOK_RECEIPT.exec(line);
+    if (!hook) {
+      block.push(line);
+      continue;
+    }
+    flush();
+    const [, event, outcome, output = ""] = hook;
+    out.push({ kind: "note", label: `Hook(${event})${outcome === "failed" ? " failed" : ""}` });
+    if (output !== "{}") block.push(output);
+  }
+  flush();
+  return out;
+};
+
 function ranOf(body: string): Piece[] | undefined {
   const name = COMMAND_NAME.exec(body)?.[1];
   const typed = name ? { name, args: COMMAND_ARGS.exec(body)?.[1] ?? "" } : SlashCommand.parse(body);
   const printed = PRINTED.exec(body);
   if (!typed && !printed) return undefined;
-  const text = stripVTControlCharacters(printed?.[1] ?? "").trim();
   return [
     ...(typed
       ? [{ kind: "command" as const, line: SlashCommand.line({ name: typed.name, args: typed.args.trim() }) }]
       : []),
-    ...(text ? [{ kind: "printed" as const, text }] : []),
+    ...printedOf(stripVTControlCharacters(printed?.[1] ?? "")),
   ];
 }
 

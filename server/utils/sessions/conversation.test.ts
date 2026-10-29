@@ -316,13 +316,59 @@ test("a command draws as its line and what it printed, and the context the harne
     conversationOf({ key }).turns.map((turn) => ({ role: turn.role, kind: turn.kind, text: turn.text })),
     [
       { role: "system", kind: "command", text: "/compact" },
-      { role: "system", kind: "printed", text: "Compacted (ctrl+o to see full summary)" },
       { role: "system", kind: "command", text: "/mode:ic new glass" },
       { role: "system", kind: "printed", text: "sidecar: up at http://sidecar.localhost:4747" },
       { role: "user", kind: undefined, text: "Another Claude session sent a message:\nship it" },
       { role: "user", kind: undefined, text: "[Image: source: /tmp/cmd/1.png]" },
       { role: "system", kind: "command", text: "/foo" },
       { role: "system", kind: "printed", text: "No command named /foo in this session" },
+    ],
+  );
+});
+
+test("a compaction typed in the terminal reads in the file's order as its command, the summary, the receipt and the hook", () => {
+  const key = "12121212";
+  const at = (second: number): string => `2026-01-01T09:00:${second}.000Z`;
+  writeTranscript(key, "-tmp-compact", [
+    { type: "user", cwd: "/tmp/compact", timestamp: at(33), message: { role: "user", content: "/compact" } },
+    { type: "system", subtype: "compact_boundary", timestamp: at(37), content: "Conversation compacted" },
+    {
+      type: "user",
+      isCompactSummary: true,
+      isVisibleInTranscriptOnly: true,
+      timestamp: at(36),
+      message: { role: "user", content: "This session is being continued.\nSummary:\n# What happened" },
+    },
+    {
+      type: "user",
+      isMeta: true,
+      timestamp: at(33),
+      message: { role: "user", content: "<local-command-caveat>The command below was run directly.</local-command-caveat>" },
+    },
+    {
+      type: "user",
+      timestamp: at(33),
+      message: { role: "user", content: "<command-name>/compact</command-name>\n<command-message>compact</command-message>\n<command-args></command-args>" },
+    },
+    {
+      type: "user",
+      repeatsCompactSummary: true,
+      timestamp: at(37),
+      message: {
+        role: "user",
+        content:
+          "<local-command-stdout>\u001b[2mCompacted (ctrl+o to see full summary)\u001b[22m\n\u001b[2mPostCompact [if [ -x \"$HOME/hook.sh\" ]; then /bin/sh \"$HOME/hook.sh\"; fi] completed successfully: {}\u001b[22m</local-command-stdout>",
+      },
+    },
+  ]);
+
+  assert.deepEqual(
+    conversationOf({ key }).turns.map((turn) => ({ kind: turn.kind, text: turn.text })),
+    [
+      { kind: "command", text: "/compact" },
+      { kind: "note", text: "Compacted" },
+      { kind: "command", text: "/compact" },
+      { kind: "note", text: "Hook(PostCompact)" },
     ],
   );
 });
