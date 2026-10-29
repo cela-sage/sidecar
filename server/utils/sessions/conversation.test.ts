@@ -257,7 +257,8 @@ test("a command draws as its line and what it printed, and the context the harne
     user(1, "<command-name>/compact</command-name>\n   <command-message>compact</command-message>\n   <command-args></command-args>"),
     user(2, "<local-command-stdout>\u001b[2mCompacted (ctrl+o to see full summary)\u001b[22m</local-command-stdout>"),
     user(3, "<command-message>mode:ic</command-message>\n<command-name>/mode:ic</command-name>\n<command-args>new glass</command-args>"),
-    user(4, [{ type: "text", text: "Base directory for this skill: /tmp/skills/ic\n\n# IC" }], { isMeta: true }),
+    user(4, [{ type: "text", text: "Base directory for this skill: /tmp/skills/ic\n\n# IC" }], { isMeta: true, turnCompanion: true }),
+    user(4, [{ type: "text", text: "Base directory for this skill: /tmp/skills/ic" }], { isMeta: true, sourceToolUseID: "toolu_1" }),
     {
       type: "system",
       subtype: "local_command",

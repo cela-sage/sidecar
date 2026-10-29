@@ -1,10 +1,9 @@
 import { splitLines } from "../../../lib/text.ts";
 import type { ToolCall, ToolDiff } from "../../../shared/types/conversation.ts";
 import type { Question, QuestionOption } from "../../../shared/types/question.ts";
-import { PastedImages } from "../../../shared/utils/pasted-images.ts";
 import { ToolCalls } from "./calls.ts";
 import { plain } from "./relay.ts";
-import { argOf, readOut, withoutReminders } from "./speaker.ts";
+import { argOf, readOut } from "./speaker.ts";
 import { readRange, transcriptIndex, type TranscriptGrowth } from "./transcripts.ts";
 
 // Narration and answer share the provider's `text` block, told apart only by position.
@@ -124,9 +123,9 @@ const ranIn = (content: unknown, at: number): ConversationTurn[] =>
     ? spoke({ text: content, at }).filter((turn) => turn.kind === "command" || turn.kind === "printed")
     : [];
 
-// A meta row is context for the model: only a delivery from another session, a reminder's note and an image's source line are for the reader.
-const isContext = (entry: Record<string, unknown>, text: string): boolean =>
-  entry.isMeta === true && !entry.origin && !PastedImages.sourcesOf(text).length && !!withoutReminders(text);
+// A skill's expansion rides with its turn, or with the tool call that loaded it, and is for the model alone.
+const isContext = (entry: Record<string, unknown>): boolean =>
+  entry.isMeta === true && (entry.turnCompanion === true || !!entry.sourceToolUseID);
 
 const viaOf = ({ origin }: Record<string, unknown>): "terminal" | undefined =>
   typeof origin === "object" && !!origin && "kind" in origin && origin.kind === "human" ? "terminal" : undefined;
@@ -159,7 +158,7 @@ function turnOf(line: string): ConversationTurn[] {
   }
   const said = saidOf(content);
   if (!said) return [];
-  if (entry.type === "user") return isContext(entry, said.text) ? [] : spoke({ text: said.text, at, via: viaOf(entry) });
+  if (entry.type === "user") return isContext(entry) ? [] : spoke({ text: said.text, at, via: viaOf(entry) });
   const model = modelOf(message as Record<string, unknown>);
   return [
     {

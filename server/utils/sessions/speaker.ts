@@ -9,7 +9,6 @@ const TAGS: [RegExp, (hit: RegExpMatchArray) => string][] = [
   [/<task-notification>/, () => "Task notification"],
   [/<user-prompt-submit-hook>/, () => "Hook(UserPromptSubmit)"],
   [/<persisted-output>/, () => "Output persisted"],
-  [/<local-command-caveat>/, () => "Session caveat"],
 ];
 
 // A skill writes its message tag before its name tag, so the two are read apart.
@@ -23,7 +22,7 @@ const INTERRUPT = /\[Request interrupted[^\]]*\]/g;
 // A reminder wrapping a real message is context around it, not a message of its own.
 const REMINDER = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
 
-const WRAPPERS = [/<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g];
+const CAVEAT = /<local-command-caveat>[\s\S]*?<\/local-command-caveat>/g;
 
 export function noteOf(text: string): SystemNote | undefined {
   const body = text.trim();
@@ -59,22 +58,17 @@ function ranOf(body: string): Piece[] | undefined {
 
 /** The message in order, so a withdrawn ask keeps its place ahead of the interruption. */
 export function readOut(text: string): Piece[] {
-  const body = withoutReminders(text);
-  if (!body) return [{ kind: "note", label: "System reminder" }];
+  const unreminded = withoutReminders(text);
+  if (!unreminded) return [{ kind: "note", label: "System reminder" }];
+
+  const body = unreminded.replace(CAVEAT, "").trim();
+  if (!body) return [];
 
   const ran = ranOf(body);
   if (ran) return ran;
 
   const note = noteOf(body);
-  if (note) {
-    const prose = WRAPPERS.reduce((acc, wrapper) => acc.replace(wrapper, ""), body).trim();
-    return prose && prose !== body
-      ? [
-          { kind: "note", label: note.label },
-          { kind: "said", text: prose },
-        ]
-      : [{ kind: "note", label: note.label }];
-  }
+  if (note) return [{ kind: "note", label: note.label }];
 
   const out: Piece[] = [];
   let last = 0;
