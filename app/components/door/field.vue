@@ -1,9 +1,14 @@
 <script lang="ts" setup>
 import { Paperclip } from "@lucide/vue";
+import type { SessionCommand } from "~~/shared/types/command";
 import type { OrgConversation } from "~/utils/org";
 
 const text = defineModel<string>({ required: true });
-const { candidates, placeholder } = defineProps<{ candidates: OrgConversation[]; placeholder: string }>();
+const { candidates, commands, placeholder } = defineProps<{
+  candidates: OrgConversation[];
+  commands: SessionCommand[];
+  placeholder: string;
+}>();
 const emit = defineEmits<{ escape: []; fill: []; send: [] }>();
 
 const PICKS_MAX = 30;
@@ -17,9 +22,29 @@ const caret = ref(0);
 const cursor = ref(0);
 const isDismissed = ref(false);
 
+const complete = (row: SessionCommand): void => {
+  const next = `/${row.name} `;
+  text.value = next;
+  void nextTick(() => {
+    box.value?.focus();
+    box.value?.setSelectionRange(next.length, next.length);
+    caret.value = next.length;
+  });
+};
+
+const {
+  cursor: slashCursor,
+  onKey: onSlashKey,
+  rows: slashRows,
+} = useSlashMenu({
+  text: () => text.value,
+  commands: () => commands,
+  complete,
+});
+
 const picking = computed(() => {
   const hit = isDismissed.value ? undefined : Mentions.typing({ text: text.value, caret: caret.value });
-  return hit && !door.attached.some((one) => one.name === hit.query) ? hit : undefined;
+  return hit && !slashRows.value.length && !door.attached.some((one) => one.name === hit.query) ? hit : undefined;
 });
 const rows = computed(() => {
   if (!picking.value) return [];
@@ -115,7 +140,7 @@ const onPicking = (event: KeyboardEvent): boolean => {
 };
 
 const onKey = (event: KeyboardEvent): void => {
-  if (picking.value && onPicking(event)) return;
+  if (onSlashKey(event) || (picking.value && onPicking(event))) return;
   if (event.key === "Escape") {
     event.preventDefault();
     emit("escape");
@@ -139,7 +164,22 @@ defineExpose({ focus });
 
 <template>
   <div class="field">
-    <DoorMentions v-if="picking" class="picker" :cursor="cursor" :rows="rows" @pick="pick" @point="cursor = $event" />
+    <ConversationCommands
+      v-if="slashRows.length"
+      class="picker"
+      :cursor="slashCursor"
+      :rows="slashRows"
+      @pick="complete"
+      @point="slashCursor = $event"
+    />
+    <DoorMentions
+      v-else-if="picking"
+      class="picker"
+      :cursor="cursor"
+      :rows="rows"
+      @pick="pick"
+      @point="cursor = $event"
+    />
     <div v-if="pictures.length" class="pictures">
       <ComposerPiece
         v-for="one in pictures"

@@ -2,6 +2,7 @@ import type { Started } from "~~/shared/types/assistant";
 import type { AttachedFile } from "~~/shared/types/files";
 import type { LiveSession } from "~~/shared/types/session";
 import type { TaskState } from "~~/shared/types/task";
+import type { CommandCall } from "~~/shared/utils/slash-command";
 import { Titles } from "~~/shared/utils/titles";
 import type { Delivery } from "~/stores/notes";
 import type { Attachment } from "~/utils/attachments";
@@ -57,6 +58,7 @@ export const $door = defineStore(() => {
   const sc = useSidecar();
   const task = $task();
   const desk = $desk();
+  const prompt = $prompt();
   const chrome = useChrome();
   const isOpen = ref(false);
   const draft = ref("");
@@ -200,6 +202,18 @@ export const $door = defineStore(() => {
     update(made.id, { step: "failed", failure: `${name} ${FAILED[reply.reason]}.` });
   };
 
+  const runCommand = async (command: CommandCall, to: string): Promise<void> => {
+    const made = exchange(SlashCommand.line(command), to);
+    update(made.id, { isWaking: isAsleep(sc.sessions.value, to) });
+    const ran = await prompt.run(to, command);
+    update(made.id, { isWaking: false });
+    if (ran === "sent") return update(made.id, { step: "answered" });
+    const name = assistant.value?.name ?? "the assistant";
+    const failure =
+      ran === "terminal" ? `Run /${command.name} in your terminal.` : `/${command.name} did not reach ${name}.`;
+    update(made.id, { step: "failed", failure });
+  };
+
   const start = async (sent: DoorSend): Promise<void> => {
     const made = exchange(sent.text);
     const slug = slugOf(sent.context);
@@ -227,7 +241,10 @@ export const $door = defineStore(() => {
     draft.value = "";
     attached.value = [];
     Attachments.release(files);
-    if (mode.value === "assistant" && key.value) return ask({ ...sent, text, files }, key.value);
+    const to = mode.value === "assistant" ? key.value : undefined;
+    const command = to ? SlashCommand.parse(text) : undefined;
+    if (to && command) return runCommand(command, to);
+    if (to) return ask({ ...sent, text, files }, to);
     return start({ ...sent, text, files });
   };
 

@@ -14,6 +14,7 @@ const route = useRoute();
 const task = $task();
 const desk = $desk();
 const door = $door();
+const prompt = $prompt();
 const terminal = $terminal();
 const busy = $busy();
 const questions = $questions();
@@ -105,6 +106,7 @@ const placeholder = computed(() =>
 );
 
 const attachKey = computed(() => (door.mode === "assistant" ? door.key : undefined));
+const commands = computed(() => prompt.commandsOf(door.key));
 
 const routeOf = (meta: TaskMeta): OrgProject | undefined =>
   tree.value.projects.find((one) => one.project.key === desk.routes[meta.slug]);
@@ -203,6 +205,14 @@ watch(
 );
 useResizeObserver(restLayer, measure);
 useResizeObserver(panelLayer, measure);
+
+watch(
+  () => door.isOpen && door.key,
+  (key) => {
+    if (key) void prompt.load(key);
+  },
+  { immediate: true },
+);
 
 watch(contextKey, () => (keepsContext.value = false));
 watch(
@@ -369,6 +379,7 @@ onMounted(() => {
               ref="field"
               v-model="door.draft"
               :candidates="candidates"
+              :commands="commands"
               :placeholder="placeholder"
               @escape="close(true)"
               @fill="fill()"
