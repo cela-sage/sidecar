@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
+import { createServer } from "node:net";
 import { setTimeout as sleep } from "node:timers/promises";
 import { read } from "../../../lib/sidecar/events.ts";
 import type { SessionCommand } from "../../../shared/types/command.ts";
@@ -24,10 +25,10 @@ after(() => {
 const listOf = (...names: string[]): SessionCommand[] =>
   names.map((name) => ({ name, description: "", source: "builtin" }));
 const namesOf = (key: string): string[] => SessionCommands.held(key).map((one) => one.name);
-const run = (key: string, cwd: string): void =>
+const run = (key: string, cwd: string, messagingSocketPath?: string): void =>
   writeFileSync(
     join(dir, "sessions", `${key}.json`),
-    JSON.stringify({ pid: process.pid, sessionId: `${key}-1111-2222-3333-444444444444`, cwd }),
+    JSON.stringify({ pid: process.pid, sessionId: `${key}-1111-2222-3333-444444444444`, cwd, messagingSocketPath }),
   );
 
 test("an answer is held for the next read, and announced only when the list changed", () => {
@@ -56,4 +57,22 @@ test("a conversation that never answered reads the newest list from its own fold
 
   assert.deepEqual(namesOf("bbbb0003"), ["one"]);
   assert.deepEqual(namesOf("cccc0001"), ["two"]);
+});
+
+test("only a conversation that has given a list is asked for a fresh one", async () => {
+  const heard: string[] = [];
+  const socketPath = join(dir, "inbox.sock");
+  const inbox = createServer((socket) => socket.on("data", (chunk) => heard.push(String(chunk)))).listen(socketPath);
+  writeFileSync(join(dir, "sessions", `${process.pid}.feed.key`), "token");
+  run("dddd0001", "/work/d", socketPath);
+
+  SessionCommands.refresh("dddd0001");
+  await sleep(50);
+  assert.deepEqual(heard, []);
+
+  SessionCommands.answer("dddd0001", listOf("compact"));
+  SessionCommands.refresh("dddd0001");
+  await sleep(50);
+  inbox.close();
+  assert.match(heard.join(""), /\{\\"do\\":\\"commands\\"\}/);
 });

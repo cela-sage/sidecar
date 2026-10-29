@@ -57,8 +57,9 @@ const held = (key: string): SessionCommand[] => {
   return (newest(all.filter((one) => cwd && one.cwd === cwd)) ?? newest(all))?.list ?? [];
 };
 
-// Which skills and plugins a session has changes under a running one, so every read asks it again and nobody waits.
+// A mod from before 0.48.0 hands the ask to Claude as words, so only a session that has given a list is asked.
 const refresh = (key: string): void => {
+  if (!read(fileOf(key))) return;
   void deliver({ key, text: JSON.stringify({ do: "commands" }), canWake: false }).catch((error: unknown) =>
     console.error(`[commands] could not ask ${key}`, error),
   );
