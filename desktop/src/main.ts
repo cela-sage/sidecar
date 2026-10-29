@@ -181,6 +181,8 @@ function createWindow(): void {
   const win = new BrowserWindow({
     backgroundColor: "#17151e",
     height: 900,
+    minHeight: 560,
+    minWidth: 760,
     show: false,
     title: NAME,
     titleBarStyle: "hiddenInset",
