@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
-import { ChevronDown, Plus, Terminal } from "@lucide/vue";
+import { ChevronDown, Plus, Terminal, X } from "@lucide/vue";
 import type { DockTab } from "~~/shared/types/dock";
 import type { DockProject, DockTool } from "~/stores/dock";
 import type { OrgConversation } from "~/utils/org";
@@ -36,6 +36,42 @@ const kept = computed((): Kept[] => {
 
 const sessionOf = (tab: DockTab): OrgConversation | undefined =>
   tab.key ? Org.placeOf(tree.value, tab.key)?.row : undefined;
+
+const labelOf = (tab: DockTab): string =>
+  tab.kind === "session" ? (sessionOf(tab)?.name ?? tab.key ?? tab.title) : tab.title;
+
+const dragging = ref<DockTab>();
+const hover = ref<{ id: string; side: "before" | "after" }>();
+
+const carry = (event: DragEvent, tab: DockTab): void => {
+  event.dataTransfer?.setData("application/x-sidecar-dock-tab", tab.id);
+  if (event.dataTransfer) event.dataTransfer.effectAllowed = "move";
+  requestAnimationFrame(() => (dragging.value = tab));
+};
+
+const letGo = (): void => {
+  dragging.value = undefined;
+  hover.value = undefined;
+};
+
+const over = (event: DragEvent, tab: DockTab): void => {
+  const el = event.currentTarget;
+  if (!dragging.value || !(el instanceof HTMLElement)) return;
+  event.preventDefault();
+  if (tab.id === dragging.value.id) return void (hover.value = undefined);
+  const { left, width } = el.getBoundingClientRect();
+  hover.value = { id: tab.id, side: event.clientX < left + width / 2 ? "before" : "after" };
+};
+
+const drop = (event: DragEvent, tab: DockTab): void => {
+  const moved = dragging.value;
+  const side = hover.value?.side;
+  letGo();
+  if (!moved || !side) return;
+  event.preventDefault();
+  const others = theirs.value.filter((one) => one.id !== moved.id);
+  dock.move(moved, others.findIndex((one) => one.id === tab.id) + (side === "after" ? 1 : 0));
+};
 
 const isOpening = ref(false);
 
@@ -99,29 +135,52 @@ const pick = (value: DockTool): void => {
           role="tablist"
           :aria-label="isTerminal ? `${front.name}'s terminals` : `${front.name}'s runs`"
         >
-          <button
+          <div
             v-for="tab in theirs"
             :key="tab.id"
             class="tab"
-            role="tab"
-            type="button"
-            :aria-selected="tab.id === shown?.id"
-            :data-kind="tab.kind"
-            @click="dock.pick(tab)"
+            role="presentation"
+            :data-dragging="dragging?.id === tab.id"
+            :data-drop="hover?.id === tab.id ? hover.side : undefined"
+            :data-selected="tab.id === shown?.id"
+            @dragleave="hover = undefined"
+            @dragover="over($event, tab)"
+            @drop="drop($event, tab)"
           >
-            <template v-if="tab.kind === 'shell'">
-              <UiIcon :icon="Terminal" size="xs" />
-              {{ tab.title }}
-            </template>
-            <template v-else-if="tab.kind === 'run'">
-              <RunStatusMark :status="tab.status" />
-              {{ tab.title }}
-            </template>
-            <template v-else>
-              <span v-if="sessionOf(tab)?.role" class="role">{{ sessionOf(tab)?.role }}</span>
-              {{ sessionOf(tab)?.name ?? tab.key }}
-            </template>
-          </button>
+            <button
+              class="label"
+              draggable="true"
+              role="tab"
+              type="button"
+              :aria-selected="tab.id === shown?.id"
+              :data-kind="tab.kind"
+              @click="dock.pick(tab)"
+              @dragend="letGo"
+              @dragstart="carry($event, tab)"
+            >
+              <template v-if="tab.kind === 'shell'">
+                <UiIcon :icon="Terminal" size="xs" />
+                {{ tab.title }}
+              </template>
+              <template v-else-if="tab.kind === 'run'">
+                <RunStatusMark :status="tab.status" />
+                {{ tab.title }}
+              </template>
+              <template v-else>
+                <span v-if="sessionOf(tab)?.role" class="role">{{ sessionOf(tab)?.role }}</span>
+                {{ sessionOf(tab)?.name ?? tab.key }}
+              </template>
+            </button>
+            <UiIconButton
+              class="close"
+              icon-size="xs"
+              :icon="X"
+              :label="`Close ${labelOf(tab)}`"
+              size="xs"
+              tip="Close"
+              @click="dock.close(tab)"
+            />
+          </div>
           <UiIconButton
             v-if="isTerminal"
             :disabled="isOpening"
@@ -185,19 +244,51 @@ const pick = (value: DockTool): void => {
 }
 
 .tab {
-  @apply inline-flex h-7 flex-none cursor-pointer items-center gap-1.5 rounded-lg border border-transparent bg-transparent px-2.5 typo-mono-meta text-muted transition-colors duration-(--duration-fast) ease-out;
+  @apply relative inline-flex h-7 flex-none items-center rounded-lg border border-transparent typo-mono-meta text-muted transition-colors duration-(--duration-fast) ease-out;
 }
 
 .tab:hover {
   @apply bg-sunken text-fg;
 }
 
-.tab[aria-selected="true"] {
+.tab[data-selected="true"] {
   @apply border-border bg-sunken text-fg;
 }
 
-.tab:focus-visible {
+.tab[data-dragging="true"] {
+  @apply opacity-40;
+}
+
+.tab[data-drop="before"]::before,
+.tab[data-drop="after"]::after {
+  content: "";
+  @apply absolute inset-y-1 w-0.5 rounded-full bg-primary;
+}
+
+.tab[data-drop="before"]::before {
+  @apply left-0;
+}
+
+.tab[data-drop="after"]::after {
+  @apply right-0;
+}
+
+.label {
+  @apply inline-flex h-full cursor-pointer items-center gap-1.5 rounded-lg bg-transparent pr-1 pl-2.5;
+}
+
+.label:focus-visible {
   @apply focus-ring;
+}
+
+.close {
+  @apply opacity-0;
+}
+
+.tab:hover .close,
+.tab:focus-within .close,
+.tab[data-selected="true"] .close {
+  @apply opacity-100;
 }
 
 .role {

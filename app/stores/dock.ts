@@ -20,12 +20,14 @@ export const $dock = defineStore(() => {
   const task = $task();
   const tree = useOrgTree();
   const router = useRouter();
+  const chrome = useChrome();
   // Before both lists land, a conversation reads as No project, and its shell would open in the wrong folder.
   const isReady = computed(() => sc.ready.value && task.projects.length > 0);
   void task.loadProjects();
   const isOpen = useLocalStorage("sc:dock-open", false);
   const tool = useLocalStorage<DockTool>("sc:dock-tool", "terminal");
   const height = useLocalStorage("sc:dock-height", 300);
+  const order = useLocalStorage<Record<string, string[]>>("sc:dock-order", {});
   const tabs = ref<DockTab[]>([]);
   const picked = ref<Record<string, string>>({});
   const size = ref<DockSize>({ cols: 100, rows: 16 });
@@ -52,7 +54,10 @@ export const $dock = defineStore(() => {
   const slotOf = (project: string, of: DockTool): string => `${of}:${project}`;
 
   const tabsOf = (project: string, of: DockTool): DockTab[] =>
-    tabs.value.filter((one) => one.project === project && toolOf(one) === of);
+    DockOrder.arranged(
+      tabs.value.filter((one) => one.project === project && toolOf(one) === of),
+      order.value[project],
+    );
 
   const shownOf = (project: string, of: DockTool): DockTab | undefined => {
     const theirs = tabsOf(project, of);
@@ -70,12 +75,39 @@ export const $dock = defineStore(() => {
     isOpen.value = true;
   };
 
-  const load = async (): Promise<void> => {
-    tabs.value = await $fetch<DockTab[]>("/api/dock").catch(() => tabs.value);
+  const hold = (next: DockTab[]): void => {
+    tabs.value = next;
+    const alive = new Set(next.map((one) => one.id));
+    order.value = Object.fromEntries(
+      Object.entries(order.value)
+        .map(([project, ids]): [string, string[]] => [project, ids.filter((id) => alive.has(id))])
+        .filter(([, ids]) => ids.length),
+    );
   };
 
-  const heard = (next: { tabs: DockTab[] }): void => {
-    tabs.value = next.tabs;
+  const load = async (): Promise<void> => {
+    hold(await $fetch<DockTab[]>("/api/dock").catch(() => tabs.value));
+  };
+
+  const heard = (next: { tabs: DockTab[] }): void => hold(next.tabs);
+
+  const move = (tab: DockTab, to: number): void => {
+    const ids = DockOrder.placed({ tabs: tabsOf(tab.project, toolOf(tab)), ids: order.value[tab.project], tab, to });
+    order.value = { ...order.value, [tab.project]: ids };
+  };
+
+  const close = async (tab: DockTab): Promise<void> => {
+    const mine = tabsOf(tab.project, toolOf(tab));
+    const at = mine.findIndex((one) => one.id === tab.id);
+    const next = mine[at + 1] ?? mine[at - 1];
+    const wasShown = shownOf(tab.project, toolOf(tab))?.id === tab.id;
+    const isClosed = await $fetch(`/api/dock/${encodeURIComponent(tab.id)}/close`, { method: "POST" })
+      .then(() => true)
+      .catch((error: unknown) => {
+        chrome.toast(failReason(error) ?? `${tab.title} didn't close`, "destructive");
+        return false;
+      });
+    if (isClosed && wasShown && next) pick(next);
   };
 
   const openShell = async (where: DockProject): Promise<void> => {
@@ -102,6 +134,7 @@ export const $dock = defineStore(() => {
   return {
     added,
     attach,
+    close,
     groupOf,
     heard,
     height,
@@ -109,6 +142,7 @@ export const $dock = defineStore(() => {
     isOpen,
     isReady,
     load,
+    move,
     openShell,
     pick,
     projectOf,
