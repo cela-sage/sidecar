@@ -271,16 +271,26 @@ path that is not on disk draws nothing, which `GET /api/sessions/:key/files/stat
 way. A web link previews on hover with the page's image, title and host from `/api/web/preview`, which answers
 204 when it finds nothing, and a local one offers Open in Artifacts.
 
+A file path in a reply draws as a file chip when the file is on disk: an absolute path or a `~/` one, bare or in
+backticks, or in backticks a path relative to the conversation's folder, where a bare name such as `package.json`
+counts only with a known extension, and a path with no file behind it stays code. Hovering the chip shows a card
+with the picture of an image or the first lines of a text file, its folder and its size. A click is
+`POST /api/files/open`, which lists the file in Artifacts when the sidecar knows its kind (a page, a notebook,
+markdown, an image, a video, audio or a PDF) and opens Files for anything else, and a right-click offers Open, Copy
+path and Copy filename. The chat reads such a file through `files/stat`, `files/raw` and `files/content` for a path
+it touched, sits under, or names in a message of its own, and writes through none of them. A markdown quote draws with a grey bar
+at its left, a lighter background and a text a size smaller. A conversation's title in backticks draws as that
+conversation's chip like its key does, when exactly one conversation in the tree has it, and the chip is capped in
+width with its subject cut, so it stays one token of its paragraph.
+
 An image you paste into Claude Code's own prompt draws in the chat where you sent it. Claude Code writes it as two
 user messages, your words with an `[Image #2]` marker and a second one that holds only
 `[Image: source: <path>]`, so the first shows the marker as a chip that opens the file in Files and the second
 draws the same picture card the prose uses for an image path, under your message. The path is the picture: when
 the file is gone, `files/raw` and `files/stat` answer from the base64 block
-sent beside it, and they answer only for a path your messages handed over, never for one the page names. A marker
-with no source line to match, such as one queued mid-turn, stays a chip that opens nothing. An image you attached
-through the sidecar's prompt or the door draws the same way: the `Attached: <path>` lines ending the message leave
-its bubble for the picture card, a file that is not an image keeps its line, and a path counts only when it sits in
-`~/.claude/sidecar/uploads/`, where the prompt saved it.
+sent beside it. A marker with no source line to match, such as one queued mid-turn, stays a chip that opens nothing.
+An image you attached through the sidecar's prompt or the door draws the same way: the `Attached: <path>` lines
+ending the message leave its bubble for the picture card, and a file that is not an image keeps its line.
 
 The prompt attaches files, from the paperclip, a paste or a drop, and blocks of text that another part of the
 sidecar hands it through `$prompt().attach({ label, text })`, each a removable chip that goes into the message

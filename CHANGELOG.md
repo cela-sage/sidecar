@@ -7,6 +7,27 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.47.0
+
+### Added
+
+- **A path in the chat is a file chip.** An absolute or `~/` path, bare or in backticks, or a relative one in
+  backticks, to a file on disk draws as a chip with a hover card, the picture of an image or the first lines of a
+  text file, its folder and its size. A click lists the file in Artifacts when it lists there and opens Files
+  otherwise, and a right-click offers Open, Copy path and Copy filename.
+- **A conversation's title in backticks is its chip,** like its key, when exactly one conversation has that title.
+- **A quote has a grey bar, a lighter background and smaller text.**
+- **The sidecar rule says to name a conversation by its key alone and a file by its path alone,** with no
+  `claude attach` line and no slug. It takes effect in a session once the plugin has updated.
+
+### Changed
+
+- **`files/stat`, `files/raw` and `files/content` also answer for a path the conversation names in a message,** so a
+  chip can read a file the conversation never touched, while saving still needs a file it touched or sits under.
+  This replaces 0.46.1's rule that an `Attached:` path counts only inside `uploads/`.
+- **A conversation chip is capped in width with its subject cut,** where its full width had let it leave its
+  paragraph on a line of its own in a narrow chat.
+
 ## 0.46.1
 
 ### Added
