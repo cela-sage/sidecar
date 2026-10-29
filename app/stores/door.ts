@@ -1,7 +1,5 @@
 import type { Started } from "~~/shared/types/assistant";
-import type { QuestionChanged } from "~~/shared/types/events";
 import type { AttachedFile } from "~~/shared/types/files";
-import type { Question } from "~~/shared/types/question";
 import type { LiveSession } from "~~/shared/types/session";
 import type { TaskState } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
@@ -31,11 +29,6 @@ export interface DoorExchange {
   isQueued?: boolean;
   isFolded?: boolean;
   answer?: string;
-  questions?: Question[];
-  asked?: string;
-  picks?: Record<string, string>;
-  isAnswering?: boolean;
-  isMissed?: boolean;
   isWaking?: boolean;
   failure?: string;
   receipts: DoorReceipt[];
@@ -131,30 +124,6 @@ export const $door = defineStore(() => {
       source.addEventListener("open", () => ready(), { once: true });
       setTimeout(ready, OPEN_MS);
     });
-  };
-
-  const hearQuestion = ({ key: to, ref, questions }: QuestionChanged): void => {
-    const live = exchanges.value.findLast(
-      (one) => one.to === to && (one.asked === ref || (one.step === "working" && !one.isQueued)),
-    );
-    if (!live) return;
-    if (questions) {
-      return update(live.id, {
-        step: "waiting",
-        questions,
-        asked: ref,
-        picks: {},
-        isAnswering: false,
-        isMissed: false,
-      });
-    }
-    if (live.asked === ref)
-      update(live.id, { step: "working", questions: undefined, asked: undefined, isAnswering: false });
-  };
-
-  const loadQuestions = async (): Promise<void> => {
-    const open = await $fetch<Required<QuestionChanged>[]>("/api/questions").catch(() => []);
-    for (const one of open) hearQuestion(one);
   };
 
   // A receipt draws from the catalogue, and keeps the last title it saw for a task that leaves it.
@@ -262,21 +231,6 @@ export const $door = defineStore(() => {
     return start({ ...sent, text, files });
   };
 
-  // Several questions go back as one answer, so a pick waits until every question has one.
-  const pick = async ({ id, question, answer }: { id: string; question: string; answer: string }): Promise<void> => {
-    const live = find(id);
-    if (!live?.asked || !live.questions || live.isAnswering) return;
-    const picks = { ...live.picks, [question]: answer };
-    update(id, { picks, isMissed: false });
-    if (live.questions.some((one) => !picks[one.question])) return;
-    update(id, { isAnswering: true });
-    const { taken } = await $fetch<{ taken: boolean }>(`/api/questions/${encodeURIComponent(live.asked)}/answer`, {
-      body: { answers: picks },
-      method: "POST",
-    }).catch(() => ({ taken: false }));
-    if (!taken) update(id, { isAnswering: false, isMissed: true });
-  };
-
   const compose = (text: string): void => {
     draft.value = text;
     composeAsked.value += 1;
@@ -298,12 +252,9 @@ export const $door = defineStore(() => {
     composeAsked,
     draft,
     hearChange,
-    hearQuestion,
     isOpen,
     key,
-    loadQuestions,
     mode,
-    pick,
     send,
     target,
     thread,

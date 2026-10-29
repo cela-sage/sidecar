@@ -1,6 +1,6 @@
 import type { BusyTurn } from "~~/shared/utils/busy";
 
-export type DoorStep = "working" | "answered" | "waiting" | "failed";
+export type DoorStep = "working" | "answered" | "failed";
 export type DoorLine = "live" | "queued";
 
 export interface DoorTurnsExchange {

@@ -4,6 +4,7 @@ const follow = $follow();
 const task = $task();
 const terminal = $terminal();
 const busy = $busy();
+const questions = $questions();
 const dock = $dock();
 const runs = $runs();
 const sc = useSidecar();
@@ -104,10 +105,12 @@ events.on("terminal.changed", ({ data }) => terminal.heard(data));
 events.on("conversation.changed", ({ data }) => busy.heard(data));
 events.on("dock.changed", ({ data }) => dock.heard(data));
 events.on("runs.changed", ({ data }) => void runs.load(data.project));
+events.on("question.changed", ({ data }) => questions.hear(data));
 // A restarted server's bus starts empty, so every open of the stream takes its snapshot again.
 events.onReady(() => {
   void busy.load();
   void dock.load();
+  void questions.load();
 });
 
 onMounted(() => {

@@ -3,10 +3,11 @@ import type { DoorExchange } from "~/stores/door";
 
 const { step } = defineProps<{ step?: string }>();
 const door = $door();
-const terminal = $terminal();
+const questions = $questions();
 
 const isLast = (one: DoorExchange): boolean => door.thread.at(-1)?.id === one.id;
 const lines = computed(() => DoorTurns.linesOf(door.thread));
+const ask = computed(() => questions.openIn(door.key));
 </script>
 
 <template>
@@ -22,6 +23,7 @@ const lines = computed(() => DoorTurns.linesOf(door.thread));
         <OrgMark mark="working" />
         <span class="busy-line shimmer">Waking {{ door.assistant?.name ?? "the assistant" }}</span>
       </p>
+      <QuestionAsk v-else-if="ask && lines.get(one.id) === 'live'" :ask="ask" />
       <p v-else-if="lines.get(one.id) === 'live'" class="busy" role="status">
         <OrgMark mark="working" />
         <span class="busy-line shimmer">{{ step || "Reading your message" }}</span>
@@ -31,36 +33,7 @@ const lines = computed(() => DoorTurns.linesOf(door.thread));
         <span class="busy-line shimmer">Queued until it finishes what it is on</span>
       </p>
 
-      <div v-if="one.step === 'waiting'" class="asks">
-        <span class="asks-eyebrow mono-meta"><span class="asks-dot dot" />Waiting on your answer</span>
-        <Prose v-if="one.answer" :value="one.answer" />
-        <DoorQuestion
-          v-for="question in one.questions"
-          :key="question.question"
-          :is-answering="one.isAnswering"
-          :picked="one.picks?.[question.question]"
-          :question="question"
-          @pick="(answer) => door.pick({ id: one.id, question: question.question, answer })"
-        />
-        <span v-if="one.isAnswering" class="asks-hint" role="status">Answering it</span>
-        <span v-else-if="one.questions && one.to" class="asks-hint">
-          {{
-            one.isMissed
-              ? "It didn't reach the question, so answer it in the terminal."
-              : "or answer it in the terminal"
-          }}
-          <button
-            class="link plain-button focusable"
-            data-tip="Attach in your terminal"
-            type="button"
-            @click="one.to && terminal.attach(one.to)"
-          >
-            Attach
-          </button>
-        </span>
-        <span v-else class="asks-hint">Answer below.</span>
-      </div>
-      <Prose v-else-if="one.step === 'answered' && one.answer" class="says" :value="one.answer" />
+      <Prose v-if="one.step === 'answered' && one.answer" class="says" :value="one.answer" />
       <p v-if="one.step === 'failed'" class="failure" role="alert">{{ one.failure }}</p>
 
       <p v-if="isLast(one) && one.step === 'answered' && door.assistant" class="foot mono-meta">
@@ -87,10 +60,6 @@ const lines = computed(() => DoorTurns.linesOf(door.thread));
   @apply flex flex-col overflow-hidden rounded-xl border border-border;
 }
 
-.link {
-  @apply flex-none border-0 bg-transparent px-1 typo-caption font-semibold text-muted underline underline-offset-3;
-}
-
 .busy {
   @apply m-0 flex min-w-0 items-center gap-2 typo-body;
 }
@@ -101,22 +70,6 @@ const lines = computed(() => DoorTurns.linesOf(door.thread));
 
 .says {
   @apply typo-body;
-}
-
-.asks {
-  @apply flex flex-col gap-2 rounded-xl bg-sunken p-3;
-}
-
-.asks-eyebrow {
-  @apply flex items-center gap-1.5 font-semibold text-warning;
-}
-
-.asks-dot {
-  @apply size-1.75 bg-warning;
-}
-
-.asks-hint {
-  @apply typo-caption text-muted;
 }
 
 .failure {

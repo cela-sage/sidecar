@@ -16,6 +16,7 @@ const desk = $desk();
 const door = $door();
 const terminal = $terminal();
 const busy = $busy();
+const questions = $questions();
 const field = useTemplateRef<{ focus: () => void }>("field");
 const body = useTemplateRef<HTMLElement>("body");
 const restLayer = useTemplateRef<HTMLElement>("rest");
@@ -61,6 +62,7 @@ const isEmpty = computed(() => !door.thread.length);
 const showsInbox = computed(() => isEmpty.value && inbox.value.length > 0);
 const live = useConversation(() => door.key);
 const isBusy = computed(() => !!door.key && !!busy.keys[door.key]?.doing);
+const ask = computed(() => questions.openIn(door.key));
 const step = computed(() => (isBusy.value ? live.step.value || door.assistant?.detail || "Working" : undefined));
 const mascot = computed<MascotState>(() => {
   if (!isBusy.value) return "idle";
@@ -204,14 +206,12 @@ useResizeObserver(panelLayer, measure);
 
 watch(contextKey, () => (keepsContext.value = false));
 watch(
-  () => [door.thread.length, door.thread.at(-1)?.step, door.thread.at(-1)?.answer, door.isOpen],
+  () => [door.thread.length, door.thread.at(-1)?.step, door.thread.at(-1)?.answer, ask.value, door.isOpen],
   () => void nextTick(() => body.value?.scrollTo({ top: body.value.scrollHeight })),
 );
 
 const events = useEvents();
 events.on("task.changed", ({ data }) => door.hearChange(data.slug, data.state));
-events.on("question.changed", ({ data }) => door.hearQuestion(data));
-events.onReady(() => void door.loadQuestions());
 onMounted(() => {
   window.addEventListener("keydown", onKey);
   onScopeDispose(() => window.removeEventListener("keydown", onKey));
