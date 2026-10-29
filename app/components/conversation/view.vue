@@ -9,11 +9,14 @@ type Block =
 
 const sc = useSidecar();
 const prompt = $prompt();
+const busy = $busy();
 const tree = useOrgTree();
 const live = useConversation(() => sc.sessionKey.value);
 const clock = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 
 const key = computed(() => sc.sessionKey.value ?? "");
+// The turn bus knows a turn is open before its first block lands, which is when Stop matters most.
+const isBusy = computed(() => !!busy.keys[key.value]?.doing || live.isBusy.value);
 const session = computed(() => sc.sessions.value.find((one) => one.key === key.value));
 const name = computed(() => Org.placeOf(tree.value, key.value)?.row.name ?? (session.value ? nameOf(session.value) : ""));
 const model = computed(() => prompt.chosen[key.value] ?? live.model.value);
@@ -68,22 +71,22 @@ watch(live.model, (now) => {
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
           <ConversationTools
             v-else-if="block.kind === 'tools'"
-            :is-busy="live.isBusy.value"
+            :is-busy="isBusy"
             :results="live.results.value"
             :turns="block.turns"
           />
         </template>
         <div v-for="one in pending" :key="one.at" class="you" data-pending="true">
           <p class="bubble">{{ one.text }}</p>
-          <span class="typed mono-meta">{{ live.isBusy.value ? "queued behind the turn in flight" : "sending" }}</span>
+          <span class="typed mono-meta">{{ isBusy ? "queued behind the turn in flight" : "sending" }}</span>
         </div>
-        <p v-if="live.isBusy.value" class="busy" role="status">
+        <p v-if="isBusy" class="busy" role="status">
           <ClaudeMascot :size="20" :state="live.mascot.value" />
           <span class="busy-line shimmer">{{ live.step.value || "Working" }}</span>
         </p>
       </div>
     </div>
-    <ConversationPrompt v-if="key" :is-busy="live.isBusy.value" :model="model" :name="name" />
+    <ConversationPrompt v-if="key" :has-history="!!blocks.length" :is-busy="isBusy" :model="model" :name="name" />
   </section>
 </template>
 
