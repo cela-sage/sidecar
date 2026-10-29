@@ -16,6 +16,15 @@ watch(field, (now) => now?.$el.focus());
 const config = computed(() => runs.pickedOf(project.key, cwd));
 const tab = computed(() => (config.value ? runs.tabOf(project.key, config.value.id) : undefined));
 const isRunning = computed(() => tab.value?.status === "running");
+const isFailed = computed(() => tab.value?.status === "failed");
+
+const pickTip = computed(() => {
+  if (!config.value) return `Run configurations of ${project.name}`;
+  const { name, shown } = config.value;
+  return isFailed.value ? `${name} failed · ${shown}` : `${name} · ${shown} · Run configurations of ${project.name}`;
+});
+
+const goLabel = computed(() => (config.value ? `${isFailed.value ? "Rerun" : "Run"} ${config.value.name}` : "Run"));
 
 const labelOf = (group: RunGroup): string =>
   group.source === "assistant" ? "Written by the Assistant" : `${group.repo} · ${group.source}`;
@@ -83,20 +92,19 @@ useShortcuts({
 
 <template>
   <div class="run" role="group" data-region="run" :aria-label="`Run configurations of ${project.name}`">
-    <UiPopover :estimated-height="420" placement="bottom" width="w-93">
+    <UiPopover :estimated-height="420" placement="bottom" width="w-88">
       <template #trigger="{ open }">
         <button
-          class="pick"
+          class="pick plain-button focusable"
           type="button"
           aria-haspopup="menu"
           :aria-expanded="open"
           :data-open="open"
-          :data-tip="`Run configurations of ${project.name}`"
+          :data-tip="pickTip"
           @click="opening(open)"
         >
-          <RunStatusMark :status="tab?.status" />
+          <RunStatusMark dot :status="tab?.status" />
           <span class="name">{{ config?.name ?? "Run" }}</span>
-          <span v-if="config" class="command">{{ config.shown }}</span>
           <UiIcon class="chevron" :icon="ChevronDown" size="xs" />
         </button>
       </template>
@@ -127,12 +135,12 @@ useShortcuts({
               <UiMenuItem
                 v-for="one in group.configs"
                 :key="one.id"
+                class="row"
                 :aria-pressed="one.id === config?.id"
                 :data-tip="`Run ${one.name}`"
                 role="menuitem"
                 @click="opened(close, one)"
               >
-                <UiIcon class="play-mark" :icon="Play" size="xs" />
                 <span class="row-name">{{ one.name }}</span>
                 <span class="row-command">{{ one.shown }}</span>
               </UiMenuItem>
@@ -154,54 +162,92 @@ useShortcuts({
       </template>
     </UiPopover>
 
-    <UiIconButton
+    <span class="hairline" aria-hidden="true" />
+
+    <button
       v-if="!isRunning"
-      class="go"
+      class="go act plain-button focusable"
+      :aria-label="goLabel"
+      :data-tip="config ? `${goLabel} · ⌃R` : 'Nothing to run yet'"
       :disabled="!config"
-      :icon="Play"
-      label="Run"
-      size="xs"
-      :tip="config ? `Run ${config.name} · ⌃R` : 'Nothing to run yet'"
+      type="button"
       @click="run()"
-    />
+    >
+      <UiIcon class="fill-current" :icon="Play" size="xs" />
+    </button>
     <template v-else>
-      <UiIconButton :icon="RotateCcw" label="Restart" size="xs" :tip="`Restart ${config?.name} · ⌘R`" @click="run()" />
-      <UiIconButton class="halt" :icon="Square" label="Stop" size="xs" :tip="`Stop ${config?.name} · ⌘F2`" @click="stop" />
+      <button
+        class="restart act plain-button focusable"
+        aria-label="Restart"
+        :data-tip="`Restart ${config?.name} · ⌘R`"
+        type="button"
+        @click="run()"
+      >
+        <UiIcon :icon="RotateCcw" size="xs" />
+      </button>
+      <button
+        class="halt act plain-button focusable"
+        aria-label="Stop"
+        :data-tip="`Stop ${config?.name} · ⌘F2`"
+        type="button"
+        @click="stop"
+      >
+        <UiIcon class="fill-current" :icon="Square" size="xs" />
+      </button>
     </template>
   </div>
 </template>
 
 <style scoped>
 .run {
-  @apply flex h-8.5 flex-none items-center gap-0.5 rounded-full border border-border bg-sunken p-0.5;
+  @apply inline-flex h-8 flex-none items-stretch rounded-full border border-border bg-raised shadow-sm;
 }
 
 .pick {
-  @apply inline-flex h-7 max-w-64 min-w-0 cursor-pointer items-center gap-1.75 rounded-full border-0 bg-raised px-2.5 text-fg shadow-sm;
+  @apply inline-flex max-w-56 min-w-0 items-center gap-1.75 rounded-l-full pr-2 pl-3 text-fg;
 }
 
-.pick:focus-visible {
-  @apply focus-ring;
+.pick[data-open="true"] {
+  @apply bg-sunken;
 }
 
 .name {
-  @apply flex-none typo-caption font-semibold whitespace-nowrap;
-}
-
-.command {
-  @apply min-w-0 truncate typo-mono-pico text-muted;
+  @apply min-w-0 truncate typo-caption font-semibold;
 }
 
 .chevron {
   @apply flex-none text-muted;
 }
 
+.hairline {
+  @apply my-1.75 w-px flex-none bg-border;
+}
+
+.act {
+  @apply inline-flex flex-none items-center justify-center;
+}
+
 .go {
-  @apply text-success;
+  @apply w-8.5 rounded-r-full text-success disabled:opacity-50;
+}
+
+.restart {
+  @apply w-7.5 text-muted;
 }
 
 .halt {
-  @apply text-error;
+  @apply w-8 rounded-r-full pr-0.5 text-error;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .pick:hover,
+  .act:enabled:hover {
+    @apply bg-sunken;
+  }
+
+  .restart:hover {
+    @apply text-fg;
+  }
 }
 
 .menu {
@@ -236,8 +282,8 @@ useShortcuts({
   @apply m-0 px-2 pt-2 pb-0.75 tracking-widest text-subtle uppercase;
 }
 
-.play-mark {
-  @apply flex-none text-success;
+.row[aria-pressed="true"] {
+  @apply bg-sunken;
 }
 
 .row-name {
