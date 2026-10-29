@@ -228,15 +228,13 @@ test('a breakdown control tells the sidecar the window broken down, though the f
   expect(posted.map(one => one.breakdown?.parts.length)).toEqual([4])
 })
 
-test('a compaction in flight is flagged, and the size it ended at stands in for the figure the engine lacks', () => {
-  const usage = { startedAt: 0, rateLimits: [], context: { window: 200_000, tokens: 106_000 } }
+test('a compaction in flight is flagged, and the size it ended at gets back what the compaction does not count', () => {
+  const usage = { startedAt: 0, rateLimits: [], context: { window: 200_000, tokens: 106_000, breakdown } }
 
-  expect(Usage.describe(usage, { isCompacting: true })).toEqual({
-    context: { window: 200_000, tokens: 106_000, percent: 53 },
-    rateLimits: [],
-    isCompacting: true,
-  })
-  expect(Usage.describe(usage, { tokens: 23_000 }).context).toEqual({ window: 200_000, tokens: 23_000, percent: 12 })
+  expect(Usage.describe(usage, { isCompacting: true }).isCompacting).toBe(true)
+  const ended = Usage.describe(usage, { compactedTo: 20_000 })
+  expect(ended.context).toEqual({ window: 200_000, tokens: 43_000, percent: 22 })
+  expect(ended.breakdown).toBeUndefined()
 })
 
 test('a delivery the session takes is told to the sidecar as it lands, and a control or a real peer is not', async ($, on) => {

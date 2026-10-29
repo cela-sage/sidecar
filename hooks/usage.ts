@@ -31,19 +31,26 @@ const partsOf = ({ categories }: SessionContextBreakdown): { label: string; toke
   return [...totals].map(([label, tokens]) => ({ label, tokens })).filter(part => part.tokens > 0)
 }
 
+// A compaction counts only the messages it kept, so what stays outside them is added back, and the breakdown, taken before the swap, is left out.
+const fixedOf = ({ categories }: SessionContextBreakdown): number =>
+  categories
+    .filter(({ kind, name }) => kind === 'used' && name !== 'Messages')
+    .reduce((sum, { tokens }) => sum + tokens, 0)
+
 export const Usage = {
   // No response yet means the size comes from the breakdown, which counts the compaction window, so shares are restated on the model's window.
   describe: (
     { context, rateLimits }: SessionUsage,
-    { tokens: known, isCompacting }: { tokens?: number; isCompacting?: boolean } = {},
+    { compactedTo, isCompacting }: { compactedTo?: number; isCompacting?: boolean } = {},
   ): UsageReport => {
     const { breakdown, window } = context
-    const tokens = known ?? context.tokens ?? breakdown?.totalTokens
+    const tokens =
+      compactedTo && breakdown ? compactedTo + fixedOf(breakdown) : (context.tokens ?? breakdown?.totalTokens)
     return {
       context: { window, tokens, percent: tokens ? Math.round((tokens / window) * 100) : undefined },
       rateLimits,
       ...(isCompacting ? { isCompacting } : {}),
-      ...(breakdown
+      ...(breakdown && !compactedTo
         ? {
             breakdown: {
               model: breakdown.model,

@@ -29,6 +29,7 @@ let sidecar: Sidecar | undefined
 let door: Door | undefined
 let pointed = 0
 let rule: string | undefined
+let isCompacting = false
 
 const tell = async ($: EngineInterface, api: string, path: string, body: unknown): Promise<void> => {
   const id = await $.session.id()
@@ -44,16 +45,14 @@ const tell = async ($: EngineInterface, api: string, path: string, body: unknown
 const tellCommands = async ($: EngineInterface, api: string): Promise<void> =>
   tell($, api, 'commands', Commands.describe(await $.command.list()))
 
-interface UsageTold {
-  breakdown?: boolean
-  tokens?: number
-  isCompacting?: boolean
-}
-
-const tellUsage = async ($: EngineInterface, api: string, { breakdown = false, tokens, isCompacting }: UsageTold = {}): Promise<void> => {
+const tellUsage = async (
+  $: EngineInterface,
+  api: string,
+  { breakdown = false, compactedTo }: { breakdown?: boolean; compactedTo?: number } = {},
+): Promise<void> => {
   const figures = await $.session.usage()
-  const usage = breakdown || !(tokens ?? figures.context.tokens) ? await $.session.usage({ breakdown: 'summary' }) : figures
-  await tell($, api, 'usage', Usage.describe(usage, { tokens, isCompacting }))
+  const usage = breakdown || compactedTo || !figures.context.tokens ? await $.session.usage({ breakdown: 'summary' }) : figures
+  await tell($, api, 'usage', Usage.describe(usage, { compactedTo, isCompacting }))
 }
 
 export const register: Register = (on, options) => {
@@ -133,13 +132,15 @@ export const register: Register = (on, options) => {
   // The engine measures nothing after a compaction until the next response, so the sizes come from the compaction itself.
   on('session.compact', async ($, e, next) => {
     if (e.trigger === 'precompute' || e.agentId) return next(e)
-    await tellUsage($, api, { isCompacting: true }).catch(() => undefined)
+    isCompacting = true
+    await tellUsage($, api).catch(() => undefined)
     let compacted: Awaited<ReturnType<typeof next>> | undefined
     try {
       compacted = await next(e)
       return compacted
     } finally {
-      await tellUsage($, api, { tokens: compacted?.skip ? undefined : compacted?.tokensAfter }).catch(() => undefined)
+      isCompacting = false
+      await tellUsage($, api, { compactedTo: compacted?.skip ? undefined : compacted?.tokensAfter }).catch(() => undefined)
     }
   })
 
