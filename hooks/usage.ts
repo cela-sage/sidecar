@@ -4,6 +4,7 @@ export interface UsageReport {
   context: { window: number; tokens?: number; percent?: number }
   rateLimits: SessionUsage['rateLimits']
   isCompacting?: true
+  compaction?: { before: number; after: number }
   breakdown?: {
     model: string
     parts: { label: string; tokens: number }[]
@@ -41,7 +42,11 @@ export const Usage = {
   // No response yet means the size comes from the breakdown, which counts the compaction window, so shares are restated on the model's window.
   describe: (
     { context, rateLimits }: SessionUsage,
-    { compactedTo, isCompacting }: { compactedTo?: number; isCompacting?: boolean } = {},
+    {
+      compactedFrom,
+      compactedTo,
+      isCompacting,
+    }: { compactedFrom?: number; compactedTo?: number; isCompacting?: boolean } = {},
   ): UsageReport => {
     const { breakdown, window } = context
     const tokens =
@@ -50,6 +55,7 @@ export const Usage = {
       context: { window, tokens, percent: tokens ? Math.round((tokens / window) * 100) : undefined },
       rateLimits,
       ...(isCompacting ? { isCompacting } : {}),
+      ...(compactedTo && compactedFrom && tokens ? { compaction: { before: compactedFrom, after: tokens } } : {}),
       ...(breakdown && !compactedTo
         ? {
             breakdown: {

@@ -10,6 +10,7 @@ import { Relay } from './relay'
 import { receiveReview, registerReview, startReview, stopTurn } from './review/hooks'
 import { EMPTY_LEDGER } from './review/ledger'
 import { Usage } from './usage'
+import type { UsageReport } from './usage'
 
 const reviewLedger = atom({ plugin: 'sidecar', key: 'review' } as const, EMPTY_LEDGER)
 // Held by the host rather than the module, since a reload between a delivery and its row resets module variables.
@@ -48,11 +49,17 @@ const tellCommands = async ($: EngineInterface, api: string): Promise<void> =>
 const tellUsage = async (
   $: EngineInterface,
   api: string,
-  { breakdown = false, compactedTo }: { breakdown?: boolean; compactedTo?: number } = {},
-): Promise<void> => {
+  {
+    breakdown = false,
+    compactedFrom,
+    compactedTo,
+  }: { breakdown?: boolean; compactedFrom?: number; compactedTo?: number } = {},
+): Promise<UsageReport> => {
   const figures = await $.session.usage()
   const usage = breakdown || compactedTo || !figures.context.tokens ? await $.session.usage({ breakdown: 'summary' }) : figures
-  await tell($, api, 'usage', Usage.describe(usage, { compactedTo, isCompacting }))
+  const report = Usage.describe(usage, { compactedFrom, compactedTo, isCompacting })
+  await tell($, api, 'usage', report)
+  return report
 }
 
 export const register: Register = (on, options) => {
@@ -133,14 +140,15 @@ export const register: Register = (on, options) => {
   on('session.compact', async ($, e, next) => {
     if (e.trigger === 'precompute' || e.agentId) return next(e)
     isCompacting = true
-    await tellUsage($, api).catch(() => undefined)
+    const begun = await tellUsage($, api).catch(() => undefined)
     let compacted: Awaited<ReturnType<typeof next>> | undefined
     try {
       compacted = await next(e)
       return compacted
     } finally {
       isCompacting = false
-      await tellUsage($, api, { compactedTo: compacted?.skip ? undefined : compacted?.tokensAfter }).catch(() => undefined)
+      const compactedTo = compacted?.skip ? undefined : compacted?.tokensAfter
+      await tellUsage($, api, { compactedFrom: begun?.context.tokens, compactedTo }).catch(() => undefined)
     }
   })
 

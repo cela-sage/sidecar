@@ -232,9 +232,11 @@ test('a compaction in flight is flagged, and the size it ended at gets back what
   const usage = { startedAt: 0, rateLimits: [], context: { window: 200_000, tokens: 106_000, breakdown } }
 
   expect(Usage.describe(usage, { isCompacting: true }).isCompacting).toBe(true)
-  const ended = Usage.describe(usage, { compactedTo: 20_000 })
+  const ended = Usage.describe(usage, { compactedFrom: 106_000, compactedTo: 20_000 })
   expect(ended.context).toEqual({ window: 200_000, tokens: 43_000, percent: 22 })
+  expect(ended.compaction).toEqual({ before: 106_000, after: 43_000 })
   expect(ended.breakdown).toBeUndefined()
+  expect(Usage.describe(usage, { compactedTo: 20_000 }).compaction).toBeUndefined()
 })
 
 test('a delivery the session takes is told to the sidecar as it lands, and a control or a real peer is not', async ($, on) => {

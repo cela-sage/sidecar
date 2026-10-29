@@ -21,9 +21,16 @@ export interface ContextBreakdown {
   autoCompactPercent?: number;
 }
 
+export interface MeasuredCompaction {
+  at: number;
+  before: number;
+  after: number;
+}
+
 export interface SessionUsage {
   context: ContextFigures;
   rateLimits: RateLimit[];
   isCompacting?: true;
   breakdown?: ContextBreakdown;
+  compactions?: MeasuredCompaction[];
 }

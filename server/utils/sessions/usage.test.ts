@@ -39,6 +39,19 @@ test("a reading is held for the next read, and announced only when it changed", 
   );
 });
 
+test("a compaction the mod measured is kept beside the reading through later readings, and announced", () => {
+  const before = read().events.length;
+  UsageStore.answer("cccc0001", { ...usageOf(100_000), compaction: { before: 100_000, after: 90_000 } });
+  UsageStore.answer("cccc0001", usageOf(95_000));
+
+  assert.deepEqual(
+    UsageStore.held("cccc0001")?.compactions?.map(({ before: was, after }) => [was, after]),
+    [[100_000, 90_000]],
+  );
+  assert.equal(UsageStore.held("cccc0001")?.context.tokens, 95_000);
+  assert.equal(read().events.length - before, 2);
+});
+
 test("the plan is the newest reading of any conversation, less a window that has already reset", async () => {
   const now = Date.parse("2026-01-01T12:00:00Z");
   const ahead = (hours: number): string => new Date(now + hours * 3_600_000).toISOString();

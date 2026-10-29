@@ -27,8 +27,16 @@ const Reading = z.object({
     .optional(),
 }) satisfies z.ZodType<SessionUsage>;
 
-const Held = z.object({ at: z.number(), usage: Reading });
+const Sizes = z.object({ before: z.number().min(0), after: z.number().min(0) });
+const Post = Reading.extend({ compaction: Sizes.optional() });
+const Held = z.object({
+  at: z.number(),
+  usage: Reading,
+  compactions: z.array(Sizes.extend({ at: z.number() })).optional(),
+});
 type Held = z.infer<typeof Held>;
+
+const KEPT_COMPACTIONS = 50;
 
 const directory = (): string => join(Sidecar.home(), "usage");
 const fileOf = (key: string): string => join(directory(), `${key}.json`);
@@ -49,13 +57,23 @@ const everyHeld = (): Held[] => {
   }
 };
 
-const held = (key: string): SessionUsage | undefined => read(fileOf(key))?.usage;
+const held = (key: string): SessionUsage | undefined => {
+  const own = read(fileOf(key));
+  return own && { ...own.usage, ...(own.compactions?.length ? { compactions: own.compactions } : {}) };
+};
 
-const answer = (key: string, usage: SessionUsage): void => {
-  const isChanged = !isDeepStrictEqual(held(key), usage);
+const answer = (key: string, { compaction, ...usage }: z.infer<typeof Post>): void => {
+  const before = held(key);
+  const compactions = compaction
+    ? [...(before?.compactions ?? []), { at: Date.now(), ...compaction }].slice(-KEPT_COMPACTIONS)
+    : before?.compactions;
+  const next: SessionUsage = { ...usage, ...(compactions?.length ? { compactions } : {}) };
   mkdirSync(directory(), { recursive: true });
-  writeFileSync(fileOf(key), JSON.stringify({ at: Date.now(), usage }));
-  if (isChanged) Events.publish({ topic: "usage.changed", key, data: { key } });
+  writeFileSync(
+    fileOf(key),
+    JSON.stringify({ at: Date.now(), usage, ...(compactions?.length ? { compactions } : {}) }),
+  );
+  if (!isDeepStrictEqual(before, next)) Events.publish({ topic: "usage.changed", key, data: { key } });
 };
 
 // The limits are the account's, so the newest reading from any conversation stands for all of them.
@@ -75,4 +93,4 @@ const askBreakdown = (key: string): void => {
   );
 };
 
-export const UsageStore = { answer, askBreakdown, held, plan, Reading };
+export const UsageStore = { answer, askBreakdown, held, plan, Post };
