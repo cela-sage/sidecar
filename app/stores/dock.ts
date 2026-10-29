@@ -1,6 +1,7 @@
 import { useLocalStorage } from "@vueuse/core";
 import type { DockSize, DockTab } from "~~/shared/types/dock";
 import type { Project } from "~~/shared/types/task";
+import type { OrgConversation } from "~/utils/org";
 
 export const DOCK_TOOLS = ["terminal", "run"] as const;
 export type DockTool = (typeof DOCK_TOOLS)[number];
@@ -68,12 +69,22 @@ export const $dock = defineStore(() => {
     picked.value = { ...picked.value, [slotOf(tab.project, toolOf(tab))]: tab.id };
   };
 
-  const added = (tab: DockTab): void => {
-    tabs.value = [...tabs.value.filter((one) => one.id !== tab.id), tab];
-    pick(tab);
-    tool.value = toolOf(tab);
+  const open = (of: DockTool, tab?: DockTab): void => {
+    if (tab) pick(tab);
+    tool.value = of;
     isOpen.value = true;
   };
+
+  const added = (tab: DockTab): void => {
+    tabs.value = [...tabs.value.filter((one) => one.id !== tab.id), tab];
+    open(toolOf(tab), tab);
+  };
+
+  const sessionOf = (tab: DockTab): OrgConversation | undefined =>
+    tab.key ? Org.placeOf(tree.value, tab.key)?.row : undefined;
+
+  const labelOf = (tab: DockTab): string =>
+    tab.kind === "session" ? (sessionOf(tab)?.name ?? tab.key ?? tab.title) : tab.title;
 
   const hold = (next: DockTab[]): void => {
     tabs.value = next;
@@ -141,11 +152,14 @@ export const $dock = defineStore(() => {
     holds,
     isOpen,
     isReady,
+    labelOf,
     load,
     move,
+    open,
     openShell,
     pick,
     projectOf,
+    sessionOf,
     shownOf,
     size,
     tabs,

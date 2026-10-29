@@ -3,7 +3,6 @@ import { useShortcuts } from "@cela/design";
 import { ChevronDown, Plus, Terminal, X } from "@lucide/vue";
 import type { DockTab } from "~~/shared/types/dock";
 import type { DockProject, DockTool } from "~/stores/dock";
-import type { OrgConversation } from "~/utils/org";
 
 interface Kept {
   where: DockProject;
@@ -18,7 +17,6 @@ const HEIGHT = 300;
 
 const route = useRoute();
 const dock = $dock();
-const tree = useOrgTree();
 
 const front = computed(() => dock.projectOf(String(route.params.key ?? "")));
 const theirs = computed(() => dock.tabsOf(front.value.key, dock.tool));
@@ -33,12 +31,6 @@ const kept = computed((): Kept[] => {
       counts.set(tab.project, (counts.get(tab.project) ?? 0) + 1);
   return [...counts].map(([project, count]) => ({ where: dock.groupOf(project), count }));
 });
-
-const sessionOf = (tab: DockTab): OrgConversation | undefined =>
-  tab.key ? Org.placeOf(tree.value, tab.key)?.row : undefined;
-
-const labelOf = (tab: DockTab): string =>
-  tab.kind === "session" ? (sessionOf(tab)?.name ?? tab.key ?? tab.title) : tab.title;
 
 const dragging = ref<DockTab>();
 const hover = ref<{ id: string; side: "before" | "after" }>();
@@ -167,15 +159,15 @@ const pick = (value: DockTool): void => {
                 {{ tab.title }}
               </template>
               <template v-else>
-                <span v-if="sessionOf(tab)?.role" class="role">{{ sessionOf(tab)?.role }}</span>
-                {{ sessionOf(tab)?.name ?? tab.key }}
+                <span v-if="dock.sessionOf(tab)?.role" class="role">{{ dock.sessionOf(tab)?.role }}</span>
+                {{ dock.sessionOf(tab)?.name ?? tab.key }}
               </template>
             </button>
             <UiIconButton
               class="close"
               icon-size="xs"
               :icon="X"
-              :label="`Close ${labelOf(tab)}`"
+              :label="`Close ${dock.labelOf(tab)}`"
               size="xs"
               tip="Close"
               @click="dock.close(tab)"
