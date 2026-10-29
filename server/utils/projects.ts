@@ -44,4 +44,6 @@ const list = (): Project[] => {
   }));
 };
 
-export const Projects = { list };
+const find = (key: string | undefined): Project | undefined => list().find((one) => one.key === key);
+
+export const Projects = { find, list };

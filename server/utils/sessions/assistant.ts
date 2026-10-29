@@ -23,7 +23,7 @@ const settings = (): z.infer<typeof Settings> => {
 
 const start = async ({ text, slug }: StartInput): Promise<Started> => {
   const { agent = Roles.agentOf("EA"), project } = settings();
-  const home = Projects.list().find((one) => one.key === project);
+  const home = Projects.find(project);
   const prompt = slug ? `While reading the task ${slug}:\n\n${text}` : text;
   const ran = await Roles.launch({ agent, cwd: home?.folder ?? homedir(), prompt });
   if ("failed" in ran) return { started: false, reason: ran.failed };
