@@ -7,6 +7,22 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.59.0
+
+### Added
+
+- **Your plan's usage sits under the tree, and a context meter after the model in the prompt.** The block shows the
+  5-hour and 7-day windows with when each resets and the share used; the 5-hour row dashes the rest of its bar and
+  says when the limit hits if it would run out first, with Use Sonnet 5.5 here, and a full window says when Claude
+  picks up again. The meter's popover breaks the window down as `/context` does, with Compact, off while Claude works,
+  and a field for what the summary keeps. The mod posts the figures on each `session.measure`, so a conversation
+  started before 0.59.0 shows no meter until it restarts.
+
+### Changed
+
+- **The Compacted note reads the sizes between two hairlines,** `Compacted · 124k → 32k · 10:52`, taken from the
+  transcript's `compact_boundary` row.
+
 ## 0.58.2
 
 ### Fixed

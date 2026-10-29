@@ -171,6 +171,14 @@ Files and History, switched in place so Back never leaves the conversation, with
 once Review has read it, Review. `?face=review` picks a face and `?task=<slug>` opens a task, and there is no
 jump palette and no `/desk` or `/tasks/<slug>` route any more, so an old link lands on Listening.
 
+Under the tree sits your plan's usage, two rows, 5h and 7d, each with when its window resets and the share used over
+a thin bar, read from `GET /api/usage`. The limits are the account's, so it answers with the newest reading any
+conversation gave, less a window that has already reset, and the block is absent off a subscription, where the engine
+reports none. The 5-hour row projects its share to the reset once a tenth of the window has passed, and when it would
+run out first it draws the rest of the bar dashed and says when, with Use Sonnet 5.5 here, which switches the
+conversation in front the way the model menu does and attaches your terminal for the confirmation Claude Code asks
+there. A window at 100% says when Claude picks up again.
+
 The tree is built from the conversations agent view lists, which the server reads with
 `claude agents --json --all`, since without `--all` the CLI returns only the running ones, parsed by their titles. The backlog of tasks on no project heads
 it, then each project with its Project Lead and Design Lead conversations and its tasks, each task with its Task
@@ -353,10 +361,24 @@ printed under it, and a name the session does not have prints the reason under i
 for the turn to end, and a conversation started before 0.48.0 has to be restarted before it runs one, since its
 mod hands the command to Claude as words.
 
+The prompt carries a context meter after the model, a ring and the share of the window used. Its popover breaks the
+window down as `/context` does, Messages, Memory files, Tools and System in one bar of ink shades with Free beside
+them, and holds Compact, which runs `/compact` with the field's text as its arguments, so what the summary keeps is
+yours to name. Compact is off while Claude works, and while it runs the meter reads Compacting and the popover offers
+Stop, which is the chat's. The mod posts `$.session.usage()` to `POST /api/sessions/:key/usage` at `session.start`
+and on each `session.measure`, the server keeps the last reading per conversation in
+`~/.claude/sidecar/usage/<key>.json` and announces a change as `usage.changed`, and a window no response has measured
+yet, a new one or one just compacted, takes its figure from the breakdown's own estimate. The breakdown is asked when
+the popover opens, through `GET /api/sessions/:key/usage?breakdown=1`, which has the mod post it on a
+`{"do":"breakdown"}` control. Only a conversation that has posted usage is asked, since a mod older than 0.59.0 would
+read the control as a message to Claude, so a conversation started before it shows no meter until it restarts.
+
 A command typed in your terminal is written twice, as the raw input and as the harness's receipt, and draws as one
 line. What it printed is read line by line: a hook's completion line, such as `PostCompact [<script>] completed
 successfully: {}`, draws as a small `Hook(PostCompact)` note without the script, and `Compacted (ctrl+o to see full
-summary)` is left out because the Compacted note stands for it. Click that note and the chat reads the summary from
+summary)` is left out because the Compacted note stands for it. The note sits between two hairlines and reads the
+context before and after, `Compacted · 124k → 32k · 10:52`, from the transcript's `compact_boundary` row, which the
+transcript writes just ahead of the summary's. Click that note and the chat reads the summary from
 its transcript row, as markdown, through `GET /api/sessions/:key/summary?at=<ms>`, with `at` the note's own time.
 
 A message to a conversation the tree knows but no process runs wakes it first. `deliver` in
@@ -576,6 +598,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `conversation.unseen` | `key`, `endedAt` | the turn bus, when a turn ends, and again without `endedAt` once the turn is looked at | The tree's dot, while `endedAt` is there |
 | `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion or a permission prompt and again, without `questions`, when it settles | The door and the chat draw the question and its options |
 | `message.landed`   | `key`, `text`           | the server, when the mod tells it that a session took a sidecar message         | The chat shows the message as landed        |
+| `usage.changed`    | `key`                   | the server, when the usage the mod posts differs from the last it held          | The plan block and the context meter read again |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
 else runs `sidecar publish artifact.created '{"slug":"…","path":"…"}'`. A component consumes with
@@ -757,6 +780,7 @@ so a reload of the mod keeps them:
 {"do":"model","model":"claude-sonnet-5-5"}
 {"do":"command","name":"compact","args":"keep the plan"}
 {"do":"commands"}
+{"do":"breakdown"}
 ```
 
 ## Develop
