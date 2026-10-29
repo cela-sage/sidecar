@@ -342,8 +342,9 @@ completes the name, and esc closes the list. A row reads as Claude Code's does, 
 comes from, `user` for yours, the plugin's name, or `mcp`, and nothing for a builtin. The list is loaded when the
 conversation opens and again when it changes, from `GET /api/sessions/:key/commands`, which answers at once with the
 last list the session gave and asks the session in the background for a fresh one. The server keeps that last list
-per conversation in `~/.claude/sidecar/commands/<key>.json`, the mod posts it at `session.start` so one is there before
-anyone types, and a conversation that never answered, one older than 0.48.0 or asleep, gets the newest list from a
+per conversation in `~/.claude/sidecar/commands/<key>.json`, the mod posts it at `session.start` when a person is at the
+prompt, which a `--bg` conversation has and a `-p` run does not, so one is there before anyone types and a `-p` run's
+narrower list never stands in for a conversation, and a conversation that never answered, one older than 0.48.0 or asleep, gets the newest list from a
 conversation in the same folder, else the newest from any. A change in a list reaches open pages as `commands.changed`.
 A command that draws a screen only the terminal can show, such as `/config`, `/status`, `/usage` and `/stats`, is not
 sent: the chat says to run it in your terminal and offers Attach, and the door says so under the command. `/config`, `/model`, `/mcp` and a few more draw their
@@ -742,7 +743,7 @@ that only quotes one is left alone. Stop aborts the main loop's running turn, wh
 its name and arguments, so the session writes the rows the terminal would, and one the session refuses is written
 as a command row with the engine's reason under it. `commands` has the mod post the session's `$.command.list()`
 to `POST /api/sessions/:key/commands`, with the plugin each command comes from, the screen it draws and its aliases,
-which the engine lists under one name, and the mod posts it unasked when the session starts. That turn id and the delivered bodies waiting for their rows live in the session state,
+which the engine lists under one name, and the mod posts it unasked when a session with a person at its prompt starts. That turn id and the delivered bodies waiting for their rows live in the session state,
 so a reload of the mod keeps them:
 
 ```

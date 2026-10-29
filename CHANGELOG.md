@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.57.1
+
+### Fixed
+
+- **A `-p` run no longer posts its command list when it starts,** where its narrower list (84 entries against 169) was
+  the newest one held and so what a conversation that answered nothing was given. The mod posts at start only when a
+  person is at the prompt, which `--bg` conversations report and `-p` runs and SDK sessions do not. A `-p` run started
+  on 0.57.0 keeps posting until it ends, and a list it already left stays held until a newer one replaces it.
+
 ## 0.57.0
 
 ### Added
