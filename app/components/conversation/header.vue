@@ -6,6 +6,7 @@ import type { LiveSession } from "~~/shared/types/session";
 const { session } = defineProps<{ session: LiveSession }>();
 
 const chrome = useChrome();
+const dock = $dock();
 const tree = useOrgTree();
 
 const full = computed(() => nameOf(session));
@@ -53,11 +54,11 @@ const copyId = async (): Promise<void> => {
     <button
       class="terminal plain-button focusable"
       aria-label="Terminal"
-      aria-pressed="false"
+      :aria-pressed="dock.isOpen"
       data-region="terminal-toggle"
-      data-tip="Terminal"
-      disabled
+      data-tip="Terminal · ⌥F12"
       type="button"
+      @click="dock.toggle()"
     >
       <UiIcon :icon="PanelBottom" size="sm" />
     </button>

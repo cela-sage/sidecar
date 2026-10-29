@@ -96,6 +96,7 @@ follow.listen();
         </template>
         <p v-if="!face" class="empty">No view has been built for this conversation yet.</p>
       </div>
+      <DockPanel />
     </UiSurface>
   </NuxtLayout>
 </template>
