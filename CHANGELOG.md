@@ -7,6 +7,16 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.58.2
+
+### Fixed
+
+- **The rule tells every role to title a conversation under the task it works on,** since the tree groups
+  conversations by the slug in their title: one ask is one task with a part per piece, a conversation started for a part
+  carries the task's slug and never one of its own, and a Project Lead or the assistant that finds a lead titled outside
+  its task retitles it at once, through the conversation's own title hook or `PATCH /api/sessions/<key>` with
+  `{"title"}`, which the rule now names. Conversations started before 0.58.2 keep the old rule until they restart.
+
 ## 0.58.1
 
 ### Fixed
