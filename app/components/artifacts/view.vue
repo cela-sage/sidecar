@@ -22,13 +22,11 @@ const session = computed(() => sc.sessions.value.find((s) => s.key === sc.sessio
 const lastTouched = ({ slug, updated }: ArtifactMeta): number =>
   artifact.openedAt[slug] ?? (updated ? Date.parse(updated) || 0 : 0);
 
-// A scratch .md the conversation wrote is a document, so it stays in Files with the rest of its files.
-const entries = computed(() => {
-  const mine = new Set(session.value?.artifacts ?? []);
-  return sc.catalogue.value
-    .filter((meta) => mine.has(meta.slug) && meta.kind !== "document")
-    .sort((a, b) => lastTouched(b) - lastTouched(a));
-});
+const entries = computed(() =>
+  Artifacts.listedBy({ catalogue: sc.catalogue.value, session: session.value }).sort(
+    (a, b) => lastTouched(b) - lastTouched(a),
+  ),
+);
 // Any page the catalogue holds opens here, since Claude Code can point at one this conversation never made.
 const picked = computed(() => sc.catalogue.value.find((meta) => meta.slug === selected.value));
 
