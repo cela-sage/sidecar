@@ -1,9 +1,7 @@
-import { accessSync, chmodSync, constants, existsSync } from "node:fs";
-import { createRequire } from "node:module";
-import { dirname, join } from "node:path";
 import { setTimeout as sleep } from "node:timers/promises";
 import { spawn, type IPty } from "node-pty";
 import z from "zod";
+import { Pty } from "../server/utils/dock/pty.ts";
 import { claudeBinary } from "../server/utils/sessions/jobs.ts";
 
 interface Held {
@@ -17,8 +15,6 @@ interface Message {
   data: string;
 }
 
-const DETACH = "\x1a";
-const DETACH_MS = 3000;
 const RETRY_MS = 2000;
 const QUIT = ["q", "\x03"];
 const Attach = z.object({ key: z.string().min(1) });
@@ -29,17 +25,6 @@ const parsed = (data: string): unknown => {
     return JSON.parse(data);
   } catch {
     return undefined;
-  }
-};
-
-const executableHelper = (): void => {
-  const root = dirname(createRequire(import.meta.url).resolve("node-pty/package.json"));
-  const helper = join(root, "prebuilds", `${process.platform}-${process.arch}`, "spawn-helper");
-  if (!existsSync(helper)) return;
-  try {
-    accessSync(helper, constants.X_OK);
-  } catch {
-    chmodSync(helper, 0o755);
   }
 };
 
@@ -67,7 +52,7 @@ const run = (address: string): Promise<number> => {
     console.error("sidecar terminal runs in a terminal, the one you use for Claude Code");
     return Promise.resolve(2);
   }
-  executableHelper();
+  Pty.prepare();
   let held: Held | undefined;
   let queue = Promise.resolve();
   let said = "";
@@ -92,10 +77,7 @@ const run = (address: string): Promise<number> => {
     current.isLeaving = true;
     held = undefined;
     if (!current.key) return current.pty.kill();
-    const exited = new Promise<void>((resolve) => current.pty.onExit(() => resolve()));
-    current.pty.write(DETACH);
-    await Promise.race([exited, sleep(DETACH_MS)]);
-    current.pty.kill();
+    await Pty.detach(current.pty);
   };
 
   // Agent view is the page between conversations, so quitting it is how you stop following.
