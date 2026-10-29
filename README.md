@@ -22,7 +22,7 @@ bin/sidecar setup
 
 ## What Claude is told
 
-While the plugin is installed, the mod adds one section to every system prompt, from `rules/sidecar.md`: the sidecar is installed, pages and documents written for you to read go into `~/.claude/sidecar/artifacts/` as `<slug>.html` or `<slug>.md`, the chat reply says only what Claude did while any explanation goes there as a `.md`, a message opening on a `[[sidecar]]` line is you writing from the sidecar, a page's open threads are read with `sidecar comments <slug>` before it changes, and another conversation is named as `@<key>`. Uninstalling the plugin takes the section away, and nothing is written into anyone's `CLAUDE.md` or rules.
+While the plugin is installed, the mod adds one section to every system prompt, from `rules/sidecar.md`: the sidecar is installed, pages and documents written for you to read go into `~/.claude/sidecar/artifacts/` as `<slug>.html` or `<slug>.md`, the chat reply says only what Claude did while any explanation goes there as a `.md`, a message opening on a `[[sidecar]]` line is you writing from the sidecar, a page's open threads are read with `sidecar comments <slug>` before it changes, another conversation is named by its key alone in backticks, a code block that quotes a file names the file and its lines after the fence's language, as in `ts [src/menu.ts:3-9]`, and an image, video or audio file is named by its path in backticks. Uninstalling the plugin takes the section away, and nothing is written into anyone's `CLAUDE.md` or rules.
 
 ## The CLI
 
@@ -166,11 +166,8 @@ front: its header names it with the project's image, the role, the title without
 in the tip, and the session key, which a click copies, then the run widget, drawn but not wired yet, and the
 terminal toggle, which opens the terminal dock at the bottom of the panel. Under it the faces sit in one row, Conversation first, then Artifacts, Review,
 Files and History, switched in place so Back never leaves the conversation, with a count beside Artifacts and,
-once Review has read it, Review. Conversation is the turn stream read from `/api/sessions/:key/conversation` and
-its live stream: what you typed, what Claude said, each run of tool calls as one list of rows, notes such as a
-compaction, and the step it is on while a turn is open. `?face=review` picks a face and `?task=<slug>` opens a
-task, and there is no jump palette and no `/desk` or `/tasks/<slug>` route any more, so an old link lands on
-Listening.
+once Review has read it, Review. `?face=review` picks a face and `?task=<slug>` opens a task, and there is no
+jump palette and no `/desk` or `/tasks/<slug>` route any more, so an old link lands on Listening.
 
 The tree is built from the conversations agent view lists, which the server reads with
 `claude agents --json --all`, since without `--all` the CLI returns only the running ones, parsed by their titles. The backlog of tasks on no project heads
@@ -221,16 +218,20 @@ history into `~/.claude/sidecar/trash/`. Undo, or ⌘Z, moves those two back thr
 `POST /api/tasks/:slug/restore`, and the toast says the stopped Task Leads stay stopped, since their transcripts
 remain but their processes are gone. A Done row's ✕ keeps its own path and only takes it off the list.
 
-Right-click on a conversation row, or on a conversation chip, opens the conversation menu. Open brings it in
-front, Attach hands it to `sidecar terminal`, Rename turns the menu into a field with the full title in it, and
-Enter writes it through `PATCH /api/sessions/<key>`, and Remove stops it through `DELETE /api/sessions/<key>`
-with the transcript staying on disk.
+Right-click on a conversation row, or on a conversation chip, opens the same conversation menu under its title
+and key. Open brings it in front, Attach in your terminal hands it to the dock or `sidecar terminal`, Mention in
+the prompt adds it to the chat's prompt as the door's `@<title> (<key>)`, Reveal in the tree opens its project,
+scrolls to its row and lights it, Copy id copies the key, Rename turns the menu into a field with the full title
+in it, and Enter writes it through `PATCH /api/sessions/<key>`, and Remove stops it through
+`DELETE /api/sessions/<key>` with the transcript staying on disk.
 
-A conversation named as `@<key>`, or as the door's `@<title> (<key>)`, in an answer in the door, a comment
-thread or a side question draws as its tree row inline: the project's avatar, the row's mark and short name
-with the full title in its tip, and Attach. Clicking the name brings it in front. Both forms resolve by key
-against every conversation the tree lists, so an ended one shows its check, while a key the tree does not
-list, and any key inside code or a link, stays plain text.
+A conversation named by its key alone in backticks, as the sidecar's rule asks, or as `@<key>` or the door's
+`@<title> (<key>)`, in the chat, an answer in the door, a comment thread or a side question, draws as its tree
+row inline: the project's avatar, the row's mark, role and short name, and Attach. Clicking the name brings it
+in front, and hovering it shows a card with the full title, its current step and its key, project and task,
+while its row in the tree lights up. Every form resolves by key against every conversation the tree lists, so an
+ended one shows its check, while a key the tree does not list stays code or plain text, and a key inside a link
+or other code stays as it is.
 
 Your own conversations drag. Dropped on another project it is renamed `[<project token>] <subject>`, and on an
 open task it becomes one of the task's Task Leads, renamed `[<project token>] TL <slug> <subject>`, while a
@@ -244,6 +245,36 @@ puts the old title back when it had one.
 
 Moving to another conversation keeps the page, so the tree, its folds and every face already opened stay put
 while they follow the new key.
+
+### The conversation as a chat
+
+Conversation is the session as a chat, read from `/api/sessions/:key/conversation` and its live stream, with
+two inputs: the prompt at its foot and your terminal. A message typed in the prompt goes through
+`/api/sessions/:key/message`, the inbox the door uses, shows at once and gives way to its own copy when the
+transcript holds it, and one typed in the terminal says so under it with the time, told apart by the origin
+Claude Code stores on the row. Each run of tool calls is one list of folded rows, a call paired to its result by
+the provider's id: Read folds consecutive reads into one row whose files open in Files at the lines read, Edited
+and Wrote carry the change's `+` and `−` counts, unfold to the diff with each side's line numbers and open the
+file in Review, Ran shows the command with its description beside it and unfolds to the output, and a failed
+call says so in red. The server clips what it carries, a run's output to its head and tail and a diff to 240
+lines, and leaves a read's file and an edit's receipt out.
+
+Claude's prose renders as everywhere else, with more in the chat. A fence named as `ts [src/menu.ts:3-9]`, or
+with the path bare after the language, gets a caption that opens Files at those lines with them selected, and
+every fence a Copy. An image, video or audio file named by its path in backticks stays a link to Files in the
+sentence and renders under its paragraph in the order named, the picture on the canvas, the video with its own
+glass controls, the audio with a waveform decoded from the file, each with the path and its type and size, and a
+path that is not on disk draws nothing, which `GET /api/sessions/:key/files/stat` answers with a 200 either
+way. A web link previews on hover with the page's image, title and host from `/api/web/preview`, which answers
+204 when it finds nothing, and a local one offers Open in Artifacts.
+
+The prompt attaches files, from the paperclip, a paste or a drop, and blocks of text that another part of the
+sidecar hands it through `$prompt().attach({ label, text })`, each a removable chip that goes into the message
+under its label. Enter sends, a message sent mid-turn queues behind it, and with the field empty Stop, or esc,
+ends the running turn through `POST /api/sessions/:key/stop`. The model picker shows the session's model, read
+from its newest turn, and lists Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 with Older models by family, and
+a pick runs `/model` in the session through `POST /api/sessions/:key/model` once its turn ends. The prompt keeps
+clear of the door unless the terminal dock is open under it, and each conversation keeps its own draft.
 
 ### Following the terminal
 
@@ -526,14 +557,18 @@ What the sidecar sends a session, notes and Review's buttons alike, opens on a `
 Claude Code frames a peer message, with the "Another Claude session sent a message:" line above it and the
 "This came from another Claude session" paragraph below, only when it stores the row, after
 `session.receive` has run. So the mod's `session.receive` drops the marker and its `session.append` takes
-the frame off the row, and the conversation shows only what you wrote. A Review action is the whole body
-under the marker, run by `session.receive` and never shown; a note that only quotes one is left alone:
+the frame off the row, and the conversation shows only what you wrote. A Review action, the chat's Stop and its
+model are the whole body under the marker, run by `session.receive` and never shown; a note that only quotes one
+is left alone. Stop aborts the main loop's running turn, whose id the mod holds from `turn.start`, and a model
+runs `/model` with it once the session is idle:
 
 ```
 [[sidecar]]
 {"do":"approve"|"reject","paths":[...]}
 {"do":"accept-lines"|"reject-lines","path":"...","old":[1-based],"new":[1-based]}
 {"do":"undo"|"redo"}
+{"do":"stop"}
+{"do":"model","model":"claude-sonnet-5-5"}
 ```
 
 ## Develop

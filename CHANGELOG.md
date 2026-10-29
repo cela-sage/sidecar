@@ -7,6 +7,33 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.43.0
+
+### Added
+
+- **The Conversation face is a chat.** A prompt at its foot sends through the inbox the door uses, a message sent
+  mid-turn queues, and one typed in the terminal says so under it. Stop, or esc, ends the running turn, and the
+  model picker shows the session's model and runs `/model` with Fable 5.1, Opus 5.5, Sonnet 5.5, Haiku 5.5 or one
+  of the Older models once the turn ends. The prompt takes files and blocks of text, the latter through
+  `$prompt().attach({ label, text })` for any part of the sidecar that has lines to send.
+- **Tool calls are folded rows paired to their result:** Read with the files and lines it read, Edited and Wrote
+  with `+` and `−` counts, the diff and Review, Ran with its command and output, and a failed call in red.
+- **In the chat, a fence named `ts [src/menu.ts:3-9]` opens Files at those lines,** every fence has Copy, a media
+  path in backticks renders under its paragraph as an image, a video or an audio waveform, and a web link
+  previews on hover, a local one with Open in Artifacts.
+- **The conversation chip has a role, a peek card and a menu** shared with the tree's rows: Open, Attach in your
+  terminal, Mention in the prompt, Reveal in the tree and Copy id, with Rename and Remove under them.
+- **`POST /api/sessions/:key/stop`, `POST /api/sessions/:key/model` and `GET /api/sessions/:key/files/stat`,** and
+  each turn of `/api/sessions/:key/conversation` carries its call, its result's diff or output, whether you typed
+  it in the terminal and the model.
+
+### Changed
+
+- **The sidecar rule tells Claude to name another conversation by its key alone in backticks,** such as
+  `70ef962c`, and to name a fence's file and lines and a media file by path. `@<key>` and the door's
+  `@<title> (<key>)` still draw as the chip.
+- **`/api/web/preview` answers 204 when there is nothing to preview,** rather than 404.
+
 ## 0.42.0
 
 ### Added
