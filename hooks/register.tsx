@@ -102,7 +102,7 @@ export const register: Register = (on, options) => {
         toast: text => $.ui.toast(text),
       },
     })
-    void tellCommands($, api).catch(() => undefined)
+    if (e.isInteractive) void tellCommands($, api).catch(() => undefined)
     return next(e)
   })
 

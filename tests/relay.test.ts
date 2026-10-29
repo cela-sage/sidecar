@@ -1,8 +1,11 @@
 import { expect, mock, test } from 'claude-code/testing'
+import type { Engine, TestBody } from 'claude-code/testing'
 
 import { Commands } from '../hooks/commands'
 import { Control } from '../hooks/control'
 import { Relay } from '../hooks/relay'
+
+type On = Parameters<TestBody>[1]
 
 const said = '“You need python3 and jq” · in README.md — can we use node?'
 const teammate = 'a real teammate asking for help'
@@ -99,7 +102,9 @@ test('a commands control tells the sidecar what the session can run, and which o
   ])
 })
 
-test('a session tells the sidecar what it can run as it starts, before anyone asks', async ($, on) => {
+type Start = Omit<Parameters<Engine['session']['start']>[0], 'cwd'>
+
+const commandsPosted = async ($: Engine, on: On, start: Start) => {
   const posted: string[] = []
   mock.clock(on)
   mock.env(on, { HOME: '/home' })
@@ -108,16 +113,24 @@ test('a session tells the sidecar what it can run as it starts, before anyone as
   on('command.register', () => ({ value: { command: 'sidecar' } }))
   on('command.list', () => ({ value: [{ name: 'compact', description: 'Free up context', source: 'builtin' }] }))
   on('http.fetch', (_, e) => {
-    if (e.init?.method === 'POST') posted.push(`${new URL(e.url).pathname} ${String(e.init.body)}`)
+    const path = new URL(e.url).pathname
+    if (e.init?.method === 'POST' && path.endsWith('/commands')) posted.push(`${path} ${String(e.init.body)}`)
     return { value: { status: 204, ok: true, headers: {}, text: '' } }
   })
 
-  await $.session.start({ cwd: '/r', surface: null, isInteractive: false })
+  await $.session.start({ cwd: '/r', ...start })
   await new Promise(done => setTimeout(done, 10))
+  return posted
+}
 
-  expect(posted).toContain(
+test('a session with a person at its prompt tells the sidecar what it can run as it starts, before anyone asks', async ($, on) => {
+  expect(await commandsPosted($, on, { surface: 'terminal', isInteractive: true })).toEqual([
     '/api/sessions/abcdef01/commands [{"name":"compact","description":"Free up context","source":"builtin"}]',
-  )
+  ])
+})
+
+test('a -p run tells the sidecar nothing as it starts, so its narrower list never stands in for a conversation', async ($, on) => {
+  expect(await commandsPosted($, on, { surface: null, isInteractive: false })).toEqual([])
 })
 
 test('a delivery the session takes is told to the sidecar as it lands, and a control or a real peer is not', async ($, on) => {
