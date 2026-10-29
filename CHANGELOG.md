@@ -7,6 +7,13 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.54.2
+
+### Fixed
+
+- **The mode picker shows Plan as soon as you pick it,** where 0.54.1 kept the old mode until your next message,
+  because `/plan` writes no mode on its rows.
+
 ## 0.54.1
 
 ### Changed
