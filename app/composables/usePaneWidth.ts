@@ -6,8 +6,8 @@ export interface PaneWidth {
   width: RemovableRef<number>;
 }
 
-// One width for the left pane of every face, so resizing it in Files carries over to Review, History and Artifacts.
+// One width for the tool window of every face, so resizing it in Files carries over to Review, History and Artifacts.
 export const usePaneWidth = createSharedComposable((): PaneWidth => {
-  const initial = 340;
+  const initial = 280;
   return { initial, width: useLocalStorage("sc:pane", initial) };
 });

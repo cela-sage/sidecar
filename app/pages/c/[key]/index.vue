@@ -108,13 +108,9 @@ follow.listen();
 }
 
 /* Inside the main panel a face's panes are its columns, split by the resizer, rather than cards of their own. */
-.stage :deep(.face > section > [data-surface="raised"]:not([data-listed="true"])),
-.stage :deep(.face > section > .slot > [data-surface="raised"]:not([data-expanded="true"])) {
+.stage :deep(.face > .split > .content > [data-surface="raised"]),
+.stage :deep(.face > .split > .content > .slot > [data-surface="raised"]:not([data-expanded="true"])) {
   @apply rounded-none border-0 bg-transparent shadow-none;
-}
-
-.stage :deep(.face > section > [data-surface="raised"]:first-child:not([data-listed="true"])) {
-  @apply border-r border-r-border;
 }
 
 .empty {

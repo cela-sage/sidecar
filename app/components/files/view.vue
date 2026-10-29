@@ -6,8 +6,6 @@ import type { TreeEntry } from "~~/shared/types/tree";
 
 type Scope = "all" | FileGroup;
 
-const { initial: sideInitial, width: side } = usePaneWidth();
-
 const sc = useSidecar();
 const artifact = $artifact();
 const files = useFiles(() => sc.sessionKey.value);
@@ -54,14 +52,24 @@ function markOf(entry: TreeEntry): SessionFile | undefined {
 </script>
 
 <template>
-  <section class="files" data-region="files" :style="{ '--side-w': `${side}px` }">
-    <UiSurface
-      class="pane"
-      data-region="files-table"
-      :data-listed="artifact.isFull && artifact.isListed"
-      pad="none"
-      variant="raised"
-    >
+  <FaceSplit
+    data-region="files"
+    :icon="FolderTree"
+    label="Files"
+    :listed="artifact.isFull && artifact.isListed"
+    region="files-table"
+  >
+    <ArtifactSheet :conversation="sc.sessionKey.value" :path="selected" :slug="pageOf">
+      <FilesEditor
+        v-if="selected && sc.sessionKey.value"
+        :conversation="sc.sessionKey.value"
+        :path="selected"
+        :turn="touched.get(selected)?.lastTurn"
+      />
+      <UiStateMessage v-else align="center" class="centered">Pick a file to open it here.</UiStateMessage>
+    </ArtifactSheet>
+
+    <template #list>
       <header class="bar">
         <UiSegmented v-model="scope" fill :options="SCOPES" />
       </header>
@@ -96,37 +104,11 @@ function markOf(entry: TreeEntry): SessionFile | undefined {
           </template>
         </FileTree>
       </div>
-    </UiSurface>
-
-    <PaneResizer v-model="side" :initial="sideInitial" label="Resize the file tree" />
-
-    <ArtifactSheet :conversation="sc.sessionKey.value" :path="selected" :slug="pageOf">
-      <FilesEditor
-        v-if="selected && sc.sessionKey.value"
-        :conversation="sc.sessionKey.value"
-        :path="selected"
-        :turn="touched.get(selected)?.lastTurn"
-      />
-      <UiStateMessage v-else align="center" class="centered">Pick a file to open it here.</UiStateMessage>
-    </ArtifactSheet>
-  </section>
+    </template>
+  </FaceSplit>
 </template>
 
 <style scoped>
-/* The middle track is the resizer's; half the face caps a width remembered from a wider window. */
-.files {
-  @apply grid h-full min-h-0 grid-cols-pane gap-x-2;
-}
-
-.pane {
-  @apply flex min-h-0 flex-col overflow-hidden;
-}
-
-/* Over the grown sheet's left edge, under its islands, so another file opens without leaving fullscreen. */
-.pane[data-listed="true"] {
-  @apply fixed top-14 bottom-2 left-2 z-28 w-80;
-}
-
 .bar {
   @apply flex flex-none items-center gap-2 border-b border-b-border px-3 py-2;
 }

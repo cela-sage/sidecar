@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
-import { ChevronDown, ChevronUp, FoldVertical, TextWrap } from "@lucide/vue";
+import { ChevronDown, ChevronUp, FoldVertical, History as HistoryIcon, TextWrap } from "@lucide/vue";
 import { useNow } from "@vueuse/core";
 import { OneDarkVivid } from "~/utils/monaco/one-dark-vivid";
 
@@ -9,7 +9,6 @@ const shown = useFaceShown();
 const history = useHistory();
 const review = useReview();
 const now = useNow({ interval: 30_000 });
-const { initial: sideInitial, width: side } = usePaneWidth();
 
 const isChangesOnly = ref(false);
 // The turn picked when changes only went on stays listed until the reader moves.
@@ -129,8 +128,8 @@ useShortcuts(
 </script>
 
 <template>
-  <section class="history" data-region="history" :style="{ '--side-w': `${side}px` }">
-    <UiSurface class="pane" data-region="history-turns" pad="none" variant="raised">
+  <FaceSplit data-region="history" :count="asked" :icon="HistoryIcon" label="Turns" region="history-turns">
+    <template #list>
       <header class="bar">
         <span class="title">Turns</span>
         <span class="meta mono-meta">{{ plural(asked, "turn") }}</span>
@@ -176,9 +175,7 @@ useShortcuts(
           />
         </template>
       </div>
-    </UiSurface>
-
-    <PaneResizer v-model="side" :initial="sideInitial" label="Resize the turns pane" />
+    </template>
 
     <UiSurface v-fade="!!turn" class="pane" data-region="history-changes" pad="none" variant="raised">
       <template v-if="turn">
@@ -286,15 +283,10 @@ useShortcuts(
       >
       <UiStateMessage v-else align="center">Pick a turn to see what it changed.</UiStateMessage>
     </UiSurface>
-  </section>
+  </FaceSplit>
 </template>
 
 <style scoped>
-/* The middle track is the resizer's; half the face caps a width remembered from a wider window. */
-.history {
-  @apply grid h-full min-h-0 grid-cols-pane gap-x-2;
-}
-
 .pane {
   @apply flex min-h-0 flex-col overflow-hidden;
 }

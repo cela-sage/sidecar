@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Eye, FoldVertical, Link2, Redo2, TextWrap, Undo2 } from "@lucide/vue";
+import { Eye, FileDiff, FoldVertical, Link2, Redo2, TextWrap, Undo2 } from "@lucide/vue";
 import { useEventListener } from "@vueuse/core";
 import { OneDarkVivid } from "~/utils/monaco/one-dark-vivid";
 import type { ReviewPicks, ReviewRowRejected } from "~/utils/review";
@@ -8,7 +8,6 @@ const sc = useSidecar();
 const chrome = useChrome();
 const shown = useFaceShown();
 const review = useReview();
-const { initial: sideInitial, width: side } = usePaneWidth();
 
 review.listen();
 
@@ -134,8 +133,8 @@ function rejectFile(event: MouseEvent): void {
 </script>
 
 <template>
-  <section class="review" data-region="review" :style="{ '--side-w': `${side}px` }">
-    <UiSurface class="pane" data-region="review-files" pad="none" variant="raised">
+  <FaceSplit data-region="review" :count="files.length" :icon="FileDiff" label="To review" region="review-files">
+    <template #list>
       <header class="bar">
         <span class="title">To review</span>
         <span class="meta mono-meta">{{ plural(files.length, "file") }}</span>
@@ -200,9 +199,7 @@ function rejectFile(event: MouseEvent): void {
           Approve all
         </button>
       </footer>
-    </UiSurface>
-
-    <PaneResizer v-model="side" :initial="sideInitial" label="Resize the file list" />
+    </template>
 
     <UiSurface v-fade="isReading" class="pane" data-region="review-changes" pad="none" variant="raised">
       <template v-if="file">
@@ -318,15 +315,10 @@ function rejectFile(event: MouseEvent): void {
 
       <UiStateMessage v-else align="center" :kind="isReading ? 'loading' : 'empty'">{{ empty }}</UiStateMessage>
     </UiSurface>
-  </section>
+  </FaceSplit>
 </template>
 
 <style scoped>
-/* The middle track is the resizer's; half the face caps a width remembered from a wider window. */
-.review {
-  @apply grid h-full min-h-0 grid-cols-pane gap-x-2;
-}
-
 .pane {
   @apply flex min-h-0 flex-col overflow-hidden;
 }

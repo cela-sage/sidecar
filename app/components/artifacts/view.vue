@@ -1,9 +1,8 @@
 <script lang="ts" setup>
-import { Trash2 } from "@lucide/vue";
+import { Layers, Trash2 } from "@lucide/vue";
 import { isLocalPath } from "~~/lib/web/target";
 import type { ArtifactMeta } from "~~/shared/types/artifact";
 
-const { initial: sideInitial, width: side } = usePaneWidth();
 const sc = useSidecar();
 const chrome = useChrome();
 const follow = $follow();
@@ -108,14 +107,19 @@ async function openUrl(): Promise<void> {
 </script>
 
 <template>
-  <section class="artifacts" data-region="artifacts" :style="{ '--side-w': `${side}px` }">
-    <UiSurface
-      class="pane"
-      data-region="artifacts-list"
-      :data-listed="artifact.isFull && artifact.isListed"
-      pad="none"
-      variant="raised"
-    >
+  <FaceSplit
+    data-region="artifacts"
+    :count="entries.length"
+    :icon="Layers"
+    label="Artifacts"
+    :listed="artifact.isFull && artifact.isListed"
+    region="artifacts-list"
+  >
+    <ArtifactSheet :conversation="sc.sessionKey.value" :kind="picked?.kind" :path="picked?.path" :slug="picked?.slug">
+      <UiStateMessage align="center" class="centered">Pick a page or a plan to open it here.</UiStateMessage>
+    </ArtifactSheet>
+
+    <template #list>
       <header class="bar">
         <div class="row">
           <span class="title">Artifacts</span>
@@ -195,31 +199,11 @@ async function openUrl(): Promise<void> {
           </span>
         </div>
       </div>
-    </UiSurface>
-
-    <PaneResizer v-model="side" :initial="sideInitial" label="Resize the artifact list" />
-
-    <ArtifactSheet :conversation="sc.sessionKey.value" :kind="picked?.kind" :path="picked?.path" :slug="picked?.slug">
-      <UiStateMessage align="center" class="centered">Pick a page or a plan to open it here.</UiStateMessage>
-    </ArtifactSheet>
-  </section>
+    </template>
+  </FaceSplit>
 </template>
 
 <style scoped>
-/* The middle track is the resizer's; half the face caps a width remembered from a wider window. */
-.artifacts {
-  @apply grid h-full min-h-0 grid-cols-pane gap-x-2;
-}
-
-.pane {
-  @apply flex min-h-0 flex-col overflow-hidden;
-}
-
-/* Over the grown sheet's left edge, under its islands, so another artifact opens without leaving fullscreen. */
-.pane[data-listed="true"] {
-  @apply fixed top-14 bottom-2 left-2 z-28 w-80;
-}
-
 .bar {
   @apply flex flex-none flex-col gap-2.5 border-b border-b-border px-3.5 pt-2.5 pb-3;
 }
