@@ -1,10 +1,11 @@
 import type { TerminalState } from "~~/shared/types/events";
 
-export type Attached = "sent" | "copied";
+export type Attached = "docked" | "sent" | "copied";
 
 export const $terminal = defineStore(() => {
   const SWITCH_MS = 8000;
   const chrome = useChrome();
+  const dock = $dock();
   const state = ref<TerminalState>({ following: false });
   const switching = ref<string>();
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -30,7 +31,14 @@ export const $terminal = defineStore(() => {
     return "copied";
   };
 
+  // One holder per session, because a session draws at one size: the dock while it is open, the follower otherwise.
+  const holds = (key: string): boolean => (dock.isOpen ? dock.holds(key) : state.value.held?.key === key);
+
   const attach = async (key: string): Promise<Attached> => {
+    if (dock.isOpen) {
+      await dock.attach(key);
+      return "docked";
+    }
     if (!state.value.following) return copy(key);
     switching.value = key;
     clearTimeout(timer);
@@ -49,5 +57,5 @@ export const $terminal = defineStore(() => {
     return copy(key);
   };
 
-  return { attach, heard, load, state, switching };
+  return { attach, heard, holds, load, state, switching };
 });

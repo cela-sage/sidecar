@@ -31,7 +31,7 @@ const {
 const emit = defineEmits<{ open: [] }>();
 
 const terminal = $terminal();
-const isHeld = computed(() => !!attach && terminal.state.held?.key === attach);
+const isHeld = computed(() => !!attach && terminal.holds(attach));
 </script>
 
 <template>

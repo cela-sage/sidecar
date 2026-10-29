@@ -5,7 +5,7 @@ const { conversation } = defineProps<{ conversation: string }>();
 
 const terminal = $terminal();
 
-const isHeld = computed(() => terminal.state.held?.key === conversation);
+const isHeld = computed(() => terminal.holds(conversation));
 const tip = computed(() => {
   if (isHeld.value) return "Your terminal holds this one";
   if (terminal.state.following) return "Attach in your terminal. The follower detaches the current one first";

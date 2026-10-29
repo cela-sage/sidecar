@@ -114,6 +114,12 @@ const run = (address: string): Promise<number> => {
     await report(key);
   };
 
+  const release = async (key: string): Promise<void> => {
+    if (held?.key !== key) return;
+    await browse();
+    await report();
+  };
+
   const greet = (data: string): void => {
     if (Ready.safeParse(parsed(data)).data?.held?.key !== held?.key) void report(held?.key);
   };
@@ -121,8 +127,9 @@ const run = (address: string): Promise<number> => {
   const follow = async (body: ReadableStream<Uint8Array>): Promise<void> => {
     for await (const { event, data } of messagesOf(body)) {
       if (event === "ready") greet(data);
-      const key = event === "attach" ? Attach.safeParse(parsed(data)).data?.key : undefined;
-      if (key) queue = queue.then(() => attach(key));
+      const key = Attach.safeParse(parsed(data)).data?.key;
+      if (key && event === "attach") queue = queue.then(() => attach(key));
+      if (key && event === "release") queue = queue.then(() => release(key));
     }
   };
 

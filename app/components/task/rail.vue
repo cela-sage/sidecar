@@ -24,7 +24,7 @@ const rows = computed(() =>
     const asked = asking.find((thread) => thread.ask?.from === name);
     const state: AgentState = asked ? "needs input" : Tasks.agentStateOf(session);
     const at = turnAt(asked ? Date.parse(asked.at) : session.lastActive);
-    const isHeld = terminal.state.held?.key === session.key;
+    const isHeld = terminal.holds(session.key);
     return {
       key: session.key,
       name,

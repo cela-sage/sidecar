@@ -28,9 +28,14 @@ const attach = (key: string): boolean => {
   return true;
 };
 
+const release = (key: string): void => {
+  if (state.held?.key !== key) return;
+  for (const follower of followers) void follower.push({ event: "release", data: JSON.stringify({ key }) });
+};
+
 const hold = (key?: string): TerminalState => {
   const name = key ? TaskCaller.titleByKey(key) : undefined;
   return set({ following: followers.length > 0, ...(key ? { held: { key, ...(name ? { name } : {}) } } : {}) });
 };
 
-export const Terminal = { attach, hold, join, state: (): TerminalState => state };
+export const Terminal = { attach, hold, join, release, state: (): TerminalState => state };

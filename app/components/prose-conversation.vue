@@ -9,7 +9,7 @@ const conversationMenu = $conversationMenu();
 const tree = useOrgTree();
 
 const place = computed(() => Org.placeOf(tree.value, conversation));
-const isHeld = computed(() => terminal.state.held?.key === conversation);
+const isHeld = computed(() => terminal.holds(conversation));
 
 const open = (): void => {
   if (sc.sessionKey.value === conversation) return;
