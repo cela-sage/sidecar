@@ -1,4 +1,4 @@
-import type { ComputedRef } from "vue";
+import type { ComputedRef, ShallowRef } from "vue";
 import type { MascotState } from "~/components/claude/mascot.vue";
 import type { MaybeComputed } from "~/composables/useSidecar";
 import { BusyRules, type Busy } from "~~/shared/utils/busy";
@@ -29,6 +29,7 @@ export interface Conversation {
   mascot: ComputedRef<MascotState>;
   step: MaybeComputed<string>;
   isBusy: ComputedRef<boolean>;
+  stream: ShallowRef<ConversationTurn[]>;
 }
 
 interface ConversationSnapshot {
@@ -77,6 +78,11 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
 
   // Never shown, but a replayed or re-queued turn is only recognised against what already arrived.
   let turns: ConversationTurn[] = [];
+  const stream = shallowRef<ConversationTurn[]>([]);
+  const show = (turn: ConversationTurn): void => {
+    stream.value.push(turn);
+    triggerRef(stream);
+  };
   const doing = ref<ConversationTurn>();
   const awaiting = ref(false);
   const wrote = ref(false);
@@ -182,6 +188,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
       if (!turn.queued) {
         settle();
         wrote.value = false;
+        show(turn);
       }
       awaiting.value = true;
       turns.push(turn);
@@ -189,7 +196,9 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     }
     // Ahead of every answer mutation below: a compaction lands mid-turn and must not disturb them.
     if (turn.role === "system") {
-      if (!echoesNote(turn, turns.at(-1))) turns.push(turn);
+      if (echoesNote(turn, turns.at(-1))) return;
+      turns.push(turn);
+      show(turn);
       return;
     }
     awaiting.value = false;
@@ -197,17 +206,22 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
       if (turn.ref) open.set(turn.ref, turn.at);
       block(turn);
       if (wroteIn(turn)) wrote.value = true;
+      show(turn);
       return;
     }
     // Narration detects no state of its own, so it drops the mascot back to thinking.
     if (turn.kind === "narration" || turn.kind === "thinking") {
       block(turn);
-      if (turn.kind === "narration") candidate = turn;
+      if (turn.kind === "narration") {
+        candidate = turn;
+        show(turn);
+      }
       return;
     }
     candidate = undefined;
     doing.value = undefined;
     turns.push(turn);
+    show(turn);
   }
 
   function listen(key: string): void {
@@ -224,6 +238,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     const mine = ++ticket;
     disconnect();
     turns = [];
+    stream.value = [];
     candidate = undefined;
     doing.value = undefined;
     awaiting.value = false;
@@ -266,5 +281,5 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     });
   });
 
-  return { isBusy, mascot, step };
+  return { isBusy, mascot, step, stream };
 }
