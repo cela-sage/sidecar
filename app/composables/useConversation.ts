@@ -113,6 +113,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
   let quiet: ReturnType<typeof setTimeout> | undefined;
   const open = new Map<string, number>();
   const received = new Set<ConversationTurn>();
+  const commands = commandReceipts<ConversationTurn>();
 
   // Timed from the call's own start and cancelled by its result, so silence in the transcript proves nothing.
   function block(turn: ConversationTurn): void {
@@ -227,8 +228,9 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     // Ahead of every answer mutation below: a compaction lands mid-turn and must not disturb them.
     if (turn.role === "system") {
       if (echoesNote(turn, turns.at(-1))) return;
+      const joined = commands.join(turn, turns);
       turns.push(turn);
-      show(turn);
+      if (!joined) show(turn);
       return;
     }
     awaiting.value = false;
@@ -271,6 +273,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     turns = [];
     stream.value = [];
     received.clear();
+    commands.clear();
     results.value = new Map();
     model.value = undefined;
     mode.value = undefined;
