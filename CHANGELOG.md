@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.44.6
+
+### Fixed
+
+- **The traffic lights sit on the tree's header instead of over Follow terminal.** The page reports the room the
+  header reserves for them and the desktop shell draws them there, hidden until it knows where, so the shell's
+  fixed position and the header's padding can no longer drift apart as they had. Takes a rebuild of the desktop
+  app, `sidecar update`, then quit and reopen it.
+
 ## 0.44.5
 
 ### Fixed

@@ -438,8 +438,8 @@ own, ⌘F there turns the title island into one for any artifact, searching the 
 web surface leaves ⌘F to Chrome. ⌘+, ⌘− and ⌘0, or a trackpad pinch, zoom the whole app the way a Chrome tab
 zooms, the page inside it included, and the zoom is kept across launches, while a file preview keeps its own
 pinch and zoom pill. The top edge of the app is its title bar, so it drags the window and a double click there
-zooms or minimises it as System Settings says. The traffic lights sit at the left of the tree's header, and
-the shell moves them with the zoom. On first launch the shell copies
+zooms or minimises it as System Settings says. The traffic lights sit at the left of the tree's header, on the
+room the page reserves for them and reports to the shell, which moves them with the zoom. On first launch the shell copies
 your Chrome cookies into its own session, decrypting them with a key it reads from the login Keychain once
 (the one macOS prompt you will see), so you arrive signed in to the same accounts as in Chrome.
 `sidecar import` re-reads them later, with the app closed. The cookies are a copy rather than shared live,
