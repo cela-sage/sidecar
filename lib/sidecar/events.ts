@@ -1,5 +1,6 @@
 import { appendFileSync, closeSync, mkdirSync, openSync, readSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
+import { DockKind, type DockTab } from "../../shared/types/dock.ts";
 import type { SidecarEvent, Topic, Topics } from "../../shared/types/events.ts";
 import { AskKind, Role, TaskState, type Who } from "../../shared/types/task.ts";
 import { Questions } from "../../shared/utils/question.ts";
@@ -52,6 +53,16 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const held = typeof data.held === "object" && data.held ? (data.held as Fields) : {};
     const [key, name] = [text(held.key), text(held.name)];
     return { following: data.following, ...(key ? { held: { key, ...(name ? { name } : {}) } } : {}) };
+  },
+  "dock.changed": (data) => {
+    if (!Array.isArray(data.tabs)) return undefined;
+    const tabs = data.tabs.flatMap((raw: unknown): DockTab[] => {
+      const one = typeof raw === "object" && raw ? (raw as Fields) : {};
+      const [id, project, title, key] = [text(one.id), text(one.project), text(one.title), text(one.key)];
+      const kind = oneOf(DockKind, one.kind);
+      return id && project && kind ? [{ id, project, kind, title, ...(key ? { key } : {}) }] : [];
+    });
+    return { tabs };
   },
   "conversation.changed": (data) => {
     const key = text(data.key);

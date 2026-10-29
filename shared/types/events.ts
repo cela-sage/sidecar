@@ -1,3 +1,4 @@
+import type { DockTab } from "./dock.ts";
 import type { Question } from "./question.ts";
 import type { AskKind, TaskState, Who } from "./task.ts";
 
@@ -7,6 +8,7 @@ export interface Topics {
   "task.escalated": { slug: string; title: string; thread: string; kind: AskKind; question: string };
   "task.decided": { slug: string; thread: string; text: string; who: Who };
   "terminal.changed": TerminalState;
+  "dock.changed": { tabs: DockTab[] };
   "conversation.changed": { key: string; doing: boolean; asking: boolean };
   "question.changed": QuestionChanged;
 }

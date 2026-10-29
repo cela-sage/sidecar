@@ -25,6 +25,15 @@ export default defineNuxtConfig({
   // Nitro scans server/utils/** wholesale. Test-only modules are not server surface, and two
   // __fixtures__/env.ts both exporting useFixtures is a collision the scan cannot resolve.
   nitro: {
+    experimental: { websocket: true },
+    // node-pty finds its native binary by a computed path, which the tracer cannot follow.
+    externals: {
+      traceInclude: ["pty.node", "spawn-helper"].map((file) =>
+        fileURLToPath(
+          new URL(`node_modules/node-pty/prebuilds/${process.platform}-${process.arch}/${file}`, import.meta.url),
+        ),
+      ),
+    },
     imports: {
       dirs: ["!server/utils/**/__fixtures__/**", "!server/utils/**/*.test.ts"],
     },

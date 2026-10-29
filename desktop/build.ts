@@ -1,5 +1,5 @@
 import { execFileSync } from "node:child_process";
-import { cpSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, globSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "esbuild";
@@ -41,6 +41,11 @@ function bundleServer(app: string): void {
   });
   const resources = join(app, "Contents", "Resources");
   cpSync(join(repo, ".output"), join(resources, "output"), { recursive: true, verbatimSymlinks: true });
+  // pnpm leaves node-pty's spawn-helper without its exec bit, and a chmod at run time would write inside the signed bundle.
+  for (const helper of globSync(
+    join(resources, "output", "server", "node_modules", "node-pty", "prebuilds", "*", "spawn-helper"),
+  ))
+    chmodSync(helper, 0o755);
   // Copied per subdir rather than whole-repo, since the plugin dest lives under the repo's own out/ and cpSync rejects copying a tree into itself.
   const plugin = join(resources, "plugin");
   for (const dir of PLUGIN_DIRS)
