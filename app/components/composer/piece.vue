@@ -2,13 +2,14 @@
 import { X } from "@lucide/vue";
 import type { Component } from "vue";
 
-const { icon, label, tip } = defineProps<{ icon: Component; label: string; tip?: string }>();
+const { icon, label, preview, tip } = defineProps<{ icon: Component; label: string; preview?: string; tip?: string }>();
 const emit = defineEmits<{ remove: [] }>();
 </script>
 
 <template>
-  <span class="piece" :data-tip="tip">
-    <UiIcon class="piece-icon" :icon="icon" size="xs" />
+  <span class="piece" :data-image="!!preview" :data-tip="preview ? undefined : tip">
+    <img v-if="preview" alt="" class="thumb" :src="preview" />
+    <UiIcon v-else class="piece-icon" :icon="icon" size="xs" />
     <span class="piece-label">{{ label }}</span>
     <button
       class="remove plain-button focusable"
@@ -19,16 +20,25 @@ const emit = defineEmits<{ remove: [] }>();
     >
       <UiIcon :icon="X" size="xs" />
     </button>
+    <img v-if="preview" alt="" class="peek" :src="preview" />
   </span>
 </template>
 
 <style scoped>
 .piece {
-  @apply inline-flex h-7 max-w-full items-center gap-1.75 rounded-lg border border-border bg-sunken pr-1 pl-2.25;
+  @apply relative inline-flex h-7 max-w-full items-center gap-1.75 rounded-lg border border-border bg-sunken pr-1 pl-2.25;
+}
+
+.piece[data-image="true"] {
+  @apply pl-1;
 }
 
 .piece-icon {
   @apply flex-none text-muted;
+}
+
+.thumb {
+  @apply size-5 flex-none rounded-sm object-cover;
 }
 
 .piece-label {
@@ -39,9 +49,17 @@ const emit = defineEmits<{ remove: [] }>();
   @apply inline-flex size-5 flex-none items-center justify-center rounded-md border-0 bg-transparent p-0 text-muted;
 }
 
+.peek {
+  @apply pointer-events-none absolute bottom-full left-0 z-10 mb-2 max-h-60 max-w-80 rounded-xl border border-border bg-raised opacity-0 shadow-lg transition-opacity duration-(--duration-fast) ease-out;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .remove:hover {
     @apply bg-raised text-fg;
+  }
+
+  .piece:hover .peek {
+    @apply opacity-100;
   }
 }
 </style>

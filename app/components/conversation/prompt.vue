@@ -72,6 +72,7 @@ watch(
           :key="one.path"
           :icon="Paperclip"
           :label="one.name"
+          :preview="one.preview"
           :tip="one.path"
           @remove="prompt.unattach(one.path)"
         />

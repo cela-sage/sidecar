@@ -6,6 +6,7 @@ import type { LiveSession } from "~~/shared/types/session";
 import type { TaskState } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
 import type { Delivery } from "~/stores/notes";
+import type { Attachment } from "~/utils/attachments";
 import type { DoorFollower, DoorStep } from "~/utils/door-turns";
 
 export type DoorTarget = { kind: "assistant"; key?: string } | { kind: "new" };
@@ -66,7 +67,7 @@ export const $door = defineStore(() => {
   const isOpen = ref(false);
   const draft = ref("");
   const composeAsked = ref(0);
-  const attached = ref<AttachedFile[]>([]);
+  const attached = ref<Attachment[]>([]);
   const target = ref<DoorTarget>({ kind: "assistant" });
   const exchanges = ref<DoorExchange[]>([]);
   const following = new Map<string, Following>();
@@ -192,7 +193,7 @@ export const $door = defineStore(() => {
       chrome.toast(failReason(error) ?? `${file.name} did not attach`, "destructive");
       return undefined;
     });
-    if (got) attached.value = [...attached.value, got];
+    if (got) attached.value = [...attached.value, { ...got, preview: Attachments.previewOf(file) }];
     return got;
   };
 
@@ -253,6 +254,7 @@ export const $door = defineStore(() => {
     const files = attached.value;
     draft.value = "";
     attached.value = [];
+    Attachments.release(files);
     if (mode.value === "assistant" && key.value) return ask({ ...sent, text, files }, key.value);
     return start({ ...sent, text, files });
   };

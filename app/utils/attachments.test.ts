@@ -23,6 +23,12 @@ test("the message carries each path on its own line, only for files still in the
   assert.equal(Attachments.message("no file here", [SHOT]), "no file here");
 });
 
+test("taking a file out removes its token and the space after it, and leaves the other words alone", () => {
+  assert.equal(Attachments.drop("look at @image.png why", SHOT), "look at why");
+  assert.equal(Attachments.drop("@image.png and @build.log\n@image.png", SHOT), "and @build.log\n");
+  assert.equal(Attachments.drop("mail me@image.png", SHOT), "mail me@image.png");
+});
+
 test("a file token is found on its own, and never reads as a conversation pick", () => {
   const text = "@image.png and @image.png2 and @build.log";
   assert.deepEqual(

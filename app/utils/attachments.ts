@@ -1,6 +1,10 @@
 import type { AttachedFile } from "~~/shared/types/files";
 import type { Typed } from "./mentions.ts";
 
+export interface Attachment extends AttachedFile {
+  preview?: string;
+}
+
 export interface FileToken {
   start: number;
   end: number;
@@ -32,4 +36,18 @@ const message = (text: string, files: AttachedFile[]): string => {
   return lines.length ? `${text}\n\n${lines.join("\n")}` : text;
 };
 
-export const Attachments = { insert, message, of };
+const drop = (text: string, file: AttachedFile): string => {
+  let rest = text;
+  const tokens = of(text, [file]).reverse();
+  for (const { start, end } of tokens) rest = `${rest.slice(0, start)}${rest.slice(end).replace(/^\s/, "")}`;
+  return rest;
+};
+
+const previewOf = (file: File): string | undefined =>
+  file.type.startsWith("image/") ? URL.createObjectURL(file) : undefined;
+
+const release = (files: Attachment[]): void => {
+  for (const { preview } of files) if (preview) URL.revokeObjectURL(preview);
+};
+
+export const Attachments = { drop, insert, message, of, previewOf, release };

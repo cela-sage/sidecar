@@ -27,6 +27,8 @@ const rows = computed(() => {
   return candidates.filter((row) => row.title.toLowerCase().includes(needle)).slice(0, PICKS_MAX);
 });
 
+const pictures = computed(() => door.attached.filter((one) => one.preview && Attachments.of(text.value, [one]).length));
+
 // The textarea draws no colour of its own, so this copy under it is what shows a mention or a file as one piece.
 const segments = computed(() => {
   const marks = [
@@ -138,6 +140,16 @@ defineExpose({ focus });
 <template>
   <div class="field">
     <DoorMentions v-if="picking" class="picker" :cursor="cursor" :rows="rows" @pick="pick" @point="cursor = $event" />
+    <div v-if="pictures.length" class="pictures">
+      <ComposerPiece
+        v-for="one in pictures"
+        :key="one.path"
+        :icon="Paperclip"
+        :label="one.name"
+        :preview="one.preview"
+        @remove="text = Attachments.drop(text, one)"
+      />
+    </div>
     <div class="area">
       <div ref="mirror" class="mirror" aria-hidden="true">
         <template v-for="(one, at) in segments" :key="at"
@@ -173,6 +185,10 @@ defineExpose({ focus });
 
 .picker {
   @apply absolute right-0 bottom-full left-0 z-3 mb-2;
+}
+
+.pictures {
+  @apply flex flex-wrap gap-1.5 pt-0.5 pb-1;
 }
 
 .area {

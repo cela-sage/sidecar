@@ -1,5 +1,6 @@
 import type { AttachedFile } from "~~/shared/types/files";
 import type { Delivery } from "~/stores/notes";
+import type { Attachment } from "~/utils/attachments";
 
 export interface PromptBlock {
   id: string;
@@ -30,7 +31,7 @@ export interface PromptPick {
 
 interface Draft {
   text: string;
-  files: AttachedFile[];
+  files: Attachment[];
   blocks: PromptBlock[];
 }
 
@@ -104,12 +105,13 @@ export const $prompt = defineStore(() => {
       chrome.toast(failReason(error) ?? `${file.name} did not attach`, "destructive");
       return undefined;
     });
-    if (got) front()?.files.push(got);
+    if (got) front()?.files.push({ ...got, preview: Attachments.previewOf(file) });
   };
 
   const unattach = (id: string): void => {
     const draft = front();
     if (!draft) return;
+    Attachments.release(draft.files.filter((one) => one.path === id));
     draft.blocks = draft.blocks.filter((one) => one.id !== id);
     draft.files = draft.files.filter((one) => one.path !== id);
   };
@@ -124,6 +126,7 @@ export const $prompt = defineStore(() => {
     isSending.value = false;
     if (!reply.delivered) return chrome.toast(FAILED[reply.reason], "destructive");
     sent.value = [...sent.value, { key, text: said, at: Date.now() }];
+    Attachments.release(draft.files);
     drafts.value = { ...drafts.value, [key]: { text: "", files: [], blocks: [] } };
   };
 
