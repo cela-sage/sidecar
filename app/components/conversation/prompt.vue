@@ -1,6 +1,6 @@
 <script lang="ts" setup>
 import { ArrowUp, Paperclip, TextQuote } from "@lucide/vue";
-import type { SessionCommand } from "~~/shared/types/command";
+import type { ComposerPieceItem } from "~/components/composer/input.vue";
 
 const {
   hasHistory = false,
@@ -12,54 +12,28 @@ const {
 
 const prompt = $prompt();
 const dock = $dock();
-const box = useTemplateRef<HTMLTextAreaElement>("box");
+const input = useTemplateRef<{ focus: () => void }>("input");
 const picker = useTemplateRef<HTMLInputElement>("picker");
 
 const canStop = computed(() => isBusy && prompt.isEmpty);
 
-const complete = (row: SessionCommand): void => {
-  prompt.text = `/${row.name} `;
-  box.value?.focus();
-};
-
-const {
-  cursor,
-  onKey: onListing,
-  rows,
-} = useSlashMenu({
-  text: () => prompt.text,
-  commands: () => prompt.commands,
-  complete,
-});
+const pieces = computed<ComposerPieceItem[]>(() => [
+  ...prompt.blocks.map((one) => ({ id: one.id, icon: TextQuote, label: one.label, tip: one.text.slice(0, 400) })),
+  ...prompt.files.map((one) => ({
+    id: one.path,
+    icon: Paperclip,
+    label: one.name,
+    preview: one.preview,
+    tip: one.path,
+  })),
+]);
 
 const uploadAll = (files: File[]): void => {
   for (const file of files) void prompt.upload(file);
 };
 
-const onKey = (event: KeyboardEvent): void => {
-  if (event.isComposing) return;
-  if (onListing(event)) return;
-  if (isPlainEnter(event)) {
-    event.preventDefault();
-    void prompt.send();
-  } else if (event.key === "Escape" && isBusy) {
-    event.preventDefault();
-    void prompt.stop();
-  }
-};
-
-const onPaste = (event: ClipboardEvent): void => {
-  const files = [...(event.clipboardData?.files ?? [])];
-  if (!files.length) return;
-  event.preventDefault();
-  uploadAll(files);
-};
-
-const onDrop = (event: DragEvent): void => {
-  const files = [...(event.dataTransfer?.files ?? [])];
-  if (!files.length) return;
-  event.preventDefault();
-  uploadAll(files);
+const onEscape = (): void => {
+  if (isBusy) void prompt.stop();
 };
 
 const onPicked = (): void => {
@@ -69,49 +43,25 @@ const onPicked = (): void => {
 
 watch(
   () => prompt.focusAsked,
-  () => void nextTick(() => box.value?.focus()),
+  () => void nextTick(() => input.value?.focus()),
 );
 </script>
 
 <template>
   <div class="dock" data-region="conversation-prompt" :data-docked="dock.isOpen && dock.isReady">
-    <div class="box" @dragover.prevent @drop="onDrop">
-      <ConversationCommands
-        v-if="rows.length"
-        class="menu"
-        :cursor="cursor"
-        :rows="rows"
-        @pick="complete"
-        @point="cursor = $event"
-      />
-      <div v-if="prompt.blocks.length || prompt.files.length" class="attached">
-        <ComposerPiece
-          v-for="one in prompt.blocks"
-          :key="one.id"
-          :icon="TextQuote"
-          :label="one.label"
-          :tip="one.text.slice(0, 400)"
-          @remove="prompt.unattach(one.id)"
-        />
-        <ComposerPiece
-          v-for="one in prompt.files"
-          :key="one.path"
-          :icon="Paperclip"
-          :label="one.name"
-          :preview="one.preview"
-          :tip="one.path"
-          @remove="prompt.unattach(one.path)"
-        />
-      </div>
-      <textarea
-        ref="box"
+    <div class="box">
+      <ComposerInput
+        ref="input"
         v-model="prompt.text"
-        :aria-label="`Message ${name}`"
-        class="field"
+        :commands="prompt.commands"
+        is-tall
+        :label="`Message ${name}`"
+        :pieces="pieces"
         :placeholder="`Message ${name}`"
-        rows="1"
-        @keydown="onKey"
-        @paste="onPaste"
+        @escape="onEscape"
+        @files="uploadAll"
+        @remove="prompt.unattach"
+        @send="prompt.send()"
       />
       <div class="bar">
         <UiIconButton
@@ -167,21 +117,8 @@ watch(
   @apply relative flex flex-col gap-1.5 rounded-2xl border border-border-strong bg-raised pt-2.5 pr-2.5 pb-2 pl-3.5 shadow-sm transition-colors duration-(--duration-fast) ease-out;
 }
 
-.menu {
-  @apply absolute right-0 bottom-full left-0 z-3 mb-2;
-}
-
 .box:focus-within {
   @apply border-fg;
-}
-
-.attached {
-  @apply flex flex-wrap gap-1.5;
-}
-
-.field {
-  @apply m-0 max-h-50 min-h-5.5 w-full resize-none border-0 bg-transparent p-0 font-sans typo-body leading-normal text-fg outline-none placeholder:text-subtle;
-  field-sizing: content;
 }
 
 .bar {

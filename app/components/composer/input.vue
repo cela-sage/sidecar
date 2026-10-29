@@ -1,41 +1,81 @@
 <script lang="ts" setup>
 import { Paperclip } from "@lucide/vue";
+import type { Component } from "vue";
 import type { SessionCommand } from "~~/shared/types/command";
+import type { AttachedFile } from "~~/shared/types/files";
+import type { Typed } from "~/utils/mentions";
 import type { OrgConversation } from "~/utils/org";
 
+export interface ComposerPieceItem {
+  id: string;
+  icon: Component;
+  label: string;
+  preview?: string;
+  tip?: string;
+}
+
 const text = defineModel<string>({ required: true });
-const { candidates, commands, placeholder } = defineProps<{
-  candidates: OrgConversation[];
-  commands: SessionCommand[];
+const {
+  attached = [],
+  candidates = [],
+  commands = [],
+  fillOnTab = false,
+  isTall = false,
+  label,
+  opens = "up",
+  pieces = [],
+  placeholder,
+} = defineProps<{
+  attached?: AttachedFile[];
+  candidates?: OrgConversation[];
+  commands?: SessionCommand[];
+  fillOnTab?: boolean;
+  isTall?: boolean;
+  label: string;
+  opens?: "up" | "down";
+  pieces?: ComposerPieceItem[];
   placeholder: string;
 }>();
-const emit = defineEmits<{ escape: []; fill: []; send: [] }>();
+const emit = defineEmits<{ escape: []; files: [files: File[]]; fill: []; remove: [id: string]; send: [] }>();
 
 const PICKS_MAX = 30;
 
 type Segment = { text: string; kind: "text" | "mention" | "file" };
 
-const door = $door();
 const box = useTemplateRef<HTMLTextAreaElement>("box");
 const mirror = useTemplateRef<HTMLElement>("mirror");
 const caret = ref(0);
 const cursor = ref(0);
 const isDismissed = ref(false);
 
-const complete = (row: SessionCommand): void => {
-  const next = `/${row.name} `;
-  text.value = next;
+const track = (): void => {
+  caret.value = box.value?.selectionStart ?? text.value.length;
+};
+
+const focus = (): void => {
+  box.value?.focus();
+  track();
+};
+
+const edit = (change: (from: Typed) => Typed): void => {
+  const next = change({ text: text.value, caret: caret.value });
+  text.value = next.text;
   void nextTick(() => {
     box.value?.focus();
-    box.value?.setSelectionRange(next.length, next.length);
-    caret.value = next.length;
+    box.value?.setSelectionRange(next.caret, next.caret);
+    caret.value = next.caret;
   });
 };
 
+const complete = (row: SessionCommand): void => {
+  const next = `/${row.name} `;
+  edit(() => ({ text: next, caret: next.length }));
+};
+
 const {
-  cursor: slashCursor,
-  onKey: onSlashKey,
-  rows: slashRows,
+  cursor: commandCursor,
+  onKey: onCommandKey,
+  rows: commandRows,
 } = useSlashMenu({
   text: () => text.value,
   commands: () => commands,
@@ -44,21 +84,23 @@ const {
 
 const picking = computed(() => {
   const hit = isDismissed.value ? undefined : Mentions.typing({ text: text.value, caret: caret.value });
-  return hit && !slashRows.value.length && !door.attached.some((one) => one.name === hit.query) ? hit : undefined;
+  return hit && candidates.length && !commandRows.value.length && !attached.some((one) => one.name === hit.query)
+    ? hit
+    : undefined;
 });
-const rows = computed(() => {
+const people = computed(() => {
   if (!picking.value) return [];
   const needle = picking.value.query.toLowerCase();
   return candidates.filter((row) => row.title.toLowerCase().includes(needle)).slice(0, PICKS_MAX);
 });
 
-const pictures = computed(() => door.attached.filter((one) => one.preview && Attachments.of(text.value, [one]).length));
+const pick = (row: OrgConversation): void => edit((from) => Mentions.insert(from, row));
 
 // The textarea draws no colour of its own, so this copy under it is what shows a mention or a file as one piece.
 const segments = computed(() => {
   const marks = [
     ...Mentions.of(text.value).map((one) => ({ ...one, kind: "mention" as const })),
-    ...Attachments.of(text.value, door.attached).map((one) => ({ ...one, kind: "file" as const })),
+    ...Attachments.of(text.value, attached).map((one) => ({ ...one, kind: "file" as const })),
   ].sort((a, b) => a.start - b.start);
   const out: Segment[] = [];
   let at = 0;
@@ -72,66 +114,27 @@ const segments = computed(() => {
   return out;
 });
 
-const track = (): void => {
-  caret.value = box.value?.selectionStart ?? text.value.length;
-};
-
 const scroll = (): void => {
   if (mirror.value && box.value) mirror.value.scrollTop = box.value.scrollTop;
 };
 
-const focus = (): void => {
-  box.value?.focus();
-  track();
-};
-
-const pick = (row: OrgConversation): void => {
-  const next = Mentions.insert({ text: text.value, caret: caret.value }, row);
-  text.value = next.text;
-  void nextTick(() => {
-    box.value?.focus();
-    box.value?.setSelectionRange(next.caret, next.caret);
-    caret.value = next.caret;
-  });
-};
-
-const attachAll = async (files: File[]): Promise<void> => {
-  for (const file of files) {
-    const got = await door.attach(file);
-    if (!got) continue;
-    const next = Attachments.insert({ text: text.value, caret: caret.value }, got.name);
-    text.value = next.text;
-    caret.value = next.caret;
-    await nextTick();
-    box.value?.focus();
-    box.value?.setSelectionRange(next.caret, next.caret);
-  }
-};
-
-const onPaste = (event: ClipboardEvent): void => {
-  const files = [...(event.clipboardData?.files ?? [])];
+const take = (event: ClipboardEvent | DragEvent, list?: FileList): void => {
+  const files = [...(list ?? [])];
   if (!files.length) return;
   event.preventDefault();
-  void attachAll(files);
+  emit("files", files);
 };
 
 const onDragOver = (event: DragEvent): void => {
   if (event.dataTransfer?.types.includes("Files")) event.preventDefault();
 };
 
-const onDrop = (event: DragEvent): void => {
-  const files = [...(event.dataTransfer?.files ?? [])];
-  if (!files.length) return;
-  event.preventDefault();
-  void attachAll(files);
-};
-
 const STEPS: Partial<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 };
 
-const onPicking = (event: KeyboardEvent): boolean => {
+const onPeopleKey = (event: KeyboardEvent): boolean => {
   const step = STEPS[event.key];
-  const row = rows.value[cursor.value];
-  if (step) cursor.value = Math.min(Math.max(cursor.value + step, 0), Math.max(rows.value.length - 1, 0));
+  const row = people.value[cursor.value];
+  if (step) cursor.value = Math.min(Math.max(cursor.value + step, 0), Math.max(people.value.length - 1, 0));
   else if ((event.key === "Enter" || event.key === "Tab") && row) pick(row);
   else if (event.key === "Escape") isDismissed.value = true;
   else return false;
@@ -140,14 +143,15 @@ const onPicking = (event: KeyboardEvent): boolean => {
 };
 
 const onKey = (event: KeyboardEvent): void => {
-  if (onSlashKey(event) || (picking.value && onPicking(event))) return;
+  if (event.isComposing) return;
+  if (onCommandKey(event) || (picking.value && onPeopleKey(event))) return;
   if (event.key === "Escape") {
     event.preventDefault();
     emit("escape");
-  } else if (event.key === "Tab" && !event.shiftKey && !text.value.trim()) {
+  } else if (event.key === "Tab" && fillOnTab && !event.shiftKey && !text.value.trim()) {
     event.preventDefault();
     emit("fill");
-  } else if (event.key === "Enter" && !event.shiftKey && !event.metaKey && !event.ctrlKey && !event.altKey) {
+  } else if (isPlainEnter(event)) {
     event.preventDefault();
     emit("send");
   }
@@ -159,38 +163,41 @@ watch(text, () => {
   void nextTick(track);
 });
 
-defineExpose({ focus });
+defineExpose({ edit, focus });
 </script>
 
 <template>
-  <div class="field">
-    <ConversationCommands
-      v-if="slashRows.length"
-      class="picker"
-      :cursor="slashCursor"
-      :rows="slashRows"
+  <div class="composer" @dragover="onDragOver" @drop="take($event, $event.dataTransfer?.files)">
+    <ComposerCommands
+      v-if="commandRows.length"
+      class="menu"
+      :cursor="commandCursor"
+      :data-opens="opens"
+      :rows="commandRows"
       @pick="complete"
-      @point="slashCursor = $event"
+      @point="commandCursor = $event"
     />
-    <DoorMentions
+    <ComposerMentions
       v-else-if="picking"
-      class="picker"
+      class="menu"
       :cursor="cursor"
-      :rows="rows"
+      :data-opens="opens"
+      :rows="people"
       @pick="pick"
       @point="cursor = $event"
     />
-    <div v-if="pictures.length" class="pictures">
+    <div v-if="pieces.length" class="pieces">
       <ComposerPiece
-        v-for="one in pictures"
-        :key="one.path"
-        :icon="Paperclip"
-        :label="one.name"
+        v-for="one in pieces"
+        :key="one.id"
+        :icon="one.icon"
+        :label="one.label"
         :preview="one.preview"
-        @remove="text = Attachments.drop(text, one)"
+        :tip="one.tip"
+        @remove="emit('remove', one.id)"
       />
     </div>
-    <div class="area">
+    <div class="area" :data-tall="isTall">
       <div ref="mirror" class="mirror" aria-hidden="true">
         <template v-for="(one, at) in segments" :key="at"
           ><mark v-if="one.kind === 'mention'" class="mention">{{ one.text }}</mark
@@ -202,16 +209,14 @@ defineExpose({ focus });
       <textarea
         ref="box"
         v-model="text"
-        aria-label="Ask the assistant"
+        :aria-label="label"
         class="box"
         rows="1"
         :placeholder="placeholder"
         @click="track"
-        @dragover="onDragOver"
-        @drop="onDrop"
         @keydown="onKey"
-        @paste="onPaste"
         @keyup="track"
+        @paste="take($event, $event.clipboardData?.files)"
         @scroll="scroll"
       />
     </div>
@@ -219,16 +224,20 @@ defineExpose({ focus });
 </template>
 
 <style scoped>
-.field {
-  @apply relative min-w-0 flex-1;
+.composer {
+  @apply flex min-w-0 flex-col gap-1.5;
 }
 
-.picker {
+.menu {
   @apply absolute right-0 bottom-full left-0 z-3 mb-2;
 }
 
-.pictures {
-  @apply flex flex-wrap gap-1.5 pt-0.5 pb-1;
+.menu[data-opens="down"] {
+  @apply top-full bottom-auto mt-2 mb-0;
+}
+
+.pieces {
+  @apply flex flex-wrap gap-1.5;
 }
 
 .area {
@@ -237,11 +246,15 @@ defineExpose({ focus });
 
 .mirror,
 .box {
-  @apply m-0 box-border w-full border-0 px-0 py-1.25 font-sans typo-body leading-relaxed break-words whitespace-pre-wrap;
+  @apply m-0 box-border min-h-5.5 w-full border-0 p-0 font-sans typo-body leading-normal break-words whitespace-pre-wrap;
 }
 
 .mirror {
   @apply max-h-28 overflow-hidden text-fg;
+}
+
+.area[data-tall="true"] .mirror {
+  @apply max-h-50;
 }
 
 .box {

@@ -1,9 +1,11 @@
 <script lang="ts" setup>
-import { ArrowRight, ArrowUp, ChevronDown, Plus, Terminal, Trash2, X } from "@lucide/vue";
+import { ArrowRight, ArrowUp, ChevronDown, Paperclip, Plus, Terminal, Trash2, X } from "@lucide/vue";
 import { useResizeObserver } from "@vueuse/core";
 import { Titles } from "~~/shared/utils/titles";
 import type { MascotState } from "~/components/claude/mascot.vue";
+import type { ComposerPieceItem } from "~/components/composer/input.vue";
 import type { DoorContext, DoorTarget } from "~/stores/door";
+import type { Typed } from "~/utils/mentions";
 import type { OrgProject } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
 
@@ -18,7 +20,7 @@ const prompt = $prompt();
 const terminal = $terminal();
 const busy = $busy();
 const questions = $questions();
-const field = useTemplateRef<{ focus: () => void }>("field");
+const field = useTemplateRef<{ edit: (change: (from: Typed) => Typed) => void; focus: () => void }>("field");
 const body = useTemplateRef<HTMLElement>("body");
 const restLayer = useTemplateRef<HTMLElement>("rest");
 const panelLayer = useTemplateRef<HTMLElement>("panel");
@@ -107,6 +109,24 @@ const placeholder = computed(() =>
 
 const attachKey = computed(() => (door.mode === "assistant" ? door.key : undefined));
 const commands = computed(() => prompt.commandsOf(door.key));
+
+const pieces = computed<ComposerPieceItem[]>(() =>
+  door.attached
+    .filter((one) => one.preview && Attachments.of(door.draft, [one]).length)
+    .map((one) => ({ id: one.path, icon: Paperclip, label: one.name, preview: one.preview })),
+);
+
+const unpiece = (path: string): void => {
+  const file = door.attached.find((one) => one.path === path);
+  if (file) door.draft = Attachments.drop(door.draft, file);
+};
+
+const attachAll = async (files: File[]): Promise<void> => {
+  for (const file of files) {
+    const got = await door.attach(file);
+    if (got) field.value?.edit((from) => Attachments.insert(from, got.name));
+  }
+};
 
 const routeOf = (meta: TaskMeta): OrgProject | undefined =>
   tree.value.projects.find((one) => one.project.key === desk.routes[meta.slug]);
@@ -375,14 +395,21 @@ onMounted(() => {
             <span class="context-name">{{ context.title }}</span>
           </button>
           <div class="compose">
-            <DoorField
+            <ComposerInput
               ref="field"
               v-model="door.draft"
+              :attached="door.attached"
               :candidates="candidates"
+              class="entry"
               :commands="commands"
+              fill-on-tab
+              label="Ask the assistant"
+              :pieces="pieces"
               :placeholder="placeholder"
               @escape="close(true)"
+              @files="attachAll"
               @fill="fill()"
+              @remove="unpiece"
               @send="send"
             />
             <button
@@ -659,6 +686,10 @@ onMounted(() => {
 
 .compose {
   @apply flex items-end gap-2;
+}
+
+.entry {
+  @apply relative flex-1 py-1.25;
 }
 
 .send {

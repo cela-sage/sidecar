@@ -10,7 +10,7 @@ const startsGroup = (at: number): boolean => at === 0 || tokenOf(rows[at - 1]) !
 </script>
 
 <template>
-  <div class="mentions" role="listbox" aria-label="Pick who to message" data-region="door-mentions">
+  <div class="mentions" role="listbox" aria-label="Pick who to message" data-region="composer-mentions">
     <p v-if="!rows.length" class="none">Nobody in the tree matches that.</p>
     <template v-for="(row, at) in rows" :key="row.key">
       <span v-if="startsGroup(at)" class="section mono-meta">{{ tokenOf(row) }}</span>

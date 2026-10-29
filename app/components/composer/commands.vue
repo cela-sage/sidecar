@@ -6,7 +6,7 @@ const emit = defineEmits<{ pick: [row: SessionCommand]; point: [at: number] }>()
 </script>
 
 <template>
-  <div class="commands" role="listbox" aria-label="Commands and skills" data-region="conversation-commands">
+  <div class="commands" role="listbox" aria-label="Commands and skills" data-region="composer-commands">
     <button
       v-for="(row, at) in rows"
       :key="row.name"
