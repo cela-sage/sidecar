@@ -5,7 +5,7 @@ import type { PromptSent } from "~/stores/prompt";
 import type { AskedQuestion } from "~/stores/questions";
 
 type Block =
-  | { kind: "said" | "note"; key: string; turn: ConversationTurn }
+  | { kind: "said" | "note" | "summary"; key: string; turn: ConversationTurn }
   | { kind: "you"; key: string; turn: ConversationTurn; text: string; images: string[] }
   | { kind: "pictures"; key: string; paths: string[] }
   | { kind: "ran"; key: string; line?: string; printed: string[] }
@@ -63,7 +63,8 @@ const blocks = computed<Block[]>(() => {
       if (!pasted.length && attached.text) out.push({ kind: "you", key: id, turn, text: attached.text, images: [] });
       const paths = pasted.length ? pasted : attached.paths;
       if (paths.length) out.push({ kind: "pictures", key: `${id}-pictures`, paths });
-    } else if (turn.role === "system") out.push({ kind: "note", key: id, turn });
+    } else if (turn.kind === "summary") out.push({ kind: "summary", key: id, turn });
+    else if (turn.role === "system") out.push({ kind: "note", key: id, turn });
     else out.push({ kind: "said", key: id, turn });
   }
   const claimed = new Set(out.flatMap((block) => (block.kind === "asking" ? [block.ask.ref] : [])));
@@ -123,6 +124,12 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
             <pre v-for="(text, at) in block.printed" :key="at" class="printed">{{ text }}</pre>
           </div>
           <p v-else-if="block.kind === 'note'" class="note mono-meta">{{ block.turn.text }}</p>
+          <ConversationSummary
+            v-else-if="block.kind === 'summary'"
+            :at="block.turn.at"
+            :conversation="key"
+            :label="block.turn.text"
+          />
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
           <QuestionAsk v-else-if="block.kind === 'asking'" :ask="block.ask" />
           <ConversationTools

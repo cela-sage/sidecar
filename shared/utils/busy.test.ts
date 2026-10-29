@@ -21,7 +21,7 @@ test("an interruption ends the turn, since it rarely writes its turn_duration li
     { role: "assistant", kind: "acting", tool: "Read" },
   ]);
   assert.deepEqual(run([{ role: "system", kind: "note", text: "Interrupted" }], working), BusyRules.IDLE);
-  assert.deepEqual(run([{ role: "system", kind: "note", text: "Compacted" }], working), working);
+  assert.deepEqual(run([{ role: "system", kind: "summary", text: "Compacted" }], working), working);
 });
 
 test("a queued prompt and a stray tool result never start a turn", () => {

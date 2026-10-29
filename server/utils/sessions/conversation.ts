@@ -8,7 +8,7 @@ import { readRange, transcriptIndex, type TranscriptGrowth } from "./transcripts
 
 // Narration and answer share the provider's `text` block, told apart only by position.
 export type TurnKind =
-  "thinking" | "narration" | "answer" | "acting" | "note" | "command" | "printed" | "drop" | "done" | "end";
+  "thinking" | "narration" | "answer" | "acting" | "note" | "summary" | "command" | "printed" | "drop" | "done" | "end";
 
 export type ConversationTurn = {
   role: "user" | "assistant" | "system";
@@ -162,8 +162,8 @@ function turnOf(line: string): ConversationTurn[] {
     return ranIn(entry.content, at);
   }
   if (entry.type !== "user" && entry.type !== "assistant") return [];
-  // The 28KB summary body is never worth carrying into a turn; only its presence is.
-  if (entry.isCompactSummary) return [{ role: "system", text: "Compacted", at, kind: "note" }];
+  // The 28KB summary body is never worth carrying into a turn; `at` names the row for `summaryOf` to read on demand.
+  if (entry.isCompactSummary) return [{ role: "system", text: "Compacted", at, kind: "summary" }];
   const message = entry.message;
   if (typeof message !== "object" || !message) return [];
   const content = (message as Record<string, unknown>).content;

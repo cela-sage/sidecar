@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { conversationOf } from "./conversation.ts";
+import { summaryOf } from "./summary.ts";
 
 let root: string;
 let restore: () => void;
@@ -60,7 +61,7 @@ test("a compact summary is a bare note, never the huge body it carries", () => {
     turns.map((turn) => ({ role: turn.role, text: turn.text, kind: turn.kind })),
     [
       { role: "user", text: "before", kind: undefined },
-      { role: "system", text: "Compacted", kind: "note" },
+      { role: "system", text: "Compacted", kind: "summary" },
       { role: "user", text: "after", kind: undefined },
     ],
   );
@@ -366,11 +367,33 @@ test("a compaction typed in the terminal reads in the file's order as its comman
     conversationOf({ key }).turns.map((turn) => ({ kind: turn.kind, text: turn.text })),
     [
       { kind: "command", text: "/compact" },
-      { kind: "note", text: "Compacted" },
+      { kind: "summary", text: "Compacted" },
       { kind: "command", text: "/compact" },
       { kind: "note", text: "Hook(PostCompact)" },
     ],
   );
+});
+
+test("a compaction's summary is read from its row by when it landed, without the reminders around it", async () => {
+  const key = "13131313";
+  const summary = (second: number, content: string): Record<string, unknown> => ({
+    type: "user",
+    cwd: "/tmp/summary",
+    isCompactSummary: true,
+    timestamp: `2026-01-01T09:00:${second}.000Z`,
+    message: { role: "user", content },
+  });
+  writeTranscript(key, "-tmp-summary", [
+    summary(10, "Summary:\n# First\n<system-reminder>\n<tools-used-before-summary>Bash</tools-used-before-summary>\n</system-reminder>"),
+    { type: "user", cwd: "/tmp/summary", timestamp: "2026-01-01T09:00:20.000Z", message: { role: "user", content: "later" } },
+    summary(30, "Summary:\n# Second"),
+  ]);
+
+  const at = (second: number): number => Date.parse(`2026-01-01T09:00:${second}.000Z`);
+  assert.equal(await summaryOf({ key, at: at(10) }), "Summary:\n# First");
+  assert.equal(await summaryOf({ key, at: at(30) }), "Summary:\n# Second");
+  assert.equal(await summaryOf({ key, at: at(20) }), undefined);
+  assert.equal(await summaryOf({ key: "99999999", at: at(10) }), undefined);
 });
 
 test("a message that joins a running turn is a user turn of its own, and its queued copy never hides the delivered row", () => {

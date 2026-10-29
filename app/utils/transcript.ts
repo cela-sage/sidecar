@@ -8,7 +8,7 @@ export interface CommandReceipts<T extends Sequenced> {
   clear: () => void;
 }
 
-const isNote = ({ kind }: Sequenced): boolean => kind === "note";
+const isNote = ({ kind }: Sequenced): boolean => kind === "note" || kind === "summary";
 
 // A compaction emits the same note from two entries seconds apart, so `at` cannot join them.
 export const echoesNote = (turn: Sequenced, previous?: Sequenced): boolean =>
