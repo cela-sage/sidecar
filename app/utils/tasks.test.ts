@@ -221,6 +221,17 @@ test("the org tree puts each role where it works, folds what is done and files y
     }),
     ["follower cela", "sidecar-task-board design cela", "daily triage -", "[Ops] rollout review -", "none"],
   );
+  assert.equal(Org.titles(tree).get("[Cela] TL sidecar-task-board follower"), "fol");
+  assert.equal(Org.titles(tree).get("[meta] EA daily triage"), "ea");
+});
+
+test("a title two conversations share names neither of them", () => {
+  const tree = Org.treeOf({
+    sessions: [session({ key: "one", name: "[Ops] review" }), session({ key: "two", name: "[Ops] review" })],
+    projects: [],
+    tasks: [],
+  });
+  assert.equal(Org.titles(tree).has("[Ops] review"), false);
 });
 
 test("a conversation reads the claude agents state off its lane, and off its status without one", () => {

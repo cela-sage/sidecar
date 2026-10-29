@@ -32,15 +32,19 @@ const COMPONENTS = {
 const { conversation, lineRefsOf, value } = defineProps<{ conversation?: string; lineRefsOf?: string; value: string }>();
 
 const tree = shallowRef<Tree>();
+const org = useOrgTree();
+const titles = computed(() => (conversation ? Org.titles(org.value) : undefined));
+// The tree changes with every status dot, and only a change to this list is worth parsing a reply again.
+const known = computed(() => JSON.stringify([...(titles.value ?? [])]));
 
 if (conversation) provide(proseConversation, conversation);
 
 watch(
-  () => value,
-  async (next) => {
+  [() => value, known],
+  async ([next]) => {
     const parsed = await parse(next);
     if (next !== value) return;
-    const refs = ConversationRefs.withRefs(parsed.nodes);
+    const refs = ConversationRefs.withRefs(parsed.nodes, titles.value);
     const nodes = conversation ? MediaRefs.withMedia(refs) : refs;
     tree.value = { ...parsed, nodes: lineRefsOf ? SideQuestion.withLineRefs(nodes, lineRefsOf) : nodes };
   },

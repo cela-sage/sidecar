@@ -11,11 +11,12 @@ const REF = /(?<![\w@])@(?:([^@()\n]{1,120}?) \(([0-9a-f]{8})\)|([0-9a-f]{8}))(?
 const KEY = /^[0-9a-f]{8}$/;
 const VERBATIM = new Set(["a", "code", "pre", "line-ref", "conversation-ref"]);
 
-// A key in backticks is the rule's own form; the chip keeps the code as its fallback, so an unknown key stays code.
-const keyOf = (node: Node): string | undefined => {
+// The chip keeps the code as its fallback, so a key or title nobody knows stays code.
+const keyOf = (node: Node, titles?: ReadonlyMap<string, string>): string | undefined => {
   if (typeof node === "string") return undefined;
   const [tag, , only, ...rest] = node;
-  return tag === "code" && !rest.length && typeof only === "string" && KEY.test(only) ? only : undefined;
+  if (tag !== "code" || rest.length || typeof only !== "string") return undefined;
+  return KEY.test(only) ? only : titles?.get(only);
 };
 
 const of = (text: string): ConversationRef[] =>
@@ -37,14 +38,14 @@ const split = (text: string): Node[] => {
   return out;
 };
 
-const withRefs = (nodes: Node[]): Node[] =>
+const withRefs = (nodes: Node[], titles?: ReadonlyMap<string, string>): Node[] =>
   nodes.flatMap((node): Node[] => {
     if (typeof node === "string") return split(node);
-    const key = keyOf(node);
+    const key = keyOf(node, titles);
     if (key) return [["conversation-ref", { conversation: key }, node]];
     const [tag, attrs, ...children] = node;
     if (!tag || VERBATIM.has(tag)) return [node];
-    return [[tag, attrs, ...withRefs(children as Node[])]];
+    return [[tag, attrs, ...withRefs(children as Node[], titles)]];
   });
 
 export const ConversationRefs = { of, withRefs };

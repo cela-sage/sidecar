@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import type { Node } from "comark";
 import { ConversationRefs } from "./conversation-refs.ts";
 import { MediaRefs } from "./media-refs.ts";
 
@@ -35,6 +36,15 @@ test("a key alone in backticks becomes the chip around its code, and any other c
       ["code", {}, "git 70ef962c"],
     ],
   ]);
+});
+
+test("a title in backticks becomes the chip of the conversation that has it, and an unknown one stays code", () => {
+  const titles = new Map([["[meta] PL conversation rename", "a6569a05"]]);
+  const known: Node = ["code", {}, "[meta] PL conversation rename"];
+  assert.deepEqual(ConversationRefs.withRefs([["p", {}, known, ["code", {}, "[meta] PL other"]]], titles), [
+    ["p", {}, ["conversation-ref", { conversation: "a6569a05" }, known], ["code", {}, "[meta] PL other"]],
+  ]);
+  assert.deepEqual(ConversationRefs.withRefs([["p", {}, known]]), [["p", {}, known]]);
 });
 
 test("a media path in backticks links in place and renders under its paragraph, once each and in order", () => {

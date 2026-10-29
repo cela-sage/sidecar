@@ -251,4 +251,23 @@ const placeOf = (tree: OrgTree, key: string): OrgPlace | undefined => {
   return row ? { row } : undefined;
 };
 
-export const Org = { placeOf, treeOf };
+const conversationsOf = (tree: OrgTree): OrgConversation[] => [
+  ...tree.assistants,
+  ...tree.unplaced,
+  ...tree.projects.flatMap((group) => [
+    ...group.leads,
+    ...[...group.tasks, ...group.done].flatMap((one) => [...one.leads, ...one.done]),
+    ...group.conversations,
+  ]),
+];
+
+const titles = (tree: OrgTree): Map<string, string> => {
+  const keys = new Map<string, string | undefined>();
+  for (const { key, title } of conversationsOf(tree)) {
+    if (!keys.has(title)) keys.set(title, key);
+    else if (keys.get(title) !== key) keys.set(title, undefined);
+  }
+  return new Map([...keys].flatMap(([title, key]) => (title && key ? [[title, key] as const] : [])));
+};
+
+export const Org = { placeOf, titles, treeOf };
