@@ -34,6 +34,7 @@ export type ConversationTurn = {
   /** Typed at the session's own prompt; a message from the sidecar arrives through the inbox and carries none. */
   via?: "terminal";
   model?: string;
+  mode?: string;
 };
 
 export type ConversationSlice = {
@@ -143,6 +144,11 @@ const viaOf = ({ origin }: Record<string, unknown>): "terminal" | undefined =>
 const modelOf = (message: Record<string, unknown>): string | undefined =>
   typeof message.model === "string" && message.model.startsWith("claude-") ? message.model : undefined;
 
+const modeOf = ({ permissionMode }: Record<string, unknown>): string | undefined =>
+  typeof permissionMode === "string" && permissionMode ? permissionMode : undefined;
+
+const inMode = (mode?: string) => (turn: ConversationTurn): ConversationTurn => (mode ? { ...turn, mode } : turn);
+
 function turnOf(line: string): ConversationTurn[] {
   const entry = record(line);
   if (!entry) return [];
@@ -164,11 +170,13 @@ function turnOf(line: string): ConversationTurn[] {
   // A result-only entry has no text, thinking or tool_use block, so saidOf below would drop it.
   if (entry.type === "user") {
     const result = ToolCalls.resultOf(entry.toolUseResult, content);
-    if (result) return [{ role: "system", text: "", at, kind: "done", ...result }];
+    if (result) return [inMode(modeOf(entry))({ role: "system", text: "", at, kind: "done", ...result })];
   }
   const said = saidOf(content);
   if (!said) return [];
-  if (entry.type === "user") return isContext(entry) ? [] : spoke({ text: said.text, at, via: viaOf(entry) });
+  if (entry.type === "user") {
+    return isContext(entry) ? [] : spoke({ text: said.text, at, via: viaOf(entry) }).map(inMode(modeOf(entry)));
+  }
   const model = modelOf(message as Record<string, unknown>);
   return [
     {

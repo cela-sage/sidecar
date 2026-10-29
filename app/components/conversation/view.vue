@@ -149,7 +149,14 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
         </p>
       </div>
     </div>
-    <ConversationPrompt v-if="key" :has-history="!!blocks.length" :is-busy="isBusy" :model="model" :name="name" />
+    <ConversationPrompt
+      v-if="key"
+      :has-history="!!blocks.length"
+      :is-busy="isBusy"
+      :mode="live.mode.value"
+      :model="model"
+      :name="name"
+    />
   </section>
 </template>
 

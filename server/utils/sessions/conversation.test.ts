@@ -161,6 +161,36 @@ test("a question carries its options, so the chat can offer them instead of an o
   ]);
 });
 
+test("the permission mode a person's side wrote rides on its turns, so the chat can show the session's mode", () => {
+  const key = "dddddddd";
+  writeTranscript(key, "-tmp-mode", [
+    {
+      type: "user",
+      permissionMode: "acceptEdits",
+      timestamp: "2026-01-01T09:00:00.000Z",
+      message: { role: "user", content: "go" },
+    },
+    {
+      type: "user",
+      permissionMode: "plan",
+      timestamp: "2026-01-01T09:00:02.000Z",
+      toolUseResult: { stdout: "ok" },
+      message: { role: "user", content: [{ type: "tool_result", tool_use_id: "toolu_1", content: "ok" }] },
+    },
+    {
+      type: "assistant",
+      timestamp: "2026-01-01T09:00:03.000Z",
+      message: { role: "assistant", content: [{ type: "text", text: "done" }] },
+    },
+  ]);
+
+  const { turns } = conversationOf({ key });
+  assert.deepEqual(
+    turns.map((turn) => turn.mode),
+    ["acceptEdits", "plan", undefined],
+  );
+});
+
 test("a tool that is not a question carries no ask", () => {
   const key = "dddddddd";
   writeTranscript(key, "-tmp-delta5", [

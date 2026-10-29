@@ -5,9 +5,10 @@ import type { SessionCommand } from "~~/shared/types/command";
 const {
   hasHistory = false,
   isBusy,
+  mode,
   model,
   name,
-} = defineProps<{ hasHistory?: boolean; isBusy: boolean; model?: string; name: string }>();
+} = defineProps<{ hasHistory?: boolean; isBusy: boolean; mode?: string; model?: string; name: string }>();
 
 const prompt = $prompt();
 const dock = $dock();
@@ -141,6 +142,7 @@ watch(
         />
         <input ref="picker" class="picker" multiple type="file" @change="onPicked" />
         <ConversationModel :current="model" :has-history="hasHistory" />
+        <ConversationMode :current="mode" />
         <span class="spacer" />
         <button
           v-if="canStop"

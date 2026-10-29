@@ -39,6 +39,7 @@ const Turn = z.object({
   failed: z.literal(true).optional().catch(undefined),
   via: z.literal("terminal").optional().catch(undefined),
   model: z.string().min(1).optional().catch(undefined),
+  mode: z.string().min(1).optional().catch(undefined),
 });
 
 export type TurnKind = z.infer<typeof Kind>;
@@ -59,6 +60,7 @@ export interface Conversation {
   stream: ShallowRef<ConversationTurn[]>;
   results: ShallowRef<Map<string, ConversationTurn>>;
   model: Maybe<string>;
+  mode: Maybe<string>;
 }
 
 interface ConversationSnapshot {
@@ -91,6 +93,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
   };
   const results = shallowRef(new Map<string, ConversationTurn>());
   const model = ref<string>();
+  const mode = ref<string>();
   const doing = ref<ConversationTurn>();
   const awaiting = ref(false);
   const wrote = ref(false);
@@ -184,6 +187,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
   }
 
   function append(turn: ConversationTurn): void {
+    if (turn.mode) mode.value = turn.mode;
     // A withdrawn or delivered queue entry: drop the pending copy rather than leaving it standing.
     if (turn.kind === "drop") {
       turns = turns.filter((row) => !row.queued || (!!turn.text && row.text !== turn.text));
@@ -269,6 +273,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     received.clear();
     results.value = new Map();
     model.value = undefined;
+    mode.value = undefined;
     candidate = undefined;
     doing.value = undefined;
     awaiting.value = false;
@@ -315,5 +320,5 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     });
   });
 
-  return { isBusy, mascot, model, results, step, stream };
+  return { isBusy, mascot, mode, model, results, step, stream };
 }
