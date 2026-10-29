@@ -305,6 +305,18 @@ sends it and attaches the session, where the dialog waits. The picker shows the 
 which names the model the session really runs. The prompt keeps
 clear of the door unless the terminal dock is open under it, and each conversation keeps its own draft.
 
+A message that opens with `/` and a name is a command, and the session runs it as the terminal would, a skill
+included: `/compact`, `/effort status`, `/mode:ic new nav`. It goes through `POST /api/sessions/:key/command` as
+`{ name, args }`, and a slash later in the text, or a path such as `/Users/me/notes`, stays a message. Typing the
+slash lists the commands and skills the session has, from `GET /api/sessions/:key/commands`, which asks the
+session itself for them: ↑ and ↓ move, Tab or Enter completes the name, and esc closes the list. A command
+that draws a screen only the terminal can show, such as `/config`, `/status`, `/usage` and `/stats`, is not sent:
+the chat says to run it in your terminal and offers Attach. `/config`, `/model`, `/mcp` and a few more draw their
+screen only without arguments. The chat draws a command as Claude Code does, `❯ /compact` with what the command
+printed under it, and a name the session does not have prints the reason under it. A command sent mid-turn waits
+for the turn to end, and a conversation started before 0.48.0 has to be restarted before it runs one, since its
+mod hands the command to Claude as words.
+
 ### Following the terminal
 
 `sidecar terminal`, started once in the terminal you use for Claude Code, owns a pty there that opens on agent
@@ -632,11 +644,15 @@ What the sidecar sends a session, notes and Review's buttons alike, opens on a `
 Claude Code frames a peer message, with the "Another Claude session sent a message:" line above it and the
 "This came from another Claude session" paragraph below, only when it stores the row, after
 `session.receive` has run. So the mod's `session.receive` drops the marker and its `session.append` takes
-the frame off the row, and the conversation shows only what you wrote. A Review action, the chat's Stop and its
-model are the whole body under the marker, run by `session.receive` and never shown; a note that only quotes one
-is left alone. Stop aborts the main loop's running turn, whose id the mod holds from `turn.start`, and a model
-runs `/model` with it once the session is idle. That turn id and the delivered bodies waiting for their rows live in
-the session state, so a reload of the mod keeps them:
+the frame off the row, and the conversation shows only what you wrote. A Review action, the chat's Stop, its
+model and its commands are the whole body under the marker, run by `session.receive` and never shown; a note
+that only quotes one is left alone. Stop aborts the main loop's running turn, whose id the mod holds from
+`turn.start`, and a model runs `/model` with it once the session is idle. A command runs `$.command.run` with
+its name and arguments, so the session writes the rows the terminal would, and one the session refuses is written
+as a command row with the engine's reason under it. `commands` has the mod post the session's `$.command.list()`
+to `POST /api/sessions/:key/commands`, with the screen each command draws and its aliases, which the engine
+lists under one name. That turn id and the delivered bodies waiting for their rows live in the session state,
+so a reload of the mod keeps them:
 
 ```
 [[sidecar]]
@@ -645,6 +661,8 @@ the session state, so a reload of the mod keeps them:
 {"do":"undo"|"redo"}
 {"do":"stop"}
 {"do":"model","model":"claude-sonnet-5-5"}
+{"do":"command","name":"compact","args":"keep the plan"}
+{"do":"commands"}
 ```
 
 ## Develop

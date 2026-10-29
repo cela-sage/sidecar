@@ -7,6 +7,28 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.48.0
+
+### Added
+
+- **A slash command typed in the chat runs in the session as in the terminal,** a skill too, through
+  `POST /api/sessions/:key/command` and the mod's new `command` action. A path, or a slash later in the text, is
+  still a message.
+- **Typing `/` lists the commands and skills the session has,** which `GET /api/sessions/:key/commands` asks the
+  session for through the new `commands` action. ↑ and ↓ move, Tab or Enter completes the name, esc closes it.
+- **A command that draws a screen only the terminal can show is not sent.** `/config`, `/status`, `/usage` and the
+  like get one line saying to run it in your terminal, and an Attach. `/config`, `/model`, `/mcp` and a few more
+  are refused only without arguments.
+
+### Changed
+
+- **The chat draws a command as Claude Code does,** `❯ /compact` with what the command printed under it, in place
+  of the `Command(compact)` and `Command output` labels. A command the session refuses prints the reason.
+- **A command's caveat and a skill's expansion no longer draw,** where the expansion showed as a message from you.
+  This also holds for commands typed in the terminal and for skills Claude loads.
+- **A conversation started before this version has to be restarted to run a command from the chat,** because its mod
+  hands the action to Claude as words.
+
 ## 0.47.0
 
 ### Added
