@@ -112,7 +112,8 @@ onScopeDispose(leave);
 
 <style scoped>
 .chip {
-  @apply relative -top-px inline-flex h-5.5 max-w-full items-center gap-0.75 rounded-full border border-border bg-raised py-0 pr-0.75 pl-1.5 align-middle leading-none transition-colors duration-(--duration-fast) ease-out;
+  @apply relative -top-px inline-flex h-5.5 items-center gap-0.75 rounded-full border border-border bg-raised py-0 pr-0.75 pl-1.5 align-middle leading-none transition-colors duration-(--duration-fast) ease-out;
+  max-width: min(100%, --spacing(68));
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -134,7 +135,7 @@ onScopeDispose(leave);
 }
 
 .name {
-  @apply max-w-55 min-w-0 truncate typo-caption font-semibold;
+  @apply max-w-40 min-w-0 truncate typo-caption font-semibold;
 }
 
 .attach {
