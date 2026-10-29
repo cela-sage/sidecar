@@ -7,6 +7,31 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.61.0
+
+### Added
+
+- **`@` points at conversations in a conversation's prompt and in a Task Lead's message field too,** where only the
+  door had it. In a project the list holds that project's conversations alone, so in Moneyfarm it holds Moneyfarm's,
+  and a conversation outside every project, like an assistant, sees everyone, as the door does.
+- **A Task Lead's message field suggests commands and skills,** and a command typed there runs as a command in that
+  conversation, where the field was a plain input that sent every line as a message.
+
+### Changed
+
+- **The prompt, the door's field and the Task Lead's message field are one component,** `ComposerInput`, so the
+  field, both menus, pasted and dropped files, and Enter and esc behave the same in each. A mention in the prompt
+  now draws as a mark, as it does in the door, and a drop lands on the field and its files, no longer on the bar.
+- **`GET /api/sessions/:key/commands` asks only a conversation that has given a list for a fresh one,** where it asked
+  every key. A mod from before 0.48.0 hands the ask to Claude as words, so it landed in that conversation as a message.
+  A conversation with no list reads its neighbours' list until it gives its own, and one on a 0.48.0 to 0.56.x mod
+  gives its first list only after it restarts.
+
+### Fixed
+
+- **The `/` menu shows in a conversation's prompt,** where it opened with every row and stayed invisible: it shared a
+  class with the hidden file input, and that class hid it.
+
 ## 0.60.1
 
 ### Fixed

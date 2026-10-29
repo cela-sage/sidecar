@@ -149,7 +149,9 @@ life, its four parts, and the conversations on it: a conversation is the task's 
 the state `claude agents` gives it and the subagents running inside it. A comment on the document goes to the
 conversation the stamp's `lead` names, else the first Task Lead on it. The selected Task Lead row, that one
 unless you click another, has a message field that sends what you write through `/api/sessions/:key/message`,
-and anything the sidecar sends a Task Lead that way lands in the task's history as your message.
+and anything the sidecar sends a Task Lead that way lands in the task's history as your message. The field is the
+chat's composer, so `/` lists the Task Lead's commands, which run as commands and not as a message, and `@` points
+at the project's other conversations.
 
 Edit, or E, puts the markdown in an editor beside the page it renders, and saves as you type unless the file
 changed on disk since you opened it. A pasted image is saved to `~/.claude/sidecar/uploads/<slug>/` and linked
@@ -351,12 +353,16 @@ clear of the door unless the terminal dock is open under it, and each conversati
 A message that opens with `/` and a name is a command, and the session runs it as the terminal would, a skill
 included: `/compact`, `/effort status`, `/mode:ic new nav`. It goes through `POST /api/sessions/:key/command` as
 `{ name, args }`, and a slash later in the text, or a path such as `/Users/me/notes`, stays a message. Typing the
-slash lists the commands and skills the session has, on the keystroke, in the chat's prompt and in the door's field
-alike (the door lists the conversation it routes to, and sends a picked command there): ↑ and ↓ move, Tab or Enter
+slash lists the commands and skills the session has, on the keystroke, in the chat's prompt, the door's field and a
+Task Lead's message field alike, since all three are one component, `app/components/composer/input.vue` (the door
+lists the conversation it routes to, and sends a picked command there). An `@` in any of them lists conversations
+too, the project's own in a conversation's prompt and a Task Lead's field, so in Moneyfarm only Moneyfarm's, and
+everyone in the tree in the door: ↑ and ↓ move, Tab or Enter
 completes the name, and esc closes the list. A row reads as Claude Code's does, the name and its line, then where it
 comes from, `user` for yours, the plugin's name, or `mcp`, and nothing for a builtin. The list is loaded when the
 conversation opens and again when it changes, from `GET /api/sessions/:key/commands`, which answers at once with the
-last list the session gave and asks the session in the background for a fresh one. The server keeps that last list
+last list the session gave and asks a session that has given one for a fresh list in the background, since a mod from
+before 0.48.0 would hand the ask to Claude as words. The server keeps that last list
 per conversation in `~/.claude/sidecar/commands/<key>.json`, the mod posts it at `session.start` when a person is at the
 prompt, which a `--bg` conversation has and a `-p` run does not, so one is there before anyone types and a `-p` run's
 narrower list never stands in for a conversation, and a conversation that never answered, one older than 0.48.0 or asleep, gets the newest list from a
