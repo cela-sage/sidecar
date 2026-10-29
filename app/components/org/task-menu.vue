@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Pencil, Terminal, Trash2 } from "@lucide/vue";
+import { Check, Pencil, Terminal, Trash2 } from "@lucide/vue";
 import type { TaskMeta } from "~/utils/tasks";
 
 interface Target {
@@ -34,6 +34,12 @@ defineExpose({ openFor });
         :icon="Terminal"
         @click="act(close, (one) => one.lead && terminal.attach(one.lead))"
         >Attach</UiMenuItem
+      >
+      <UiMenuItem
+        :disabled="!target?.meta.task.project || target.meta.task.state === 'done'"
+        :icon="Check"
+        @click="act(close, (one) => desk.markDone(one.meta))"
+        >Mark done</UiMenuItem
       >
       <UiMenuItem :icon="Pencil" @click="act(close, (one) => (desk.renaming = one.meta.slug))">Rename</UiMenuItem>
       <UiMenuItem :icon="Trash2" tone="destructive" @click="act(close, (one) => desk.remove(one.meta))"

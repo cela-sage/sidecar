@@ -70,7 +70,7 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
     @open="task.show({ slug: one.meta.slug })"
   >
     <span v-if="isHot" class="drop mono-meta">as its Task Lead</span>
-    <template v-if="one.meta.task.state === 'done'" #after>
+    <template v-if="one.status === 'done'" #after>
       <UiIconButton
         :icon="X"
         aria-label="Remove from the list"

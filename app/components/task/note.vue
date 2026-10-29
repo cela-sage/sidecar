@@ -18,7 +18,7 @@ const day = (at: string): string => {
 };
 
 const note = computed<Note | undefined>(() => {
-  const { done, resumed, waiting } = story;
+  const { done, finished, resumed, waiting } = story;
   if (waiting)
     return {
       look: "waiting",
@@ -31,11 +31,20 @@ const note = computed<Note | undefined>(() => {
       title: `${resumed.on ?? "They"} came back at ${day(resumed.at)}`,
       text: `The Task Lead picked the task back up on its own after ${resumed.waited}.`,
     };
+  if (finished)
+    return {
+      look: "needs",
+      title: `Finished at ${day(finished.at)}`,
+      text: "The Task Lead finished its work, and only your mark puts the task in Done. Check it, then press Done in the strip.",
+    };
   if (done)
     return {
       look: "done",
       title: `Done at ${day(done.at)}`,
-      text: "The Task Lead reported to the Project Lead and went away. Its conversation stays in claude agents.",
+      text:
+        done.who === "YOU"
+          ? "You checked it and marked it Done."
+          : "A Task Lead marked it done, before Done became your mark.",
     };
   return undefined;
 });

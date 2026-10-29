@@ -29,7 +29,9 @@ const isFolded = ref(true);
 const asking = computed(() => task.asks.filter((thread) => thread.status !== "resolved"));
 const isBlocked = computed(() => asking.value.some((thread) => thread.ask?.kind === "escalation"));
 const isShut = computed(() => isBlocked.value && isFolded.value && !!task.parts.length);
-const story = computed(() => Timeline.story(task.entries, meta.task.state));
+const tree = useOrgTree();
+const status = computed(() => Org.statusOf(tree.value, meta.slug) ?? meta.task.state);
+const story = computed(() => Timeline.story(task.entries, status.value));
 const settled = computed(() => {
   if (!story.value.settledBy) return undefined;
   const decided = task.asks.filter((thread) => thread.ask?.kind === "escalation" && !!thread.ask.decision);
@@ -159,7 +161,7 @@ onBeforeUnmount(() => (task.isEditing = false));
             <div class="head">
               <span class="eyebrow mono-meta">{{ eyebrow }}</span>
               <h1 class="title">{{ title }}</h1>
-              <TaskStrip :meta="meta" :story="story" />
+              <TaskStrip :meta="meta" :status="status" :story="story" />
             </div>
             <TaskEscalation
               v-for="thread in asking"

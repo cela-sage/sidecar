@@ -147,6 +147,13 @@ export const $desk = defineStore(() => {
     );
   };
 
+  const markDone = async (meta: TaskMeta): Promise<void> => {
+    await task.move(meta.slug, "done").then(
+      () => chrome.toast(`${titleOf(meta)} is Done`),
+      (error: unknown) => chrome.toast(failReason(error) ?? `Could not mark ${titleOf(meta)} Done`, "destructive"),
+    );
+  };
+
   const remove = async (meta: TaskMeta): Promise<void> => {
     const at = `/api/tasks/${encodeURIComponent(meta.slug)}`;
     const gone = await $fetch<TaskRemoved>(at, { method: "DELETE" }).catch((error: unknown) => {
@@ -205,6 +212,7 @@ export const $desk = defineStore(() => {
     isNaming,
     lead,
     load,
+    markDone,
     move,
     place,
     remove,

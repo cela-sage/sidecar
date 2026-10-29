@@ -4,7 +4,7 @@ import type { TaskState } from "~~/shared/types/task";
 import type { TaskLook, TaskMeta, TaskStep } from "~/utils/tasks";
 import type { TaskStory } from "~/utils/timeline";
 
-const { meta, story = {} } = defineProps<{ meta: TaskMeta; story?: TaskStory }>();
+const { meta, status, story = {} } = defineProps<{ meta: TaskMeta; status: TaskState; story?: TaskStory }>();
 
 const LIVE = new Set<string>(["running", "waiting", "needs", "done"]);
 
@@ -12,7 +12,7 @@ const task = $task();
 const chrome = useChrome();
 const moving = ref<TaskState>();
 
-const steps = computed(() => Tasks.stepsOf(meta.task.state, story));
+const steps = computed(() => Tasks.stepsOf(status, story));
 const isLive = (kind: string): kind is TaskLook => LIVE.has(kind);
 const canMove = (step: TaskStep): step is TaskStep & { state: TaskState } =>
   !!step.state && step.state !== meta.task.state && step.state !== "unassigned" && !!meta.task.project;
