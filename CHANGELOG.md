@@ -7,6 +7,20 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.53.1
+
+### Fixed
+
+- **A message you send while Claude works stays in the chat after a reload.** It used to come back as a queued copy
+  that the turn then withdrew, and so did one typed as a turn ended, whose delivered row the reader dropped as an echo
+  of the queued copy.
+- **A relay from another session that reaches a running turn shows in the chat,** the way your own messages do.
+
+### Changed
+
+- **A turn from `GET /api/sessions/:key/conversation` can carry `joined`,** for a message delivered into a running
+  turn, which a reader should not treat as the start of a new one.
+
 ## 0.53.0
 
 ### Added

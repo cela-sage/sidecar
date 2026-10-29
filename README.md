@@ -265,10 +265,13 @@ Conversation is the session as a chat, read from `/api/sessions/:key/conversatio
 two inputs: the prompt at its foot and your terminal. A message typed in the prompt goes through
 `/api/sessions/:key/message`, the inbox the door uses, shows at once and gives way to its own copy when the
 transcript holds it, and one typed in the terminal says so under it with the time, told apart by the origin
-Claude Code stores on the row. A message that joins a turn already running gets no row of its own, only a
-`queued_command` attachment the turns skip, so the mod tells the sidecar the moment it takes the message
-(`POST /api/sessions/:key/landed`, published as `message.landed`) and the chat draws it in the stream from then on,
-with its picture cards and chips, instead of captioning it queued. A pending AskUserQuestion draws in the stream
+Claude Code stores on the row. A message that joins a turn already running, yours or a relay from another session,
+gets no user row, only a `queued_command` attachment stamped with when it arrived, which the server reads as a user
+turn marked `joined` that leaves the running turn open, so it stays in the chat after a reload. Claude Code writes
+it only when the turn next reads its inbox, so the mod also tells the sidecar the moment it takes the message
+(`POST /api/sessions/:key/landed`, published as `message.landed`) and the chat draws it from then on, with its
+picture cards and chips, instead of captioning it queued, and the transcript's row keeps that place. A queued copy
+never hides the row that delivers it. A pending AskUserQuestion draws in the stream
 where its tool row sits, as the door draws it, with its header, options and picks, and a click answers it through
 the same `POST /api/questions/:ref/answer`. The card pairs with its row by the call's tool id and the row folds as
 any other call once the question settles. Each run of tool calls is one list of folded rows, a call paired to its result by
