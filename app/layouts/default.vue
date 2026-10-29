@@ -1,11 +1,14 @@
 <script lang="ts" setup>
-import { useResizeObserver } from "@vueuse/core";
+import { useLocalStorage, useResizeObserver } from "@vueuse/core";
 
 const sc = useSidecar();
 const chrome = useChrome();
 const route = useRoute();
 const artifact = $artifact();
+const task = $task();
 
+const TREE_W = 340;
+const tree = useLocalStorage("sc:tree", TREE_W);
 const dockEl = useTemplateRef<HTMLElement>("dockEl");
 const boardEl = useTemplateRef<HTMLElement>("boardEl");
 const dockHeight = ref(0);
@@ -48,35 +51,53 @@ useResizeObserver(boardEl, ([entry]) => {
 <template>
   <!-- Unset until measured, so the first frame takes the CSS fallback rather than
        reserving nothing and shifting the reading surface once the observer reports. -->
-  <div class="shell" :data-full="artifact.isFull" :data-shell="onShell" :style="dockHeight ? { '--dock-h': `${dockHeight}px` } : undefined">
-    <!-- Covered rather than unmounted, so Listening keeps its stream and opens what is in front once the server is back. -->
-    <div class="page" :inert="isDown">
-      <slot />
+  <div
+    class="shell"
+    :data-full="artifact.isFull"
+    :data-shell="onShell"
+    :style="dockHeight ? { '--dock-h': `${dockHeight}px` } : undefined"
+  >
+    <div class="workspace" :style="{ '--side-w': `${tree}px` }">
+      <UiSurface
+        class="side"
+        aria-label="Every task and conversation"
+        as="aside"
+        data-region="workspace-tree"
+        :data-listed="artifact.isFull && artifact.isListed"
+        :inert="isDown"
+        pad="none"
+        variant="raised"
+      >
+        <OrgHeader />
+        <OrgTree />
+      </UiSurface>
+
+      <PaneResizer v-model="tree" :initial="TREE_W" label="Resize the tree" :max="480" />
+
+      <div class="column">
+        <!-- Covered rather than unmounted, so Listening keeps its stream and opens what is in front once the server is back. -->
+        <div v-show="!task.slug" class="page" :inert="isDown">
+          <slot />
+        </div>
+        <TaskFront v-if="task.slug" :inert="isDown" />
+
+        <!-- One row, so the notes take whatever width the board leaves rather than
+             the two hugging opposite corners and colliding in the middle. -->
+        <div class="foot" data-region="dock-row">
+          <div ref="boardEl" class="foot-board" data-region="board-corner">
+            <slot name="board" />
+          </div>
+
+          <div ref="dockEl" class="foot-dock" data-region="dock-corner">
+            <slot name="dock" />
+          </div>
+
+          <ChromeAskDoor v-if="!isDown" />
+        </div>
+      </div>
     </div>
 
     <ListeningScreen v-if="isDown" class="down" state="reconnecting" />
-
-    <!-- One row, and every cell is a flex sibling in it. Two independently anchored
-         layers on the same edge is what let the title run under the switcher. -->
-    <div class="row" data-region="island-row">
-      <slot v-if="!isDown" name="lead" />
-      <span class="spacer" />
-      <ChromeTopRight />
-    </div>
-
-    <!-- One row, so the composer takes whatever width the board leaves rather than
-         the two hugging opposite corners and colliding in the middle. -->
-    <div class="foot" data-region="dock-row">
-      <div ref="boardEl" class="foot-board" data-region="board-corner">
-        <slot name="board" />
-      </div>
-
-      <div ref="dockEl" class="foot-dock" data-region="dock-corner">
-        <slot name="dock" />
-      </div>
-
-      <ChromeAskDoor v-if="!isDown" />
-    </div>
 
     <div class="notices" data-region="notices">
       <ChromeFollowOffer />
@@ -85,27 +106,31 @@ useResizeObserver(boardEl, ([entry]) => {
 </template>
 
 <style scoped>
-/* Bounded and centred, so on a wide display the islands hug the content column
-   instead of flying out to the viewport corners. */
 .shell {
   @apply relative mx-auto my-0 h-screen max-w-(--shell-max-w) overflow-hidden bg-canvas;
 }
 
-.row {
-  @apply pointer-events-none absolute top-(--gutter) right-(--gutter) left-(--gutter) z-30 flex items-center gap-2 transition-[opacity,visibility] duration-(--duration-fast) ease-out;
+.workspace {
+  @apply grid h-full min-h-0 grid-cols-pane gap-x-2 p-(--gutter);
 }
 
-.shell[data-shell="true"] .row {
-  @apply fixed;
+.side {
+  @apply flex min-h-0 flex-col overflow-hidden;
 }
 
-/* On the desktop shell the row is the title bar: it drags the window, and a double click does what System Settings says. */
-.shell[data-shell="true"]:not([data-full="true"]) .row {
-  app-region: drag;
+/* Over a grown sheet the tree takes the Artifacts list's place, so another task opens without leaving fullscreen. */
+.side[data-listed="true"] {
+  @apply fixed top-14 bottom-2 left-2 z-28 w-85;
 }
 
-.shell[data-shell="true"] .row > :deep(:not(.spacer)) {
-  app-region: no-drag;
+/* The notes and the door float over the panes, so a pane's last row pads by --float-clear to stay clickable above them. */
+.column {
+  @apply relative min-h-0 min-w-0;
+  --float-clear: calc(max(var(--dock-h, 0px), var(--island-row-h)) + var(--gutter));
+}
+
+.page {
+  @apply absolute inset-0;
 }
 
 .foot {
@@ -124,6 +149,10 @@ useResizeObserver(boardEl, ([entry]) => {
   @apply hidden;
 }
 
+.foot-board > :deep(*) {
+  @apply pointer-events-auto;
+}
+
 /* The toaster's level, the top of the scale, so a card asking to switch shows over a grown sheet, the veil and any popover. */
 .notices {
   @apply pointer-events-none absolute bottom-(--gutter) left-(--gutter) z-50;
@@ -133,34 +162,16 @@ useResizeObserver(boardEl, ([entry]) => {
   @apply pointer-events-auto;
 }
 
-.row > :deep(*),
-.foot-board > :deep(*) {
-  @apply pointer-events-auto;
-}
-
 /* A grown sheet brings its own islands, and the notes wait in the dock until it shrinks back. */
-.shell[data-full="true"] .row,
 .shell[data-full="true"] .foot {
   @apply invisible opacity-0 duration-(--duration-press);
 }
 
-/* Outranks the rule above on its own, rather than on source order: the row spans
-   the full width, so a spacer that took clicks would deaden a strip of the canvas. */
-.row > .spacer {
-  @apply pointer-events-none flex-1;
-}
-
-.page {
-  @apply contents;
-}
-
-/* Over the page and the dock, under the island row so the theme toggle stays. */
 .down {
   @apply z-25 bg-canvas;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .row,
   .foot {
     @apply transition-none;
   }

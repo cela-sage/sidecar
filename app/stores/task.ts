@@ -10,15 +10,12 @@ export type TaskFace = "document" | "history";
 export type Answer = { option: number } | { text: string };
 
 export interface ShowOptions {
-  slug?: string;
+  slug: string;
   edit?: boolean;
-  replace?: boolean;
 }
 
 export const $task = defineStore(() => {
   const sc = useSidecar();
-  const chrome = useChrome();
-  const route = useRoute();
   const projects = ref<Project[]>([]);
   const isEditing = ref(false);
   const tuneAsks = ref(0);
@@ -99,16 +96,9 @@ export const $task = defineStore(() => {
     return wanted;
   };
 
-  const show = ({ slug: next, edit = false, replace = false }: ShowOptions = {}): void => {
-    if (next) {
-      if (edit) editsNext.value = next;
-      void open(next);
-    }
-    chrome.view.set("tasks");
-    const onFaces = route.path.startsWith("/c/") && !route.params.slug;
-    if (onFaces) return;
-    const key = sc.sessionKey.value;
-    void navigateTo(key ? `/c/${key}` : "/", { replace });
+  const show = ({ slug: next, edit = false }: ShowOptions): void => {
+    if (edit) editsNext.value = next;
+    void open(next);
   };
 
   const decide = async (thread: string, answer: Answer): Promise<TaskDecided> => {

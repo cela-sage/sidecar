@@ -5,7 +5,7 @@ import type { FrameHit, ViewBox } from "~/types/frame";
 import type { SideAnchor } from "~/utils/ask-claude";
 import type { ArtifactReviewReply } from "~~/shared/types/artifact";
 
-export const FACES = ["artifacts", "review", "files", "history", "tasks"] as const;
+export const FACES = ["conversation", "artifacts", "review", "files", "history"] as const;
 export type Face = (typeof FACES)[number];
 
 export type ToastTone = "destructive" | "neutral" | "success" | "warning";
@@ -130,7 +130,6 @@ export interface Chrome {
     set: (measure: { dock: number; board: number }) => void;
   };
   islands: { shelved: Ref<boolean> };
-  jump: { close: () => void; open: Ref<boolean>; toggle: () => void };
   notify: (notice: Notice) => number;
   toast: (text: string, tone?: ToastTone) => void;
   toasts: Ref<Toast[]>;
@@ -222,8 +221,7 @@ export function useChrome(): Chrome {
   const sides = $sideQuestion();
 
   const faces = useState<Face[]>("sc:faces", () => []);
-  const picked = useState<Face>("sc:view", () => "artifacts");
-  const jumpOpen = useState<boolean>("sc:jump", () => false);
+  const picked = useState<Face>("sc:view", () => "conversation");
   const armed = useState<boolean>("sc:cmt-armed", () => false);
   const holding = useState<boolean>("sc:cmt-hold", () => false);
   // Distinct from `holding`: that says the arm belongs to a hold, this says the key is down right now.
@@ -245,7 +243,7 @@ export function useChrome(): Chrome {
   // Clamping here rather than on the click is what makes an unbuilt view unreachable:
   // a stored pick whose domain never landed can never be the current face.
   const current = computed<Face>(() =>
-    faces.value.includes(picked.value) ? picked.value : (faces.value[0] ?? "artifacts"),
+    faces.value.includes(picked.value) ? picked.value : (faces.value[0] ?? "conversation"),
   );
 
   // Every face is a pane layout now, so it shelves; this re-asserts it after an artifact page unshelved them.
@@ -381,10 +379,6 @@ export function useChrome(): Chrome {
       disarm();
       return true;
     }
-    if (jumpOpen.value) {
-      jumpOpen.value = false;
-      return true;
-    }
     return false;
   }
 
@@ -461,15 +455,6 @@ export function useChrome(): Chrome {
     dismiss,
     frame: { insets, set },
     islands: { shelved },
-    jump: {
-      close: () => {
-        jumpOpen.value = false;
-      },
-      open: jumpOpen,
-      toggle: () => {
-        jumpOpen.value = !jumpOpen.value;
-      },
-    },
     notify,
     toast,
     toasts,

@@ -142,7 +142,7 @@ const escalated = async (run: Run, kind: "escalation" | "hire"): Promise<number>
   const where =
     raised === "page"
       ? "the open sidecar notified Marco"
-      : `notified Marco on the Mac, whose click opens Script Editor rather than /tasks/${file.slug}`;
+      : `notified Marco on the Mac, whose click opens Script Editor rather than ${file.slug} in the sidecar`;
   console.log(
     [
       `#${String(thread.n)} is on ${file.slug}, ${file.task.state}, and ${where}.`,

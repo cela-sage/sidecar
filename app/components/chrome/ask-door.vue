@@ -10,7 +10,6 @@ import type { TaskMeta } from "~/utils/tasks";
 type Tone = "live" | "waits" | "quiet";
 
 const sc = useSidecar();
-const chrome = useChrome();
 const route = useRoute();
 const task = $task();
 const desk = $desk();
@@ -37,11 +36,7 @@ const front = computed(() =>
   onConversation.value ? sc.sessions.value.find((one) => one.key === sc.sessionKey.value) : undefined,
 );
 const tasks = computed(() => Tasks.of(sc.catalogue.value));
-const openTask = computed(() =>
-  onConversation.value && chrome.view.current.value === "tasks"
-    ? tasks.value.find((one) => one.slug === task.slug)
-    : undefined,
-);
+const openTask = computed(() => tasks.value.find((one) => one.slug === task.slug));
 
 const context = computed<DoorContext | undefined>(() => {
   if (openTask.value) {

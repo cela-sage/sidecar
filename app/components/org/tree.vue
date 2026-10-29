@@ -1,16 +1,17 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
-import { ChevronDown, ChevronRight, Plus } from "@lucide/vue";
+import { ChevronDown, ChevronRight } from "@lucide/vue";
+import { useIntervalFn } from "@vueuse/core";
 import type { Mark, OrgConversation, OrgProject, OrgTask } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
 
+const READ_MS = 5000;
+
 const sc = useSidecar();
-const chrome = useChrome();
 const task = $task();
 const desk = $desk();
-const artifact = $artifact();
+const events = useEvents();
 const conversationMenu = $conversationMenu();
-const shown = useFaceShown();
 const folds = useOrgFolds();
 const hot = ref<string>();
 const hotTask = ref<string>();
@@ -32,11 +33,10 @@ const isOpen = (group: OrgProject): boolean =>
 
 const slugOf = (one: OrgTask): string => one.meta.slug;
 
-const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value;
+const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.sessionKey.value;
 
 const openConversation = (row: OrgConversation): void => {
-  chrome.view.set("tasks");
-  if (row.slug) void task.open(row.slug);
+  task.close();
   if (row.key === sc.sessionKey.value) return;
   sc.sessionKey.value = row.key;
   void navigateTo(`/c/${row.key}`, { replace: true });
@@ -117,152 +117,109 @@ useShortcuts(
     },
     "Mod+Z": () => desk.undoLast(),
   },
-  { when: () => shown.value && !task.isEditing && !sc.failure.value },
+  { when: () => !task.isEditing && !sc.failure.value },
+);
+
+const heard = ({ data }: { data: { slug: string } }): void => {
+  void desk.load();
+  void task.readTasks();
+  if (data.slug === task.slug) void task.refresh();
+};
+
+void task.loadProjects();
+void task.readTasks();
+events.on("task.changed", heard);
+events.on("task.escalated", heard);
+events.on("task.decided", heard);
+
+// A stamp changes with no event when Mode's own CLI writes it, so the tree reads the catalogue again.
+useIntervalFn(() => void task.readTasks(), READ_MS);
+// Routing a backlog task asks a model, so the desk is read when the backlog changes rather than on the poll.
+watch(
+  () => tree.value.inbox.map((one) => one.slug).join(" "),
+  () => void desk.load(),
+  { immediate: true },
 );
 </script>
 
 <template>
-  <UiSurface
-    class="tree"
-    data-region="org-tree"
-    :data-listed="artifact.isFull && artifact.isListed"
-    pad="none"
-    variant="raised"
-  >
-    <header class="bar">
-      <span class="title">Tasks</span>
-      <span class="meta mono-meta">{{ tree.open }} open · {{ plural(tree.conversations, "conversation") }}</span>
-      <span class="spacer" />
-      <UiButton
-        data-region="org-new-task"
-        data-tip="New task · {N}"
-        :icon="Plus"
-        size="xs"
-        variant="ghost"
-        @click="desk.isNaming = true"
-        >New task</UiButton
+  <nav class="tree" data-region="org-tree" role="tree" aria-label="Who is where">
+    <OrgBacklog :inbox="tree.inbox" :projects="tree.projects" @menu="(event, meta) => menu?.openFor(event, meta)" />
+
+    <div
+      v-for="group in tree.projects"
+      :key="group.project.key"
+      class="group"
+      :data-hot="hot === group.project.key"
+      @dragleave="hot = undefined"
+      @dragover="over($event, group)"
+      @drop="drop($event, group)"
+    >
+      <button
+        class="project plain-button focusable"
+        type="button"
+        :aria-expanded="isOpen(group)"
+        @click="folds.toggle(group.project.key, isOpen(group))"
       >
-    </header>
+        <UiIcon class="chevron" :icon="isOpen(group) ? ChevronDown : ChevronRight" size="xs" />
+        <OrgAvatar :project="group.project" :tint="group.tint" />
+        <span class="project-name">{{ group.project.name }}</span>
+        <span v-if="hot === group.project.key" class="drop mono-meta">{{
+          carried ? `as [${group.project.token}]` : "to its Project Lead"
+        }}</span>
+        <OrgMark v-if="group.mark" :mark="group.mark" />
+      </button>
 
-    <nav class="scroll" role="tree" aria-label="Who is where">
-      <OrgBacklog :inbox="tree.inbox" :projects="tree.projects" @menu="(event, meta) => menu?.openFor(event, meta)" />
-
-      <span class="section mono-meta" data-gap="true">Assistant</span>
-      <OrgRow
-        v-for="row in tree.assistants"
-        :key="row.key"
-        :attach="row.key"
-        :is-front="front(row)"
-        :mark="row.mark"
-        :name="row.name"
-        role="EA"
-        :tip="row.title"
-        @contextmenu.prevent="menuFor($event, row)"
-        @open="openConversation(row)"
-      />
-      <p v-if="!tree.assistants.length" class="none">No assistant is running. Ask, bottom right, starts one.</p>
-
-      <div
-        v-for="group in tree.projects"
-        :key="group.project.key"
-        class="group"
-        :data-hot="hot === group.project.key"
-        @dragleave="hot = undefined"
-        @dragover="over($event, group)"
-        @drop="drop($event, group)"
-      >
-        <button
-          class="project plain-button focusable"
-          type="button"
-          :aria-expanded="isOpen(group)"
-          @click="folds.toggle(group.project.key, isOpen(group))"
-        >
-          <UiIcon class="chevron" :icon="isOpen(group) ? ChevronDown : ChevronRight" size="xs" />
-          <OrgAvatar :project="group.project" :tint="group.tint" />
-          <span class="project-name">{{ group.project.name }}</span>
-          <span v-if="hot === group.project.key" class="drop mono-meta">{{
-            carried ? `as [${group.project.token}]` : "to its Project Lead"
-          }}</span>
-          <OrgMark v-if="group.mark" :mark="group.mark" />
-        </button>
-
-        <template v-if="isOpen(group)">
-          <OrgRow
-            v-for="row in group.leads"
-            :key="row.key"
-            :attach="row.key"
-            :depth="1"
-            :is-front="front(row)"
-            :mark="row.mark"
-            :name="row.name"
-            :role="row.role"
-            :tip="row.title"
-            @contextmenu.prevent="menuFor($event, row)"
-            @open="openConversation(row)"
-          />
-
-          <template
-            v-for="line in folds.linesOf({
-              open: group.tasks,
-              done: group.done,
-              fold: `tasks:${group.project.key}`,
-              depth: 1,
-              keyOf: slugOf,
-            })"
-            :key="line.key"
-          >
-            <OrgFold
-              v-if="'fold' in line"
-              :depth="line.depth"
-              :fold="line.key"
-              :label="plural(line.fold, 'done task')"
-            />
-            <OrgTaskRow
-              v-else
-              :depth="line.depth"
-              :is-hot="hotTask === line.item.meta.slug"
-              :one="line.item"
-              @drop="dropOnTask($event, line.item)"
-              @leave="hotTask = undefined"
-              @menu="(event, lead) => menu?.openFor(event, line.item.meta, lead)"
-              @open="openConversation"
-              @over="overTask($event, line.item)"
-            />
-          </template>
-
-          <OrgRow
-            v-for="row in group.conversations"
-            :key="row.key"
-            class="carry"
-            :attach="row.key"
-            :data-ghost="desk.carrying === row.key"
-            :depth="1"
-            draggable="true"
-            :is-front="front(row)"
-            :mark="row.mark"
-            :name="row.name"
-            :tip="row.title"
-            @contextmenu.prevent="menuFor($event, row)"
-            @dragend="letGo"
-            @dragstart="carry($event, row)"
-            @open="openConversation(row)"
-          />
-        </template>
-      </div>
-
-      <template v-if="tree.unplaced.length">
-        <span class="section mono-meta" data-gap="true">No project</span>
+      <template v-if="isOpen(group)">
         <OrgRow
-          v-for="row in tree.unplaced"
+          v-for="row in group.leads"
           :key="row.key"
-          class="carry"
           :attach="row.key"
-          :data-ghost="desk.carrying === row.key"
-          draggable="true"
+          :depth="1"
           :is-front="front(row)"
           :mark="row.mark"
           :name="row.name"
           :role="row.role"
+          :tip="row.title"
+          @contextmenu.prevent="menuFor($event, row)"
+          @open="openConversation(row)"
+        />
+
+        <template
+          v-for="line in folds.linesOf({
+            open: group.tasks,
+            done: group.done,
+            fold: `tasks:${group.project.key}`,
+            depth: 1,
+            keyOf: slugOf,
+          })"
+          :key="line.key"
+        >
+          <OrgFold v-if="'fold' in line" :depth="line.depth" :fold="line.key" :label="plural(line.fold, 'done task')" />
+          <OrgTaskRow
+            v-else
+            :depth="line.depth"
+            :is-hot="hotTask === line.item.meta.slug"
+            :one="line.item"
+            @drop="dropOnTask($event, line.item)"
+            @leave="hotTask = undefined"
+            @menu="(event, lead) => menu?.openFor(event, line.item.meta, lead)"
+            @open="openConversation"
+            @over="overTask($event, line.item)"
+          />
+        </template>
+
+        <OrgRow
+          v-for="row in group.conversations"
+          :key="row.key"
+          class="carry"
+          :attach="row.key"
+          :data-ghost="desk.carrying === row.key"
+          :depth="1"
+          draggable="true"
+          :is-front="front(row)"
+          :mark="row.mark"
+          :name="row.name"
           :tip="row.title"
           @contextmenu.prevent="menuFor($event, row)"
           @dragend="letGo"
@@ -270,42 +227,38 @@ useShortcuts(
           @open="openConversation(row)"
         />
       </template>
-    </nav>
-    <OrgTaskMenu ref="menu" />
-  </UiSurface>
+    </div>
+
+    <template v-if="tree.unplaced.length">
+      <span class="section mono-meta" data-gap="true">No project</span>
+      <OrgRow
+        v-for="row in tree.unplaced"
+        :key="row.key"
+        class="carry"
+        :attach="row.key"
+        :data-ghost="desk.carrying === row.key"
+        draggable="true"
+        :is-front="front(row)"
+        :mark="row.mark"
+        :name="row.name"
+        :role="row.role"
+        :tip="row.title"
+        @contextmenu.prevent="menuFor($event, row)"
+        @dragend="letGo"
+        @dragstart="carry($event, row)"
+        @open="openConversation(row)"
+      />
+    </template>
+  </nav>
+  <OrgTaskMenu ref="menu" />
 </template>
 
 <style scoped>
 .tree {
-  @apply flex min-h-0 flex-col overflow-hidden;
+  @apply flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2 pt-1.5 pb-2;
 }
 
-/* The Artifacts list's place over a grown sheet, so another task opens without leaving fullscreen. */
-.tree[data-listed="true"] {
-  @apply fixed top-14 bottom-2 left-2 z-28 w-85;
-}
-
-.bar {
-  @apply flex flex-none items-center gap-2 border-b border-b-border py-1.75 pr-2 pl-3.5;
-}
-
-.title {
-  @apply typo-body-strong font-bold;
-}
-
-.meta {
-  @apply min-w-0 truncate text-muted normal-case;
-}
-
-.spacer {
-  @apply flex-1;
-}
-
-.scroll {
-  @apply flex min-h-0 flex-1 flex-col gap-px overflow-y-auto px-2 pt-1.5 pb-(--float-clear);
-}
-
-.scroll > * {
+.tree > * {
   @apply flex-none;
 }
 
@@ -315,10 +268,6 @@ useShortcuts(
 
 .section[data-gap="true"] {
   @apply mt-2;
-}
-
-.none {
-  @apply m-0 px-1.5 py-1 typo-caption text-pretty text-muted;
 }
 
 .carry[data-ghost="true"] {

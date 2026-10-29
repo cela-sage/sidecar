@@ -4,7 +4,8 @@ import type { Component } from "vue";
 const { face, view } = defineProps<{ face: Face; view: Component }>();
 
 const chrome = useChrome();
-const shown = computed(() => chrome.view.current.value === face);
+const task = $task();
+const shown = computed(() => !task.slug && chrome.view.current.value === face);
 provide(FACE_SHOWN, shown);
 </script>
 

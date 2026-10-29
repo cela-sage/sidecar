@@ -1,4 +1,6 @@
 <script lang="ts" setup>
+import { X } from "@lucide/vue";
+
 const route = useRoute();
 const sc = useSidecar();
 const chrome = useChrome();
@@ -14,14 +16,15 @@ loadSidecar();
 watchEffect(() => {
   chrome.islands.shelved.value = false;
 });
+
+// Replaced on close so Back never walks through it.
+const close = (): void => {
+  void navigateTo(`/c/${key.value}`, { replace: true });
+};
 </script>
 
 <template>
   <NuxtLayout>
-    <template #lead>
-      <ArtifactHead :title="title" />
-    </template>
-
     <template #dock>
       <ComposerNotes />
     </template>
@@ -34,6 +37,13 @@ watchEffect(() => {
         </template>
       </ArtifactReader>
     </main>
+
+    <div class="row" data-region="island-row">
+      <ArtifactHead :title="title" />
+      <span class="spacer" />
+      <ChromeCommentToggle shape="island" />
+      <ChromeAction data-region="artifact-close" :icon="X" shape="island" tip="Close the page" @click="close" />
+    </div>
   </NuxtLayout>
 </template>
 
@@ -50,5 +60,17 @@ watchEffect(() => {
 
 .back {
   @apply mt-3.5;
+}
+
+.row {
+  @apply pointer-events-none absolute top-(--gutter) right-(--gutter) left-(--gutter) z-30 flex items-center gap-2;
+}
+
+.row > * {
+  @apply pointer-events-auto;
+}
+
+.row > .spacer {
+  @apply pointer-events-none flex-1;
 }
 </style>

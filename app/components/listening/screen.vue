@@ -1,14 +1,12 @@
 <script lang="ts" setup>
-import { AppWindow, ArrowRight, Keyboard, Terminal } from "@lucide/vue";
+import { AppWindow, ArrowRight, Keyboard, ListTree, Terminal } from "@lucide/vue";
 import type { ListeningState } from "~/components/listening/tag.vue";
 
 const { state = "listening" } = defineProps<{ state?: ListeningState }>();
 
 const sc = useSidecar();
-const chrome = useChrome();
 
 const last = computed(() => sc.sessions.value.find((session) => session.key === sc.sessionKey.value));
-const hasOthers = computed(() => sc.sessions.value.some((one) => !one.archived && one.key !== last.value?.key));
 const lastLabel = computed(() => {
   const ago = last.value && ageOf(last.value);
   return ago ? `Last conversation · ${ago}` : "Last conversation";
@@ -68,32 +66,11 @@ function resume(key: string): void {
             <span class="way-icon"><UiIcon :icon="AppWindow" size="xs" /></span>
             <span>Bring a conversation to the front in Terminal</span>
           </div>
+          <div class="way">
+            <span class="way-icon"><UiIcon :icon="ListTree" size="xs" /></span>
+            <span>Pick one in the tree on the left</span>
+          </div>
         </div>
-
-        <template v-if="last">
-          <button
-            v-if="hasOthers"
-            class="pick-link plain-button focusable"
-            data-region="listening-pick"
-            type="button"
-            @click="chrome.jump.toggle()"
-          >
-            Pick another conversation
-          </button>
-          <span
-            v-else
-            aria-disabled="true"
-            class="pick-link focusable"
-            data-region="listening-pick"
-            data-tip="No other conversations yet. Start one in Claude Code and it shows up here."
-            data-tip-align="start"
-            data-tip-side="top"
-            role="button"
-            tabindex="0"
-          >
-            Pick another conversation
-          </span>
-        </template>
       </template>
     </div>
   </main>
@@ -159,17 +136,5 @@ code {
 
 .way-icon {
   @apply grid size-7 flex-none place-items-center rounded-full bg-sunken text-muted;
-}
-
-.pick-link {
-  @apply self-start rounded-sm border-0 bg-transparent p-0 typo-body-strong text-primary-deep no-underline;
-}
-
-.pick-link:hover {
-  @apply text-primary underline;
-}
-
-.pick-link[aria-disabled="true"] {
-  @apply cursor-not-allowed text-subtle no-underline;
 }
 </style>

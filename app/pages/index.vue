@@ -5,6 +5,14 @@ $follow().listen({ isEager: true });
 
 <template>
   <NuxtLayout>
-    <ListeningScreen />
+    <UiSurface class="main" pad="none" variant="raised">
+      <ListeningScreen />
+    </UiSurface>
   </NuxtLayout>
 </template>
+
+<style scoped>
+.main {
+  @apply absolute inset-0 overflow-hidden;
+}
+</style>

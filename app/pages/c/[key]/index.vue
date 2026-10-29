@@ -12,7 +12,7 @@ const task = $task();
 
 // Read off disk at build: an unbuilt face is unreachable, with no list kept by hand.
 const parts = import.meta.glob<Component>(
-  "../../../components/{artifacts/view,files/view,history/view,review/view,tasks/view}.vue",
+  "../../../components/{artifacts/view,conversation/view,files/view,history/view,review/view}.vue",
   { import: "default" },
 );
 
@@ -22,11 +22,11 @@ function part(path: string): Component | undefined {
 }
 
 const built: Record<Face, Component | undefined> = {
+  conversation: part("conversation/view"),
   artifacts: part("artifacts/view"),
   files: part("files/view"),
   history: part("history/view"),
   review: part("review/view"),
-  tasks: part("tasks/view"),
 };
 
 chrome.view.faces.value = FACES.filter((face) => built[face]);
@@ -42,7 +42,6 @@ if (typeof route.query.task === "string") task.show({ slug: route.query.task });
 
 const key = computed(() => String(route.params.key ?? ""));
 const session = computed(() => sc.sessions.value.find((s) => s.key === key.value));
-const title = computed(() => (session.value ? nameOf(session.value) : key.value));
 const face = computed(() => built[chrome.view.current.value]);
 const gone = computed(() => sc.ready.value && !session.value);
 
@@ -65,10 +64,6 @@ follow.listen();
 
 <template>
   <NuxtLayout>
-    <template #lead>
-      <ChromeHead :cwd="session?.cwd" :title="title" />
-    </template>
-
     <!-- Claude Code is the chat, so the dock carries only the notes waiting to go to it. -->
     <template #dock>
       <ComposerNotes v-if="!gone" />
@@ -82,22 +77,47 @@ follow.listen();
       <UiButton to="/" variant="link">Listen for the next one</UiButton>
     </UiSurface>
 
-    <main v-else class="stage" data-region="conversation-stage" :data-face="chrome.view.current.value">
-      <template v-for="one in opened" :key="one">
-        <FaceHost v-if="built[one]" :face="one" :view="built[one]" />
+    <UiSurface
+      v-else
+      as="main"
+      class="main"
+      :aria-label="session ? nameOf(session) : key"
+      data-region="conversation-main"
+      pad="none"
+      variant="raised"
+    >
+      <template v-if="session">
+        <ConversationHeader :session="session" />
+        <ConversationFaces :session="session" />
       </template>
-      <p v-if="!face" class="empty">No view has been built for this conversation yet.</p>
-    </main>
+      <div class="stage" data-region="conversation-stage" :data-face="chrome.view.current.value">
+        <template v-for="one in opened" :key="one">
+          <FaceHost v-if="built[one]" :face="one" :view="built[one]" />
+        </template>
+        <p v-if="!face" class="empty">No view has been built for this conversation yet.</p>
+      </div>
+    </UiSurface>
   </NuxtLayout>
 </template>
 
 <style scoped>
-/* Every face owns its own scrolling panes, so the stage clips instead of scrolling them.
-   The board and the notes float over the panes, so the faces run to the bottom gutter
-   and a pane's last row pads by --float-clear to stay clickable above them. */
+.main {
+  @apply absolute inset-0 flex flex-col overflow-hidden;
+}
+
+/* Every face owns its own scrolling panes, so the stage clips instead of scrolling them. */
 .stage {
-  @apply absolute inset-0 overflow-hidden px-(--gutter) pt-(--stage-top) pb-(--gutter);
-  --float-clear: calc(max(var(--dock-h, 0px), var(--island-row-h)) + var(--gutter));
+  @apply relative min-h-0 flex-1 overflow-hidden;
+}
+
+/* Inside the main panel a face's panes are its columns, split by the resizer, rather than cards of their own. */
+.stage :deep(.face > section > [data-surface="raised"]:not([data-listed="true"])),
+.stage :deep(.face > section > .slot > [data-surface="raised"]:not([data-expanded="true"])) {
+  @apply rounded-none border-0 bg-transparent shadow-none;
+}
+
+.stage :deep(.face > section > [data-surface="raised"]:first-child:not([data-listed="true"])) {
+  @apply border-r border-r-border;
 }
 
 .empty {

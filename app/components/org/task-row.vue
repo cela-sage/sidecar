@@ -37,7 +37,7 @@ const leadTip = computed(() => {
   return lead ? `Attach its lead, ${lead.title}, in your terminal` : "Attach in your terminal";
 });
 
-const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value;
+const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.sessionKey.value;
 </script>
 
 <template>
@@ -60,7 +60,7 @@ const front = (row: OrgConversation): boolean => row.key === sc.sessionKey.value
     :data-hot="isHot"
     :depth="depth"
     is-task
-    :is-selected="one.meta.slug === task.slug"
+    :is-front="one.meta.slug === task.slug"
     :mark="one.mark"
     :name="one.meta.title || deslug(one.meta.slug)"
     @contextmenu.prevent="emit('menu', $event, one.lead)"

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { BellRing, LocateFixed, Pin } from "@lucide/vue";
+import { BellRing, ChevronDown, LocateFixed, Pin, Terminal } from "@lucide/vue";
 import type { Component } from "vue";
 import { FOLLOW_MODES, type FollowMode } from "~/stores/follow";
 
@@ -27,7 +27,19 @@ function pick(mode: FollowMode, close: () => void): void {
 <template>
   <UiPopover :estimated-height="230" placement="bottom" width="w-76">
     <template #trigger="{ open }">
-      <ChromeAction data-region="follow-mode" :icon="now.icon" :is-pressed="open" shape="island" :tip="now.label" />
+      <button
+        class="trigger plain-button focusable"
+        aria-haspopup="menu"
+        data-region="follow-mode"
+        data-tip="What the sidecar does when your terminal moves to another conversation"
+        type="button"
+        :aria-expanded="open"
+      >
+        <UiIcon :icon="Terminal" size="xs" />
+        <span class="name">Follow terminal</span>
+        <span class="mode mono-meta">{{ now.label }}</span>
+        <UiIcon class="chevron" :icon="ChevronDown" size="xs" />
+      </button>
     </template>
 
     <template #default="{ close }">
@@ -51,6 +63,32 @@ function pick(mode: FollowMode, close: () => void): void {
 </template>
 
 <style scoped>
+.trigger {
+  @apply inline-flex h-7.5 min-w-0 items-center gap-1.75 rounded-full border-0 bg-transparent px-2 text-fg transition-colors duration-(--duration-fast) ease-out;
+}
+
+.trigger[aria-expanded="true"] {
+  @apply bg-sunken;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .trigger:hover {
+    @apply bg-sunken;
+  }
+}
+
+.name {
+  @apply typo-caption font-bold whitespace-nowrap;
+}
+
+.mode {
+  @apply truncate text-muted normal-case;
+}
+
+.chevron {
+  @apply flex-none text-muted;
+}
+
 .menu {
   @apply flex flex-col gap-0.5 p-1.5;
 }
