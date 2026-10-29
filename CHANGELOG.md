@@ -7,6 +7,14 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.54.1
+
+### Changed
+
+- **Picking Plan in the permission mode picker runs `/plan` in the conversation,** the one mode change Claude Code
+  lets a running conversation take from the chat. The other modes still say to press ⇧⇥ in the terminal and offer
+  Attach.
+
 ## 0.54.0
 
 ### Added

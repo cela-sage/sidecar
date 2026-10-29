@@ -325,10 +325,11 @@ confirm the switch in a dialog only its terminal shows, so the pick warns first,
 sends it and attaches the session, where the dialog waits. The picker shows the pick until the next turn lands,
 which names the model the session really runs. The permission mode picker beside it shows the session's mode,
 Default, Accept edits, Plan, Auto or Bypass permissions, read from the newest row the person's side wrote in the
-transcript, so a change made in the terminal shows from the next prompt or tool result. Claude Code has no way to
-change a running conversation's mode from outside its terminal (a `set_permission_mode` control request sent to the
-session's socket is ignored), so a pick says so and offers Attach, where ⇧⇥ cycles it; Bypass permissions adds that
-Claude Code offers it only to a session started with it. The prompt keeps
+transcript, so a change made in the terminal shows from the next prompt or tool result. Picking Plan runs `/plan` in
+the session through `POST /api/sessions/:key/command`, the one switch Claude Code gives a running conversation. It
+has no way to change to any other mode from outside its terminal (a `set_permission_mode` control request sent to
+the session's socket is ignored), so those picks say so and offer Attach, where ⇧⇥ cycles it; Bypass permissions adds
+that Claude Code offers it only to a session started with it. The prompt keeps
 clear of the door unless the terminal dock is open under it, and each conversation keeps its own draft.
 
 A message that opens with `/` and a name is a command, and the session runs it as the terminal would, a skill
