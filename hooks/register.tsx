@@ -29,16 +29,19 @@ let door: Door | undefined
 let pointed = 0
 let rule: string | undefined
 
-const tellCommands = async ($: EngineInterface, api: string): Promise<void> => {
-  const [list, id] = await Promise.all([$.command.list(), $.session.id()])
+const tell = async ($: EngineInterface, api: string, path: string, body: unknown): Promise<void> => {
+  const id = await $.session.id()
   void $.http
-    .fetch(`${api}/api/sessions/${id.slice(0, 8)}/commands`, {
+    .fetch(`${api}/api/sessions/${id.slice(0, 8)}/${path}`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(Commands.describe(list)),
+      body: JSON.stringify(body),
     })
     .catch(() => undefined)
 }
+
+const tellCommands = async ($: EngineInterface, api: string): Promise<void> =>
+  tell($, api, 'commands', Commands.describe(await $.command.list()))
 
 export const register: Register = (on, options) => {
   const url = String(options.url ?? 'http://sidecar.localhost:4747').replace(/\/$/, '')
