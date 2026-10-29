@@ -7,6 +7,26 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.40.0
+
+### Added
+
+- **The workspace.** The tree is the left sidebar on every screen, with Follow terminal, New task and the theme
+  toggle as its header, and the main panel beside it holds the conversation in front under a header of its own:
+  the project's image, the role, the title, the session key that a click copies, the run widget drawn but not yet
+  wired, and the terminal toggle, off until the terminal dock lands.
+- **The Conversation face,** first of five in one row before Artifacts, Review, Files and History: the turn stream
+  read only, what you typed, what Claude said, each run of tool calls as rows, notes, and the step it is on.
+- **A task picked in the tree opens in the main panel** in place of the conversation, on any screen, and esc or
+  picking a conversation brings the conversation back.
+
+### Removed
+
+- **The Tasks face, the jump palette and the top-right island.** The assistant's conversations leave the tree for
+  the door, and the switching mode moves into Follow terminal.
+- **The `/desk` and `/tasks/<slug>` routes and `?face=tasks`,** with no redirect into a face: an old link lands
+  on Listening, and `?task=<slug>` on a conversation opens that task.
+
 ## 0.39.2
 
 ### Fixed

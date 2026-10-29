@@ -140,9 +140,9 @@ screen, with the toast a new page gets, and one said while the sidecar was stopp
 
 A task is a `.md` in the artifacts folder whose stamp holds a state, which the Mode plugin writes with
 `artifact stamp <slug> --project cela --state running`. The state is one of unassigned, assigned, assessed,
-running, blocked, waiting and done, and a task is unassigned exactly while its project is empty. A task opens
-on the Tasks face, and the sheet shows where the task is in its life, its four parts, and the conversations
-on it: a conversation is the task's when its title has a role token and the task's slug, as
+running, blocked, waiting and done, and a task is unassigned exactly while its project is empty. A task picked
+in the tree opens in the main panel in place of the conversation, and the sheet shows where the task is in its
+life, its four parts, and the conversations on it: a conversation is the task's when its title has a role token and the task's slug, as
 `[Cela] TL sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
 the state `claude agents` gives it and the subagents running inside it. A comment on the document goes to the
 conversation the stamp's `lead` names, else the first Task Lead on it. The selected Task Lead row, that one
@@ -157,18 +157,26 @@ the proposal is written into the file between `<del data-sc-edit>` and `<ins dat
 highlighted until Keep or Discard, so a reload or the read view still offers it. Outside edit mode ⌘K stays
 Comment, and holding C comments in either.
 
-### The Tasks face
+### The workspace
 
-Tasks is the fifth face of the conversation screen, switched in place like Artifacts, Review, Files and History,
-so Back never leaves the conversation. Those four sit in one island at the top right and Tasks in its own beside
-them, with the count of open tasks and a red mark while a task or a hire waits on you. From a screen with no
-faces, such as Listening, it opens the Tasks face of the conversation in front. `?face=tasks&task=<slug>` opens a
-task the way `?face=review` picks Review, and the old `/desk` and `/tasks/<slug>` links redirect there.
+Every screen is the tree on the left and the main panel on the right, with the assistant's door at the bottom
+right. The tree's header is Follow terminal, the switching mode below, then New task and the theme toggle, and
+the tree resizes from its edge, remembered as `sc:tree`. The main panel holds the conversation in front: its
+header names it with the project's image, the role, the title without its role token, the full title in the tip,
+and the session key, which a click copies, then the run widget, drawn but not wired yet, and the terminal toggle,
+off until the terminal dock lands. Under it the faces sit in one row, Conversation first, then Artifacts, Review,
+Files and History, switched in place so Back never leaves the conversation, with a count beside Artifacts and,
+once Review has read it, Review. Conversation is the turn stream read from `/api/sessions/:key/conversation` and
+its live stream: what you typed, what Claude said, each run of tool calls as one list of rows, notes such as a
+compaction, and the step it is on while a turn is open. `?face=review` picks a face and `?task=<slug>` opens a
+task, and there is no jump palette and no `/desk` or `/tasks/<slug>` route any more, so an old link lands on
+Listening.
 
-The rail is the org tree, built from the conversations agent view lists, which the server reads with
+The tree is built from the conversations agent view lists, which the server reads with
 `claude agents --json --all`, since without `--all` the CLI returns only the running ones, parsed by their titles. The backlog of tasks on no project heads
-it, then the assistant's conversations, titled with EA, then each project with its Project Lead and Design Lead
-conversations and its tasks, each task with its Task Leads and, under each one, the specialists it hired. A Task
+it, then each project with its Project Lead and Design Lead conversations and its tasks, each task with its Task
+Leads and, under each one, the specialists it hired. The assistant's conversations, titled with EA, live in the
+door rather than the tree. A Task
 Lead whose process ended folds under the task as done. A task in Done folds under its project, and it leaves the
 list when you remove it with its ✕ or a day after it went Done, kept in `~/.claude/sidecar/tasks-hidden.json`
 with its file and history untouched, and it comes back when it moves out of Done. A project starts folded
@@ -183,12 +191,11 @@ else, a check once it is idle. A conversation works only while the turn bus says
 `conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
 task in progress spins only while one of its Task Leads works. What a fold of done tasks or done Task Leads holds sits one level under it.
 Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead while the lead's own row is
-folded away, the conversation in front has an ink bar, and clicking a conversation brings it in front on the
-Tasks face with its task open. The tree resizes from its edge like every other face's pane, sharing its width.
+folded away, and the row in front has an ink bar. Clicking a conversation brings it in front, and clicking a
+task opens it in the main panel in place of the conversation, on any screen, until you pick a conversation again.
 
-With no task open the centre stays on the conversation in front, its page from Artifacts, and a task opens the
-sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in its bar, and esc
-closing it. The document renders like any `.md` in Artifacts, under the task's title and its strip, Backlog,
+The task opens as its sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in
+its bar, and esc closes it back to the conversation. The document renders like any `.md` in Artifacts, under the task's title and its strip, Backlog,
 Assigned, Assessed, In progress and Done, where clicking a step moves the task there through the same lane once
 it is on a project, and an escalation that settles puts a blocked task back in progress. The conversations on
 the task sit in a rail on the right that the toggle hides, remembered as `sc:task-rail`.
@@ -217,7 +224,7 @@ remain but their processes are gone. A Done row's ✕ keeps its own path and onl
 Right-click on a conversation row, or on a conversation chip, opens the conversation menu. Open brings it in
 front, Attach hands it to `sidecar terminal`, Rename turns the menu into a field with the full title in it, and
 Enter writes it through `PATCH /api/sessions/<key>`, and Remove stops it through `DELETE /api/sessions/<key>`
-with the transcript staying on disk, as the conversation picker's trash does.
+with the transcript staying on disk.
 
 A conversation named as `@<key>`, or as the door's `@<title> (<key>)`, in an answer in the door, a comment
 thread or a side question draws as its tree row inline: the project's avatar, the row's mark and short name
@@ -236,8 +243,7 @@ the message lands in the task's history. Undo, or ⌘Z, cancels that message wit
 puts the old title back when it had one.
 
 Moving to another conversation keeps the page, so the tree, its folds and every face already opened stay put
-while they follow the new key. Clicking the conversation's title opens the conversation picker, which lists every
-conversation the sidecar knows, yours included, and deletes one with its trash button or ⌘⌫, the transcript staying on disk.
+while they follow the new key.
 
 ### Following the terminal
 
@@ -272,7 +278,7 @@ sidecar task <slug> done
 ```
 
 Each verb rewrites the stamp in the layout Mode writes, appends to the task's history and publishes on the
-event bus, so an open task face updates as it happens. An escalation is a thread on the document with an `ask`
+event bus, so an open task updates as it happens. An escalation is a thread on the document with an `ask`
 holding its options, the Project Lead's verdict and pick, and in the end the decision; it blocks the task, and
 deciding it puts the task back to running and tells the conversation that asked, under the `[[sidecar]]`
 marker. A hire is the same thread with Approve and Refuse, and blocks nothing. Who called is read off the
@@ -284,7 +290,7 @@ with no verdict settles the verdict already standing, which lets a Task Lead clo
 Waiting needs `--reason`.
 
 Escalate and hire notify you. When a sidecar page is open, the one holding the `sidecar:task-notices` lock
-raises a notification whose click opens the task on the Tasks face; with no page open, or without notification permission,
+raises a notification whose click opens the task in the main panel; with no page open, or without notification permission,
 it is `osascript display notification`, whose click can only open Script Editor, since macOS ties it to that app.
 
 ### The history
@@ -328,8 +334,8 @@ own, ⌘F there turns the title island into one for any artifact, searching the 
 web surface leaves ⌘F to Chrome. ⌘+, ⌘− and ⌘0, or a trackpad pinch, zoom the whole app the way a Chrome tab
 zooms, the page inside it included, and the zoom is kept across launches, while a file preview keeps its own
 pinch and zoom pill. The top edge of the app is its title bar, so it drags the window and a double click there
-zooms or minimises it as System Settings says. The title island starts at the window's left edge with the
-traffic lights inside it, before the sidecar icon, and the shell moves them with the zoom. On first launch the shell copies
+zooms or minimises it as System Settings says. The traffic lights sit at the left of the tree's header, and
+the shell moves them with the zoom. On first launch the shell copies
 your Chrome cookies into its own session, decrypting them with a key it reads from the login Keychain once
 (the one macOS prompt you will see), so you arrive signed in to the same accounts as in Chrome.
 `sidecar import` re-reads them later, with the app closed. The cookies are a copy rather than shared live,
@@ -354,9 +360,9 @@ published while the sidecar is down still arrives once it starts. The topics and
 | Topic              | Payload                 | Published by                                                                    | What the sidecar does                       |
 | ------------------ | ----------------------- | ------------------------------------------------------------------------------- | ------------------------------------------- |
 | `artifact.created` | `slug`, `title`, `path` | the sidecar, when a conversation's list first records a page it was not showing | Lists the page, and a notification opens it |
-| `task.changed`     | `slug`, `state`         | the task lane, for every stamp change and every history entry                    | The task face reads the task again          |
+| `task.changed`     | `slug`, `state`         | the task lane, for every stamp change and every history entry                    | The open task reads itself again            |
 | `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
-| `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the task face             | Settles the escalation on the face          |
+| `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the open task             | Settles the escalation on the task          |
 | `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | Every Attach, pressed on the one it holds   |
 | `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
 | `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion and again, without `questions`, when it settles | The door draws the question and its options |
@@ -474,8 +480,8 @@ The sidecar keeps the latest target in memory and streams it to every open page 
 While a page listens it also reads Terminal's front tab title with osascript once a second and points the
 sidecar at the conversation that tab switches to, so a terminal tab switch counts as moving without typing.
 
-Whether a move by typing or by Terminal's tab switches the sidecar is the switching mode, picked from the
-island beside the theme toggle and remembered per window. Ask to switch, the default, shows a card in the
+Whether a move by typing or by Terminal's tab switches the sidecar is the switching mode, picked from Follow
+terminal at the top of the tree and remembered per window. Ask to switch, the default, shows a card in the
 bottom left, over everything else including a fullscreen artifact, with the conversation's name, folder and what it is doing, which switches there when pressed and
 stays until pressed, dismissed or no longer needed, asking once per move so typing on in that conversation
 doesn't bring a dismissed card back. Auto switch moves straight there, as the sidecar always did, and Manual
