@@ -7,6 +7,25 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.54.0
+
+### Added
+
+- **A tool use that needs your permission draws in the chat and the door like a question,** with the tool, what it
+  runs, and Allow once, Allow always and No. A click answers it and closes the terminal's dialog, and Allow always
+  writes the rules the engine suggested and says where they land. A conversation started before this release runs
+  the old mod and keeps asking in the terminal only.
+- **A permission mode picker sits beside the model picker** and shows the session's mode, read from its transcript.
+  Claude Code has no way to change a running conversation's mode from outside its terminal, so a pick says so and
+  offers Attach.
+
+### Changed
+
+- **A question that no tool row claims stands under the newest row of the chat,** and a question's text keeps its
+  line breaks.
+- **A turn from `GET /api/sessions/:key/conversation` can carry `mode`,** the permission mode on the rows a person's
+  side wrote, which a reader takes from the newest turn that has one.
+
 ## 0.53.1
 
 ### Fixed

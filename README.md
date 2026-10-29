@@ -323,7 +323,12 @@ lists Fable 5.1, Opus 5.5, Sonnet 5.5 and Haiku 5.5 with Older models by family,
 session through `POST /api/sessions/:key/model` once its turn ends. With history to re-read, Claude Code asks to
 confirm the switch in a dialog only its terminal shows, so the pick warns first, and Confirm in your terminal
 sends it and attaches the session, where the dialog waits. The picker shows the pick until the next turn lands,
-which names the model the session really runs. The prompt keeps
+which names the model the session really runs. The permission mode picker beside it shows the session's mode,
+Default, Accept edits, Plan, Auto or Bypass permissions, read from the newest row the person's side wrote in the
+transcript, so a change made in the terminal shows from the next prompt or tool result. Claude Code has no way to
+change a running conversation's mode from outside its terminal (a `set_permission_mode` control request sent to the
+session's socket is ignored), so a pick says so and offers Attach, where ⇧⇥ cycles it; Bypass permissions adds that
+Claude Code offers it only to a session started with it. The prompt keeps
 clear of the door unless the terminal dock is open under it, and each conversation keeps its own draft.
 
 A message that opens with `/` and a name is a command, and the session runs it as the terminal would, a skill
@@ -551,7 +556,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `runs.changed`     | `project`               | `sidecar run <project> add` and `remove`                                        | The run widget's menu reads the project again |
 | `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
 | `conversation.unseen` | `key`, `endedAt` | the turn bus, when a turn ends, and again without `endedAt` once the turn is looked at | The tree's dot, while `endedAt` is there |
-| `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion and again, without `questions`, when it settles | The door and the chat draw the question and its options |
+| `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion or a permission prompt and again, without `questions`, when it settles | The door and the chat draw the question and its options |
 | `message.landed`   | `key`, `text`           | the server, when the mod tells it that a session took a sidecar message         | The chat shows the message as landed        |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
@@ -650,6 +655,18 @@ the door posts within those seconds, or in the two after one ends, comes back to
 the tool's result and so closes the dialog. However the call settles, a pick in either place or Esc
 interrupting the turn, the hook closes the question with `DELETE /api/questions/<tool id>`, which also ends its
 poll. With the sidecar down it tries again every five seconds, and the dialog answers as it always did.
+
+A tool use that needs your permission runs the same race. The mod's `classic.PermissionRequest` hook, which the engine
+runs beside the terminal's dialog, opens a question headed with the tool and asking what it runs, a command, a path or
+a URL, under a `permission-<uuid>` ref, with Allow once, Allow always and No. Allow always shows only when the engine
+suggests rules, and says where they land, as `Allows Bash(git push:*) in your local settings`. A pick comes back as
+the hook's `decision`: Allow once allows the call, Allow always allows it with the suggested rules as
+`updatedPermissions`, and No, or any answer it does not know, denies it. The chat draws the question under the newest
+row when no tool row claims it, since the engine gives the hook no tool call id, and the door draws it for the
+assistant. The engine leaves the hook running when the terminal's dialog is answered Yes, so the hook ends its wait
+when the tool's `PostToolUse` or `PostToolUseFailure` arrives with the same tool and input, or at the turn's `Stop`,
+and a No or Esc in the terminal aborts it. AskUserQuestion and ExitPlanMode keep their own flows, because the engine
+ignores an allow for a tool that needs the person.
 
 A message the sidecar delivers is unwrapped by the `session.receive` hook, which then tells the sidecar with
 `POST /api/sessions/<key>/landed` and `{ text }`. That call never holds the delivery up, and with the sidecar down
