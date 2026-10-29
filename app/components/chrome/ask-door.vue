@@ -195,6 +195,10 @@ watch(
     void nextTick(measure);
   },
 );
+watch(
+  () => door.composeAsked,
+  () => open(),
+);
 useResizeObserver(restLayer, measure);
 useResizeObserver(panelLayer, measure);
 

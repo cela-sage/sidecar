@@ -65,6 +65,7 @@ export const $door = defineStore(() => {
   const chrome = useChrome();
   const isOpen = ref(false);
   const draft = ref("");
+  const composeAsked = ref(0);
   const attached = ref<AttachedFile[]>([]);
   const target = ref<DoorTarget>({ kind: "assistant" });
   const exchanges = ref<DoorExchange[]>([]);
@@ -271,6 +272,11 @@ export const $door = defineStore(() => {
     if (!taken) update(id, { isAnswering: false, isMissed: true });
   };
 
+  const compose = (text: string): void => {
+    draft.value = text;
+    composeAsked.value += 1;
+  };
+
   const clear = (): void => {
     const gone = new Set(thread.value.map((one) => one.id));
     for (const id of gone) following.get(id)?.stop();
@@ -283,6 +289,8 @@ export const $door = defineStore(() => {
     attach,
     attached,
     clear,
+    compose,
+    composeAsked,
     draft,
     hearChange,
     hearQuestion,
