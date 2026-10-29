@@ -5,8 +5,8 @@ import type { PromptSent } from "~/stores/prompt";
 
 type Block =
   | { kind: "said" | "note"; key: string; turn: ConversationTurn }
-  | { kind: "you"; key: string; turn: ConversationTurn; images: string[] }
-  | { kind: "pasted"; key: string; paths: string[] }
+  | { kind: "you"; key: string; turn: ConversationTurn; text: string; images: string[] }
+  | { kind: "pictures"; key: string; paths: string[] }
   | { kind: "tools"; key: string; turns: ConversationTurn[] };
 
 const sc = useSidecar();
@@ -38,20 +38,20 @@ const blocks = computed<Block[]>(() => {
       if (last?.kind === "tools") last.turns.push(turn);
       else out.push({ kind: "tools", key: id, turns: [turn] });
     } else if (turn.role === "user") {
-      const paths = PastedImages.sourcesOf(turn.text);
-      if (!paths.length) out.push({ kind: "you", key: id, turn, images: [] });
-      else {
-        if (last?.kind === "you") last.images.push(...paths);
-        out.push({ kind: "pasted", key: id, paths });
-      }
+      const pasted = PastedImages.sourcesOf(turn.text);
+      const attached = AttachedFiles.imagesOf(turn.text);
+      if (pasted.length && last?.kind === "you") last.images.push(...pasted);
+      if (!pasted.length && attached.text) out.push({ kind: "you", key: id, turn, text: attached.text, images: [] });
+      const paths = pasted.length ? pasted : attached.paths;
+      if (paths.length) out.push({ kind: "pictures", key: `${id}-pictures`, paths });
     } else if (turn.role === "system") out.push({ kind: "note", key: id, turn });
     else out.push({ kind: "said", key: id, turn });
   }
   return out;
 });
 
-const partsOf = ({ images, turn }: Extract<Block, { kind: "you" }>) =>
-  PastedImages.partsOf(turn.text).map((part) =>
+const partsOf = ({ images, text }: Extract<Block, { kind: "you" }>) =>
+  PastedImages.partsOf(text).map((part) =>
     part.kind === "text" ? part : { ...part, path: images.find((path) => PastedImages.numberOf(path) === part.number) },
   );
 
@@ -89,8 +89,8 @@ watch(
               <UiIcon :icon="Terminal" size="xs" />typed in your terminal · {{ clock.format(block.turn.at) }}
             </span>
           </div>
-          <div v-else-if="block.kind === 'pasted'" class="you">
-            <ProseMediaSet class="pasted" :conversation="key" :paths="block.paths.join('\n')" />
+          <div v-else-if="block.kind === 'pictures'" class="you">
+            <ProseMediaSet class="pictures" :conversation="key" :paths="block.paths.join('\n')" />
           </div>
           <p v-else-if="block.kind === 'note'" class="note mono-meta">{{ block.turn.text }}</p>
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
@@ -141,7 +141,7 @@ watch(
   @apply m-0 max-w-130 rounded-2xl bg-sunken px-3.5 py-2.25 typo-body leading-normal text-pretty whitespace-pre-wrap;
 }
 
-.pasted {
+.pictures {
   @apply w-full max-w-90;
 }
 
