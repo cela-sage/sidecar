@@ -72,16 +72,27 @@ watch(
   @apply m-0 whitespace-pre-wrap;
 }
 
-.prose :deep(> :first-child) {
+.prose :deep(.comark-content > :first-child) {
   @apply mt-0;
 }
 
-.prose :deep(> :last-child) {
+.prose :deep(.comark-content > :last-child) {
   @apply mb-0;
 }
 
-.prose :deep(p) {
-  @apply mx-0 mt-0 mb-2;
+/* The terminal leaves one blank line between blocks, and 1lh is exactly that at any body size. */
+.prose :deep(p),
+.prose :deep(ul),
+.prose :deep(ol),
+.prose :deep(pre),
+.prose :deep(blockquote),
+.prose :deep(table) {
+  @apply mx-0 mt-0 mb-[1lh];
+}
+
+.prose :deep(li > ul),
+.prose :deep(li > ol) {
+  @apply mb-0;
 }
 
 .prose :deep(h1),
@@ -103,7 +114,7 @@ watch(
 
 .prose :deep(ul),
 .prose :deep(ol) {
-  @apply mx-0 mt-0 mb-2 pl-4.5;
+  @apply pl-4.5;
 }
 
 .prose :deep(ul) {
@@ -144,7 +155,7 @@ watch(
 
 /* The bubble is width-capped, so a long line has to scroll here or it drags the layout wider. */
 .prose :deep(pre) {
-  @apply mx-0 mt-0 mb-2 max-w-full overflow-x-auto rounded-field border border-border bg-raised px-2.5 py-2;
+  @apply max-w-full overflow-x-auto rounded-field border border-border bg-raised px-2.5 py-2;
 }
 
 .prose :deep(pre code) {
@@ -152,7 +163,7 @@ watch(
 }
 
 .prose :deep(blockquote) {
-  @apply mx-0 mt-0 mb-2 rounded-r-selector border-l-3 border-l-border-strong bg-sunken px-3 py-1.5 typo-caption leading-normal text-muted;
+  @apply rounded-r-selector border-l-3 border-l-border-strong bg-sunken px-3 py-1.5 typo-caption leading-normal text-muted;
 }
 
 .prose :deep(blockquote > :last-child) {
@@ -164,7 +175,7 @@ watch(
 }
 
 .prose :deep(table) {
-  @apply mx-0 mt-0 mb-2 block w-max max-w-full border-collapse overflow-x-auto;
+  @apply block w-max max-w-full border-collapse overflow-x-auto;
 }
 
 .prose :deep(th),
