@@ -30,7 +30,7 @@ const tip = computed(() =>
           <circle class="track" cx="6" cy="6" r="4.5" />
           <path class="arc" d="M6 1.5a4.5 4.5 0 0 1 4.5 4.5" />
         </svg>
-        <svg v-else class="ring" viewBox="0 0 16 16" aria-hidden="true">
+        <svg v-else class="dial" viewBox="0 0 16 16" aria-hidden="true">
           <circle class="track" cx="8" cy="8" r="6" />
           <circle class="arc" cx="8" cy="8" r="6" :stroke-dasharray="dash" />
         </svg>
@@ -62,7 +62,7 @@ svg {
   @apply flex-none fill-none;
 }
 
-.ring {
+.dial {
   @apply size-3.5 -rotate-90;
 }
 
