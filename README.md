@@ -170,8 +170,8 @@ hidden, a 32px strip at the foot of the main panel names each tool and what it h
 shells and Run with its status, and a failed run shows its mark and the line that names the failure. Each tool is a
 button that opens the dock on it, the chevron or ⌥F12 opens it where you left it, and the door rides above the
 strip. The tree's header is Follow terminal as one compact
-control, the mode's short name with the full one and what it does in the tip, then New task and the theme toggle,
-and the tree resizes from its edge, remembered as `sc:tree`. There is no conversation header, since the tree's row
+control, the mode's short name with the full one and what it does in the tip, then New task, the Simple and Detailed
+chat switch and the theme toggle, and the tree resizes from its edge, remembered as `sc:tree`. There is no conversation header, since the tree's row
 already names it: the faces sit as tabs atop the main panel, Conversation first, then Artifacts, Review, Files and
 History, switched in place so Back never leaves the conversation, with a count beside Artifacts and, once Review
 has read it, Review. A face's list, the artifacts, the files to review, the turns or the file tree, docks on the
@@ -291,17 +291,25 @@ turn marked `joined` that leaves the running turn open, so it stays in the chat 
 it only when the turn next reads its inbox, so the mod also tells the sidecar the moment it takes the message
 (`POST /api/sessions/:key/landed`, published as `message.landed`) and the chat draws it from then on, with its
 picture cards and chips, instead of captioning it queued, and the transcript's row keeps that place. A queued copy
-never hides the row that delivers it. The chat shows only words: your messages, your commands with what they
-printed, the Compacted note with its summary and Claude's answer. The answer is the last text of a turn and the chat
-holds it back until the turn ends, on its `end` turn or when the registry stops calling the session busy, then draws
-it whole. Thinking, narration, tool calls and their results, and notes such as a task notification, a hook receipt or
-the interruption mark never draw, and a running turn is only the mascot and one phase word that names nothing of
-its content: Reading your message while it starts, Thinking while it thinks and Working otherwise. A pending AskUserQuestion or
-permission prompt draws under the newest row while it waits on you, as the door draws it, with its header, options and
-picks, and a click answers it through the same `POST /api/questions/:ref/answer`; once it settles it leaves the chat.
-Every run stays in History, where a turn opens with its tools, and every edit in Review. The server still carries
-them on the stream, clipping a run's output to its head and tail and a diff to 240 lines, and leaving a read's file
-and an edit's receipt out.
+never hides the row that delivers it. The chat is Simple unless you switch it, and Simple shows only words: your
+messages, your commands with what they printed, the Compacted note with its summary and Claude's answer. The answer is
+the last text of a turn, and the chat tells it from the narration before it only once the turn has ended, on its `end`
+turn or when the registry stops calling the session busy, so a reply lands whole. Narration, tool calls and their
+results, and notes such as a task notification, a hook receipt or the interruption mark stay out, and a running turn
+is only the mascot and one phase word that names nothing of its content: Reading your message while it starts,
+Thinking while it thinks and Working otherwise. Detailed brings every run back. The narration draws as it is written,
+and the last one becomes the answer in its own row when the turn ends. Each run of tool calls is one list of folded
+rows, a call paired to its result by the provider's id: Read folds consecutive reads into one row whose files open in
+Files at the lines read, Edited and Wrote carry the change's `+` and `−` counts, unfold to the diff with each side's
+line numbers and open the file in Review, Ran shows the command with its description beside it and unfolds to the
+output, and a failed call says so in red. The notes draw too, and the busy line says what the turn is doing. The
+server clips what it carries, a run's output to its head and tail and a diff to 240 lines, and leaves a read's file
+and an edit's receipt out. The switch is the list icon beside the theme toggle in the tree's header, one setting for
+every conversation, remembered in the browser as `cela-chat-detail`, and the open conversation redraws at once. A
+pending AskUserQuestion or permission prompt draws under the newest row while it waits on you in Simple, and in
+Detailed where its call sits, as the door draws it, with its header, options and picks, and a click answers it through
+the same `POST /api/questions/:ref/answer`. Every run stays in History in both, where a turn opens with its tools, and
+every edit in Review.
 
 Claude's prose renders as everywhere else, with more in the chat, and leaves one blank line below every block, a
 paragraph, a list, a quote, a fence or a table, as the terminal does. A fence named as `ts [src/menu.ts:3-9]`, or

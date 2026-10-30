@@ -7,6 +7,20 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.65.0
+
+### Added
+
+- **A switch between a Simple and a Detailed chat,** the list icon beside the theme toggle in the tree's header. Simple is
+  the default and stays as 0.62.0 made it, words only. Detailed brings back the narration as it is written, the tool
+  rows and the notes, and its busy line says what the turn is doing again. It is one setting for every conversation,
+  remembered in the browser like the theme, and the open conversation redraws when you press it.
+
+### Changed
+
+- **The model chip's stand-in for a pick clears at the turn's first block again,** as it did before 0.62.0, since the
+  turns that name the model are back in the chat's stream, hidden while it is Simple.
+
 ## 0.64.1
 
 ### Changed
