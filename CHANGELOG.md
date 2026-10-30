@@ -7,6 +7,13 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.63.1
+
+### Fixed
+
+- **The context meter's ring no longer sits in a square.** Its class was named `ring`, which is also Tailwind's own
+  utility for a one pixel outline, so the ring drew a box around itself.
+
 ## 0.63.0
 
 ### Changed
