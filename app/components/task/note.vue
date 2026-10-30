@@ -23,19 +23,19 @@ const note = computed<Note | undefined>(() => {
     return {
       look: "waiting",
       title: `Waiting${waiting.on ? ` on ${waiting.on}` : ""} since ${day(waiting.since)}`,
-      text: `Nothing for you to do, like WAIT on your board.${waiting.reason ? ` It waits until ${waiting.reason}.` : ""} The Task Lead picks it back up when they do.`,
+      text: `Nothing for you to do, like WAIT on your board.${waiting.reason ? ` It waits until ${waiting.reason}.` : ""} The Individual Contributor picks it back up when they do.`,
     };
   if (resumed)
     return {
       look: "running",
       title: `${resumed.on ?? "They"} came back at ${day(resumed.at)}`,
-      text: `The Task Lead picked the task back up on its own after ${resumed.waited}.`,
+      text: `The Individual Contributor picked the task back up on its own after ${resumed.waited}.`,
     };
   if (finished)
     return {
       look: "needs",
       title: `Finished at ${day(finished.at)}`,
-      text: "The Task Lead finished its work, and only your mark puts the task in Done. Check it, then press Done in the strip.",
+      text: "The Individual Contributor finished its work, and only your mark puts the task in Done. Check it, then press Done in the strip.",
     };
   if (done)
     return {
@@ -44,7 +44,7 @@ const note = computed<Note | undefined>(() => {
       text:
         done.who === "YOU"
           ? "You checked it and marked it Done."
-          : "A Task Lead marked it done, before Done became your mark.",
+          : "An Individual Contributor marked it done, before Done became your mark.",
     };
   return undefined;
 });

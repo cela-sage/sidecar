@@ -4,7 +4,7 @@ import type { Busy } from "../../shared/utils/busy.ts";
 import { Titles, type RoleTitle } from "../../shared/utils/titles.ts";
 import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
 
-// Amber is a conversation outside a task waiting on you, red a task or its Task Lead waiting on you.
+// Amber is a conversation outside a task waiting on you, red a task or its Individual Contributor waiting on you.
 export type Mark = "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "killed" | "done";
 
 export interface OrgConversation {
@@ -97,7 +97,7 @@ const TASK_MARK: Record<TaskState, Mark> = {
   finished: "needs",
   done: "done",
 };
-const LEAD_ORDER: Role[] = ["PL", "DL", "TL"];
+const LEAD_ORDER: Role[] = ["DL", "SL", "IC"];
 const DONE_KEPT_MS = 24 * 60 * 60_000;
 
 const isShown = ({ task }: TaskMeta, now: number): boolean =>
@@ -154,7 +154,7 @@ const nameOf = ({ title }: Placed, slug?: string): string => {
 
 const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Placing): OrgConversation => {
   const { session, title } = placed;
-  const isLead = title.role === "TL";
+  const isLead = title.role === "IC";
   const marks: Record<AgentState, Mark> = {
     working: "working",
     "needs input": isLead ? "needs" : "waits",
@@ -175,7 +175,7 @@ const byLead = (a: Placed, b: Placed): number =>
   LEAD_ORDER.indexOf(a.title.role) - LEAD_ORDER.indexOf(b.title.role) || Tasks.agentOrder(a.session, b.session);
 
 const taskOf = (meta: TaskMeta, placed: Placed[], heard: Heard): OrgTask => {
-  const mine = placed.filter((one) => one.title.role === "TL" && Titles.belongsTo(one.title, meta.slug)).sort(byLead);
+  const mine = placed.filter((one) => one.title.role === "IC" && Titles.belongsTo(one.title, meta.slug)).sort(byLead);
   const placing = { ...heard, slug: meta.slug, waiting: meta.task.state === "waiting" };
   const leads = mine
     .filter((one) => one.session.life === "alive")
@@ -220,7 +220,7 @@ const treeOf = ({
     const built = ordered.filter((one) => one.task.project === project.key).map((one) => taskOf(one, theirs, heard));
     const claimed = new Set(built.flatMap((one) => [...one.leads, ...one.done].map((row) => row.key)));
     const leads = theirs
-      .filter((one) => one.title.role !== "TL" || !claimed.has(one.session.key))
+      .filter((one) => one.title.role !== "IC" || !claimed.has(one.session.key))
       .sort(byLead)
       .map((one) => conversationOf(one, heard));
     const open = built.filter((one) => one.status !== "done");

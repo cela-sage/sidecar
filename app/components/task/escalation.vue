@@ -23,11 +23,15 @@ const clock = (at?: string): string =>
 
 const speaker = (title?: string): { badge: string; token?: string; rest: string } => {
   const parsed = title ? Titles.parse(title) : undefined;
-  return { badge: parsed?.role ?? "TL", token: parsed?.token, rest: parsed?.rest ?? title ?? "The Task Lead" };
+  return {
+    badge: parsed?.role ?? "IC",
+    token: parsed?.token,
+    rest: parsed?.rest ?? title ?? "The Individual Contributor",
+  };
 };
 
 const asker = computed(() => speaker(ask.value?.from));
-const judge = computed(() => speaker(ask.value?.verdict?.from ?? "[PL] the Project Lead"));
+const judge = computed(() => speaker(ask.value?.verdict?.from ?? "[DL] the Domain Lead"));
 const asked = computed(() =>
   isAsking.value
     ? `needs input · ${relativeAge(thread.at, now.value.getTime())}`
@@ -49,7 +53,7 @@ function sendWords(): void {
   <section
     v-if="ask"
     class="card"
-    aria-label="Escalation from the Task Lead"
+    aria-label="Escalation from the Individual Contributor"
     data-region="task-escalation"
     :data-asking="isAsking"
   >
@@ -61,7 +65,7 @@ function sendWords(): void {
       <span class="spacer" />
       <span v-if="isAsking" class="needs">Needs you</span>
       <span v-else class="settled"
-        ><UiIcon :icon="Check" size="xs" />{{ byYou ? "Settled by you" : "Settled by the Project Lead" }} ·
+        ><UiIcon :icon="Check" size="xs" />{{ byYou ? "Settled by you" : "Settled by the Domain Lead" }} ·
         {{ clock(decision?.at) }}</span
       >
     </header>
@@ -86,11 +90,11 @@ function sendWords(): void {
       </div>
 
       <div v-if="ask.verdict" class="say">
-        <span class="badge">PL</span>
+        <span class="badge">DL</span>
         <div class="lines">
           <span class="by">
             <span class="title"
-              ><span v-if="judge.token && judge.token !== 'PL'" class="token">[{{ judge.token }}]</span>
+              ><span v-if="judge.token && judge.token !== 'DL'" class="token">[{{ judge.token }}]</span>
               {{ judge.rest }}</span
             >
             <span class="state mono-meta">{{ decision && !byYou ? "settled it" : "judged it yours" }}</span>
@@ -113,7 +117,7 @@ function sendWords(): void {
         >
           <span class="radio" aria-hidden="true" />
           <span class="label">{{ option }}</span>
-          <span v-if="pick === i + 1" class="pick mono-meta">Project Lead's pick</span>
+          <span v-if="pick === i + 1" class="pick mono-meta">Domain Lead's pick</span>
         </button>
         <div class="own" :data-typing="!!words.trim()">
           <input
@@ -128,7 +132,7 @@ function sendWords(): void {
             v-if="words.trim()"
             :icon="ArrowUp"
             label="Send"
-            data-tip="Send · {↵}. It goes to the Task Lead and into the history"
+            data-tip="Send · {↵}. It goes to the Individual Contributor and into the history"
             size="sm"
             variant="filled"
             @click="sendWords"
@@ -138,10 +142,10 @@ function sendWords(): void {
 
       <template v-else-if="decision">
         <div class="say">
-          <span class="badge" data-you="true">{{ byYou ? "YOU" : "PL" }}</span>
+          <span class="badge" data-you="true">{{ byYou ? "YOU" : "DL" }}</span>
           <div class="lines">
             <span class="by">
-              <span class="title">{{ byYou ? "You decided" : "The Project Lead settled it" }}</span>
+              <span class="title">{{ byYou ? "You decided" : "The Domain Lead settled it" }}</span>
               <span class="state mono-meta">{{ clock(decision.at) }} · {{ later }} later</span>
             </span>
             <span class="text">{{ decision.text }}</span>

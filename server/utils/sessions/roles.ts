@@ -19,9 +19,9 @@ export type Launched = { key?: string } | { failed: string };
 const START_MS = 30_000;
 const AGENTS: Record<Role, string> = {
   EA: "executive-assistant",
-  PL: "project-lead",
-  DL: "design-lead",
-  TL: "task-lead",
+  DL: "domain-lead",
+  SL: "solution-lead",
+  IC: "individual-contributor",
 };
 
 const run = promisify(execFile);

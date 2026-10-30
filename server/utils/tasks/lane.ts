@@ -141,10 +141,10 @@ const create = (title: string): TaskFile => {
 const leadsOf = (sessions: LiveSession[], slug: string): LiveSession[] =>
   sessions.filter((one) => {
     const title = (!one.archived || one.life === "alive") && one.name ? Titles.parse(one.name) : undefined;
-    return title?.role === "TL" && Titles.belongsTo(title, slug);
+    return title?.role === "IC" && Titles.belongsTo(title, slug);
   });
 
-// A Task Lead goes the way a conversation's delete takes it, so its process ends while its transcript stays on disk.
+// An Individual Contributor goes the way a conversation's delete takes it, so its process ends while its transcript stays on disk.
 const remove = async ({ given, caller }: { given: string; caller: Caller }): Promise<{ stopped: string[] }> => {
   const file = TaskFiles.open(given);
   if (!TaskTrash.holds(file)) throw new Refusal(`${file.slug} lives outside the artifacts, so it stays`, 2);
@@ -253,7 +253,7 @@ const pending = (threads: Thread[], n?: string): AskThread => {
   if (!hit)
     throw new Refusal(n ? `no escalation or hire #${n} on this task` : "nothing on this task waits on a decision", 2);
   if (hit.status === "resolved")
-    throw new Refusal(`#${n} is settled already${hit.ask.decision?.who === "PL" ? " by the Project Lead" : ""}`, 2);
+    throw new Refusal(`#${n} is settled already${hit.ask.decision?.who === "DL" ? " by the Domain Lead" : ""}`, 2);
   return hit;
 };
 
@@ -280,7 +280,7 @@ const unblocked = (opened: TaskFile, threads: Thread[], thread: AskThread): { fi
   return unblocks ? move(opened, "running") : { file: opened };
 };
 
-// Bare, --settle settles the verdict already standing, so a Task Lead can close one the Project Lead judged.
+// Bare, --settle settles the verdict already standing, so an Individual Contributor can close one the Domain Lead judged.
 const judge = ({ given, caller, verdict, pick, thread: n, settle = false }: JudgeInput): Judged => {
   const opened = TaskFiles.open(given);
   const doc = Threads.read(opened.path);
@@ -298,7 +298,7 @@ const judge = ({ given, caller, verdict, pick, thread: n, settle = false }: Judg
   };
   const question = String(thread.body ?? "");
   const { text, option } = chosen ? answerOf(thread.ask, question, String(chosen)) : { text: judged.text };
-  const lead: Caller = { who: "PL", ...(judged.from ? { from: judged.from } : {}) };
+  const lead: Caller = { who: "DL", ...(judged.from ? { from: judged.from } : {}) };
   const ask: TaskAsk = {
     ...thread.ask,
     verdict: judged,
@@ -356,7 +356,7 @@ const tell = async ({ file, question, ask, text }: Decided): Promise<boolean> =>
   const key = ask.from ? TaskCaller.keyByTitle(ask.from) : undefined;
   if (!key) return false;
   const what = ask.kind === "hire" ? "the hire" : "your escalation";
-  const by = ask.decision?.who === "PL" ? "The Project Lead settled it" : "My decision";
+  const by = ask.decision?.who === "DL" ? "The Domain Lead settled it" : "My decision";
   const sent = await deliver({ key, text: `On ${what} in ${file.slug}, "${question}". ${by}: ${text}` });
   return sent.delivered;
 };
@@ -371,7 +371,7 @@ export interface Heard {
 const hearersOf = ({ caller, kind, slug }: Heard): TaskFile[] => {
   if (slug && kind === "message") return TaskFiles.all().filter((one) => one.slug === slug);
   const title = caller.from ? Titles.parse(caller.from) : undefined;
-  if (title?.role !== "TL") return [];
+  if (title?.role !== "IC") return [];
   return TaskFiles.all().filter((one) => Titles.belongsTo(title, one.slug));
 };
 
@@ -385,7 +385,7 @@ const heard = (given: Heard): TaskFile[] => {
     record(
       file,
       kind === "turn"
-        ? { at, who: "TL", from: caller.from, kind: "turn", text: said }
+        ? { at, who: "IC", from: caller.from, kind: "turn", text: said }
         : { at, who: "YOU", kind: "message", text: said, to: caller.from },
     );
   }
@@ -400,7 +400,7 @@ const edited = ({ file, before, after }: { file: TaskFile; before: string; after
 const read = ({ given, caller }: { given: string; caller: Caller }): Read => {
   const file = TaskFiles.open(given);
   const entries = TaskHistory.read(file.slug);
-  if (caller.who === "PL") TaskHistory.append(file.slug, { ...saidBy(caller), kind: "read" });
+  if (caller.who === "DL") TaskHistory.append(file.slug, { ...saidBy(caller), kind: "read" });
   return { file, entries, asks: asksOf(Threads.read(file.path).threads) };
 };
 

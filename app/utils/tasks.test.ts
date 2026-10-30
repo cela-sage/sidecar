@@ -38,27 +38,27 @@ test("the strip passes what is behind, marks where it is, and dashes what is ahe
   );
 });
 
-test("the history folds runs, puts the divider under what the Project Lead read, and tells the strip how it got here", () => {
-  const lead = "[Cela] TL board lane";
+test("the history folds runs, puts the divider under what the Domain Lead read, and tells the strip how it got here", () => {
+  const lead = "[Cela] IC board lane";
   const entries: HistoryEntry[] = [
-    { at: "2026-10-27T09:00:00Z", who: "TL", from: lead, kind: "turn", text: "Started." },
-    { at: "2026-10-27T09:10:00Z", who: "PL", kind: "read" },
-    { at: "2026-10-27T10:00:00Z", who: "TL", from: lead, kind: "ask", thread: "t1", ask: "escalation", text: "Which model?", options: ["Sonnet"], move: { was: "running", now: "blocked" } },
+    { at: "2026-10-27T09:00:00Z", who: "IC", from: lead, kind: "turn", text: "Started." },
+    { at: "2026-10-27T09:10:00Z", who: "DL", kind: "read" },
+    { at: "2026-10-27T10:00:00Z", who: "IC", from: lead, kind: "ask", thread: "t1", ask: "escalation", text: "Which model?", options: ["Sonnet"], move: { was: "running", now: "blocked" } },
     { at: "2026-10-27T10:02:00Z", who: "YOU", kind: "decide", thread: "t1", ask: "escalation", text: "Sonnet", option: 1, move: { was: "blocked", now: "running" } },
     { at: "2026-10-27T10:30:00Z", who: "YOU", kind: "content", parts: ["Problem"] },
     { at: "2026-10-27T10:40:00Z", who: "YOU", kind: "content", parts: ["Pain point"] },
-    { at: "2026-10-27T11:00:00Z", who: "TL", from: lead, kind: "turn", text: "Laid out the comment." },
-    { at: "2026-10-27T12:05:00Z", who: "TL", from: lead, kind: "turn", text: "It works end to end." },
+    { at: "2026-10-27T11:00:00Z", who: "IC", from: lead, kind: "turn", text: "Laid out the comment." },
+    { at: "2026-10-27T12:05:00Z", who: "IC", from: lead, kind: "turn", text: "It works end to end." },
   ];
   const rows = Timeline.rows(entries);
   assert.deepEqual(
     rows.map((row) => `${row.who} ${row.lead}${row.text} [${row.chips.join(", ")}]`),
     [
-      "TL It works end to end. [2 turns]",
+      "IC It works end to end. [2 turns]",
       "YOU Edited Pain point and Problem. [content change]",
       "YOU You decided: Sonnet [decision, blocked to running]",
-      "TL Escalated: Which model? [running to blocked, notified you]",
-      "TL Started. [turn]",
+      "IC Escalated: Which model? [running to blocked, notified you]",
+      "IC Started. [turn]",
     ],
   );
   assert.equal(Timeline.dividerAt(rows, Timeline.readAt(entries)), 0);
@@ -77,8 +77,8 @@ test("the history folds runs, puts the divider under what the Project Lead read,
   assert.equal(steps("running", story), "In progress:running Blocked, settled by you:decided Done:future");
 
   const waited: HistoryEntry[] = [
-    { at: "2026-10-26T16:40:00Z", who: "TL", kind: "state", move: { was: "running", now: "waiting" }, on: "Cosmico", reason: "they confirm" },
-    { at: "2026-10-27T16:40:00Z", who: "TL", kind: "state", move: { was: "waiting", now: "running" } },
+    { at: "2026-10-26T16:40:00Z", who: "IC", kind: "state", move: { was: "running", now: "waiting" }, on: "Cosmico", reason: "they confirm" },
+    { at: "2026-10-27T16:40:00Z", who: "IC", kind: "state", move: { was: "waiting", now: "running" } },
   ];
   assert.equal(steps("waiting", Timeline.story(waited.slice(0, 1), "waiting")), "In progress:past Waiting on Cosmico:waiting Done:future");
   assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past In progress:running Done:future");
@@ -135,22 +135,22 @@ test("a conversation points at its own project's conversations alone, and one ou
       { key: "mf", name: "Moneyfarm", token: "MF", folder: "/tmp/mf" },
     ],
     sessions: [
-      session({ key: "plcela", name: "[Cela] PL sidecar plan" }),
-      session({ key: "tlboard", name: "[Cela] TL board build" }),
+      session({ key: "dlcela", name: "[Cela] DL sidecar plan" }),
+      session({ key: "icboard", name: "[Cela] IC board build" }),
       session({ key: "chatcela", name: "[Cela] zoom the sidecar" }),
-      session({ key: "plmf", name: "[MF] PL mongo plan" }),
+      session({ key: "dlmf", name: "[MF] DL mongo plan" }),
       session({ key: "chatmf", name: "[MF] AI-506 mongo" }),
       session({ key: "assistant", name: "[meta] EA triage" }),
     ],
     tasks: [board],
   });
   const keys = (key: string): string[] => Org.mentionable(tree, key).map((one) => one.key).sort();
-  assert.deepEqual(keys("tlboard"), ["chatcela", "plcela"]);
-  assert.deepEqual(keys("plmf"), ["chatmf"]);
-  assert.deepEqual(keys("assistant"), ["plcela", "plmf", "tlboard"]);
+  assert.deepEqual(keys("icboard"), ["chatcela", "dlcela"]);
+  assert.deepEqual(keys("dlmf"), ["chatmf"]);
+  assert.deepEqual(keys("assistant"), ["dlcela", "dlmf", "icboard"]);
 });
 
-test("a running task whose Task Leads are idle does not spin, and one spins only while the bus says a lead is doing", () => {
+test("a running task whose Individual Contributors are idle does not spin, and one spins only while the bus says a lead is doing", () => {
   const running: TaskMeta = {
     slug: "board",
     title: "Board",
@@ -161,7 +161,7 @@ test("a running task whose Task Leads are idle does not spin, and one spins only
   };
   const input = {
     projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
-    sessions: [session({ key: "lead", name: "[Cela] TL board build", status: "busy" })],
+    sessions: [session({ key: "lead", name: "[Cela] IC board build", status: "busy" })],
     tasks: [running],
   };
   const markOf = (tree: ReturnType<typeof Org.treeOf>): string | undefined => tree.projects[0]?.tasks[0]?.mark;
@@ -183,8 +183,8 @@ test("a finished turn nobody opened draws a dot in place of the check, and a que
     projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
     sessions: [
       session({ key: "loose", name: "[Cela] sidecar zoom" }),
-      session({ key: "lead", name: "[Cela] TL board build" }),
-      session({ key: "held", name: "[Cela] TL held build" }),
+      session({ key: "lead", name: "[Cela] IC board build" }),
+      session({ key: "held", name: "[Cela] IC held build" }),
     ],
     tasks: [meta("board", "running"), meta("held", "waiting")],
     unseen: ["loose", "lead", "held"],
@@ -215,8 +215,8 @@ test("a finished task heads the list with the needs-you mark, and a lead with a 
   const input = {
     projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
     sessions: [
-      session({ key: "board", name: "[Cela] TL board build" }),
-      session({ key: "old", name: "[Cela] TL old build" }),
+      session({ key: "board", name: "[Cela] IC board build" }),
+      session({ key: "old", name: "[Cela] IC old build" }),
     ],
     tasks: [meta("calm", "running"), meta("old", "done"), meta("board", "finished")],
   };
@@ -257,17 +257,17 @@ test("the org tree puts each role where it works, folds what is done and files y
   ];
   const sessions = [
     session({ key: "ea", name: "[meta] EA daily triage", status: "busy" }),
-    session({ key: "pl", name: "[Cela] PL sidecar-task-board plan", status: "waiting" }),
-    session({ key: "dl", name: "[Cela] DL sidecar-task-board design" }),
+    session({ key: "dl", name: "[Cela] DL sidecar plan", status: "waiting" }),
+    session({ key: "sl", name: "[Cela] SL sidecar-task-board design" }),
     session({
       key: "fol",
-      name: "[Cela] TL sidecar-task-board follower",
+      name: "[Cela] IC sidecar-task-board follower",
       status: "busy",
       agents: [{ name: "designer", color: "blue" }],
     }),
-    session({ key: "lane", name: "[Cela] TL sidecar-task-board lane" }),
-    session({ key: "loop", name: "[Cela] TL sidecar-task-board loop", life: "killed" }),
-    session({ key: "gone", name: "[Cela] TL sidecar-task-board titles", life: "killed", archived: true }),
+    session({ key: "lane", name: "[Cela] IC sidecar-task-board lane" }),
+    session({ key: "loop", name: "[Cela] IC sidecar-task-board loop", life: "killed" }),
+    session({ key: "gone", name: "[Cela] IC sidecar-task-board titles", life: "killed", archived: true }),
     session({ key: "own", name: "contracts guide", status: "busy" }),
     session({ key: "zoom", name: "[Cela] sidecar macOS zoom", status: "waiting" }),
     session({ key: "ops", name: "[Ops] rollout review" }),
@@ -275,10 +275,10 @@ test("the org tree puts each role where it works, folds what is done and files y
   const tree = Org.treeOf({
     sessions,
     projects,
-    asking: ["[Cela] TL sidecar-task-board lane"],
+    asking: ["[Cela] IC sidecar-task-board lane"],
     busy: Object.fromEntries(["ea", "fol", "own", "loop"].map((key) => [key, { doing: true, asking: false }])),
     tasks: [
-      meta("sidecar-task-board", "running", "cela", "[Cela] TL sidecar-task-board lane"),
+      meta("sidecar-task-board", "running", "cela", "[Cela] IC sidecar-task-board lane"),
       meta("session-title-rule", "done", "cela"),
       meta("settings-hook", "unassigned"),
     ],
@@ -290,19 +290,16 @@ test("the org tree puts each role where it works, folds what is done and files y
     ["settings-hook"],
   );
   const [cela, metaProject] = tree.projects;
-  assert.deepEqual(cela?.leads.map(row), [
-    "PL sidecar-task-board plan waits",
-    "DL sidecar-task-board design completed",
-  ]);
+  assert.deepEqual(cela?.leads.map(row), ["DL sidecar plan waits", "SL sidecar-task-board design completed"]);
   const [board] = cela?.tasks ?? [];
   assert.equal(board?.mark, "needs");
   assert.equal(board?.lead, "lane");
-  assert.deepEqual(board?.leads.map(row), ["TL lane needs", "TL follower working"]);
+  assert.deepEqual(board?.leads.map(row), ["IC lane needs", "IC follower working"]);
   assert.deepEqual(
     board?.leads.map((one) => one.agents?.map((agent) => agent.name)),
     [undefined, ["designer"]],
   );
-  assert.deepEqual(board?.done.map(row), ["TL loop killed"]);
+  assert.deepEqual(board?.done.map(row), ["IC loop killed"]);
   assert.deepEqual(
     cela?.done.map((one) => one.meta.slug),
     ["session-title-rule"],
@@ -321,13 +318,13 @@ test("the org tree puts each role where it works, folds what is done and files y
   assert.equal(tree.conversations, 9);
 
   assert.deepEqual(
-    ["fol", "dl", "ea", "ops", "nope"].map((key) => {
+    ["fol", "sl", "ea", "ops", "nope"].map((key) => {
       const place = Org.placeOf(tree, key);
       return place ? `${place.row.name} ${place.group?.project.key ?? "-"}` : "none";
     }),
     ["follower cela", "sidecar-task-board design cela", "daily triage -", "[Ops] rollout review -", "none"],
   );
-  assert.equal(Org.titles(tree).get("[Cela] TL sidecar-task-board follower"), "fol");
+  assert.equal(Org.titles(tree).get("[Cela] IC sidecar-task-board follower"), "fol");
   assert.equal(Org.titles(tree).get("[meta] EA daily triage"), "ea");
 });
 

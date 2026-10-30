@@ -73,7 +73,7 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
         <UiButton
           v-if="to"
           class="route"
-          :data-tip="`Route to ${to.project.name}'s Project Lead`"
+          :data-tip="`Route to ${to.project.name}'s Domain Lead`"
           :icon="ArrowRight"
           size="xs"
           variant="outline"

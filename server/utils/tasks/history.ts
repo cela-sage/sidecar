@@ -62,7 +62,7 @@ const entryOf = (line: string): HistoryEntry[] => {
   }
 };
 
-// One write per line under O_APPEND, so the CLI in a Task Lead and the server never interleave a line.
+// One write per line under O_APPEND, so the CLI in an Individual Contributor and the server never interleave a line.
 const append = (slug: string, entry: HistoryEntry): void => {
   mkdirSync(home(), { recursive: true });
   appendFileSync(file(slug), `${JSON.stringify(entry)}\n`);

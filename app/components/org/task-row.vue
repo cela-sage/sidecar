@@ -69,7 +69,7 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
     @drop="emit('drop', $event)"
     @open="task.show({ slug: one.meta.slug })"
   >
-    <span v-if="isHot" class="drop mono-meta">as its Task Lead</span>
+    <span v-if="isHot" class="drop mono-meta">as its Individual Contributor</span>
     <template v-if="one.status === 'done'" #after>
       <UiIconButton
         :icon="X"

@@ -324,7 +324,7 @@ onMounted(() => {
                 </button>
                 <UiButton
                   v-if="routeOf(one)"
-                  :data-tip="`Route to ${routeOf(one)?.project.name}'s Project Lead`"
+                  :data-tip="`Route to ${routeOf(one)?.project.name}'s Domain Lead`"
                   :icon="ArrowRight"
                   size="xs"
                   variant="outline"
@@ -343,7 +343,7 @@ onMounted(() => {
             <div class="greet">
               <span class="greeting">{{ greeting }}</span>
               <span class="about-it">
-                It sees every project, routes tasks to their Project Lead, drafts, and does anything on the board you
+                It sees every project, routes tasks to their Domain Lead, drafts, and does anything on the board you
                 could. An @ points it at anyone in the tree.
               </span>
             </div>

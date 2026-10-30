@@ -14,9 +14,9 @@ type EntryOf = { [E in HistoryEntry as E["kind"]]: E };
 
 const ROLE_NAME: Record<Role, string> = {
   EA: "the assistant",
-  PL: "the Project Lead",
-  DL: "the Design Lead",
-  TL: "the Task Lead",
+  DL: "the Domain Lead",
+  SL: "the Solution Lead",
+  IC: "the Individual Contributor",
 };
 
 const moved = (move?: Move): string[] => (move ? [`${move.was} to ${move.now}`] : []);

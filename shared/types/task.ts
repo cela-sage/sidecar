@@ -10,7 +10,7 @@ export const TaskState = [
 ] as const;
 export type TaskState = (typeof TaskState)[number];
 
-export const Role = ["EA", "PL", "DL", "TL"] as const;
+export const Role = ["EA", "DL", "SL", "IC"] as const;
 export type Role = (typeof Role)[number];
 export type Who = Role | "YOU";
 

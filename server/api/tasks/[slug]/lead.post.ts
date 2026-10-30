@@ -15,7 +15,11 @@ export default defineEventHandler(async (event): Promise<LeadJoined> => {
   const { key } = await readValidatedBody(event, (raw) => Body.parse(raw));
   const project = Projects.list().find((one) => one.key === file.task.project);
   if (!project || file.task.state === "done")
-    throw createError({ statusCode: 409, statusMessage: "refused", message: `${file.slug} takes no Task Lead now` });
+    throw createError({
+      statusCode: 409,
+      statusMessage: "refused",
+      message: `${file.slug} takes no Individual Contributor now`,
+    });
   const session = liveSessions({ key }).find((one) => one.key === key);
   if (!session) throw createError({ statusCode: 404, statusMessage: "no such conversation" });
   const was = session.name || session.cwd.split("/").filter(Boolean).at(-1) || key;

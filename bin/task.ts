@@ -20,14 +20,14 @@ export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slu
                              each --options is one option whatever its commas, and a,b splits only one-word options
   hire "<who, why, tier>"    propose a specialist, which Marco approves or refuses like an escalation
   judge "<verdict>" [--pick <n>] [--thread <n>] [--settle]
-                             the Project Lead's read of the open escalation and its pick, which waits on Marco;
-                             --settle settles one within the Project Lead's reach as its decision, and the
+                             the Domain Lead's read of the open escalation and its pick, which waits on Marco;
+                             --settle settles one within the Domain Lead's reach as its decision, and the
                              conversation that asked hears it; judge --settle alone settles the standing verdict
   decide <n|"words"> [--thread <n>]
                              settle it, and the conversation that asked hears the decision
-  done                       a Task Lead's work is finished and waits on Marco's mark; only Marco's own
+  done                       an Individual Contributor's work is finished and waits on Marco's mark; only Marco's own
                              terminal, the status control or the tree row's menu puts it in Done
-Every verb lands in the task's history, which Task Lead turns join on their own.`;
+Every verb lands in the task's history, which Individual Contributor turns join on their own.`;
 
 interface Run {
   slug: string;
@@ -82,8 +82,8 @@ const askLines = (thread: AskThread): string[] => {
   const pick = ask.verdict?.pick;
   return [
     `  #${String(thread.n)} ${ask.kind}${ask.from ? ` from ${ask.from}` : ""}: ${String(thread.body)}`,
-    ...(ask.verdict ? [`     the Project Lead: ${ask.verdict.text}`] : []),
-    ...ask.options.map((one, i) => `     ${i + 1}. ${one}${pick === i + 1 ? "  (the Project Lead's pick)" : ""}`),
+    ...(ask.verdict ? [`     the Domain Lead: ${ask.verdict.text}`] : []),
+    ...ask.options.map((one, i) => `     ${i + 1}. ${one}${pick === i + 1 ? "  (the Domain Lead's pick)" : ""}`),
   ];
 };
 
@@ -190,7 +190,7 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
     });
     console.log(
       decided
-        ? `settled as the Project Lead's: ${decided.text}\n${file.slug} is ${file.task.state}, and ${await told(decided)}`
+        ? `settled as the Domain Lead's: ${decided.text}\n${file.slug} is ${file.task.state}, and ${await told(decided)}`
         : `your verdict is on ${file.slug}, which still waits on Marco`,
     );
     return 0;
@@ -216,7 +216,7 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
   },
 };
 
-// The mod pipes a Task Lead's turn, or what Marco typed to it, on stdin, so no text ever passes through argv.
+// The mod pipes an Individual Contributor's turn, or what Marco typed to it, on stdin, so no text ever passes through argv.
 const heard = (kind: string): number => {
   if (kind !== "turn" && kind !== "message") throw new Refusal("--heard is turn or message", 2);
   const tasks = TaskLane.heard({ caller: caller(), kind, text: readFileSync(0, "utf8") });

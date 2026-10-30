@@ -15,7 +15,7 @@ const at = computed(() =>
 <template>
   <div v-if="decision" class="row" role="status" data-region="task-settled">
     <UiIcon class="check" :icon="Check" size="xs" />
-    <span class="who">{{ byYou ? "Settled by you" : "Settled by the Project Lead" }}</span>
+    <span class="who">{{ byYou ? "Settled by you" : "Settled by the Domain Lead" }}</span>
     <span class="when mono-meta">{{ at }}{{ byYou ? "" : " · within its reach" }}</span>
     <span class="said">{{ decision.text }}</span>
     <button class="link plain-button focusable" type="button" @click="emit('history')">

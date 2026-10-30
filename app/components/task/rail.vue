@@ -30,7 +30,7 @@ const rows = computed(() =>
       name,
       token: title?.token,
       rest: title?.rest ?? name,
-      isLead: title?.role === "TL",
+      isLead: title?.role === "IC",
       isHeld,
       state: isHeld ? `${state} · in your terminal` : state,
       look: LOOK[state],

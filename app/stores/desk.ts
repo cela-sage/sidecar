@@ -64,10 +64,10 @@ export const $desk = defineStore(() => {
     await task.readTasks();
     if (!moved) return chrome.toast(`Could not put ${titleOf(meta)} on ${project.name}`, "destructive");
     const next = moved.lead
-      ? "and its Project Lead reads it next."
+      ? "and its Domain Lead reads it next."
       : moved.starts
-        ? "and a new Project Lead starts on it."
-        : "and no Project Lead can run there, so it waits on the board.";
+        ? "and a new Domain Lead starts on it."
+        : "and no Domain Lead can run there, so it waits on the board.";
     offer(`${titleOf(meta)} went to ${project.name}, ${next}`, () => unplace(meta));
   };
 
@@ -121,7 +121,7 @@ export const $desk = defineStore(() => {
     const joined = await $fetch<LeadJoined>(at, { method: "POST", body: { key: row.key } }).catch(() => undefined);
     if (!joined) return chrome.toast(`Could not put ${row.name} on ${titleOf(meta)}`, "destructive");
     named(row.key, joined.title);
-    offer(`${row.name} joined ${titleOf(meta)} as a Task Lead, and reads it next.`, async () => {
+    offer(`${row.name} joined ${titleOf(meta)} as an Individual Contributor, and reads it next.`, async () => {
       await $fetch(at, { method: "DELETE", query: { key: row.key } }).catch(() => undefined);
       if (was && !(await rename(row.key, was))) chrome.toast(`Could not rename ${row.name} back`, "destructive");
     });
@@ -164,7 +164,7 @@ export const $desk = defineStore(() => {
     if (task.slug === meta.slug) task.close();
     await task.readTasks();
     const stopped = gone.stopped.length
-      ? ` ${plural(gone.stopped.length, "Task Lead")} stopped and stay stopped if you undo.`
+      ? ` ${plural(gone.stopped.length, "Individual Contributor")} stopped and stay stopped if you undo.`
       : "";
     offer(`${titleOf(meta)} is removed.${stopped}`, async () => {
       const back = await $fetch(`${at}/restore`, { method: "POST" }).catch(() => undefined);

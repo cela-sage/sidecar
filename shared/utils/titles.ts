@@ -26,6 +26,8 @@ const DAY = /^([1-9]|[12][0-9]|3[01])$/;
 const TICKET = /^[A-Z][A-Z0-9]*-\d+$/;
 const WORDY = /[\p{L}\p{N}]/u;
 
+const SLUGGED: readonly Role[] = ["SL", "IC"];
+
 const isRole = (word = ""): word is Role => (Role as readonly string[]).includes(word);
 
 const parse = (name: string): RoleTitle | undefined => {
@@ -48,7 +50,8 @@ const partsOf = ({ was, token }: ProjectTitle): Parts => {
   const date = MONTH.test(words[0] ?? "") && DAY.test(words[1] ?? "") ? words.splice(0, 2) : [];
   const tickets: string[] = [];
   while (TICKET.test(words[0] ?? "")) tickets.push(...words.splice(0, 1));
-  if (isRole(words[0])) words.splice(0, words[1]?.includes("-") ? 2 : 1);
+  const [first] = words;
+  if (isRole(first)) words.splice(0, SLUGGED.includes(first) && words[1]?.includes("-") ? 2 : 1);
   return { head: [...date, ...(title?.token === token ? tickets : [])], subject: words };
 };
 
@@ -59,7 +62,7 @@ const inProject = (to: ProjectTitle): string => {
 
 const asLead = ({ slug, ...to }: LeadTitle): string => {
   const { head, subject } = partsOf(to);
-  return `[${to.token}] ${[...head, "TL", slug, ...subject].join(" ")}`;
+  return `[${to.token}] ${[...head, "IC", slug, ...subject].join(" ")}`;
 };
 
 export const Titles = { asLead, belongsTo, inProject, parse };

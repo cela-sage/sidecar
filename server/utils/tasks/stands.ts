@@ -15,7 +15,7 @@ export interface StandsInput {
 }
 
 const INSTRUCTION =
-  "Say where this task stands for a Project Lead picking it up cold: whether it runs on its own, waits on a third party or needs Marco, what Marco decided, and what comes next. Name people by role, use plain words, and give no heading.";
+  "Say where this task stands for a Domain Lead picking it up cold: whether it runs on its own, waits on a third party or needs Marco, what Marco decided, and what comes next. Name people by role, use plain words, and give no heading.";
 const ENTRIES = 120;
 const ENTRY_CHARS = 400;
 const CONTEXT_CHARS = 12_000;

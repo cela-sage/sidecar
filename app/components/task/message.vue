@@ -48,9 +48,9 @@ onMounted(() => void prompt.load(conversation));
       :candidates="candidates"
       class="entry"
       :commands="commands"
-      label="Message this Task Lead"
+      label="Message this Individual Contributor"
       opens="down"
-      placeholder="Message this Task Lead"
+      placeholder="Message this Individual Contributor"
       @send="send"
     />
     <UiButton

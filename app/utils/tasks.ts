@@ -35,12 +35,12 @@ const STEP_LABEL: Partial<Record<TaskState, string>> = { unassigned: "Backlog", 
 
 const TIP: Record<TaskState, string> = {
   unassigned: "Not on a project yet",
-  assigned: "On its project, before the Project Lead reads it",
-  assessed: "The Project Lead read it",
-  running: "A Task Lead runs it",
-  blocked: "The Task Lead is blocked on you",
+  assigned: "On its project, before the Domain Lead reads it",
+  assessed: "The Domain Lead read it",
+  running: "An Individual Contributor runs it",
+  blocked: "The Individual Contributor is blocked on you",
   waiting: "It waits on a third party",
-  finished: "The Task Lead finished it, and it waits on your mark",
+  finished: "The Individual Contributor finished it, and it waits on your mark",
   done: "Done is your mark, and it means you checked it",
 };
 
@@ -86,7 +86,7 @@ const stepsOf = (state: TaskState, { resumed, settledBy, waiting }: TaskStory = 
     });
   if (settledBy)
     steps.push({
-      label: settledBy === "YOU" ? "Blocked, settled by you" : "Blocked, settled by the Project Lead",
+      label: settledBy === "YOU" ? "Blocked, settled by you" : "Blocked, settled by the Domain Lead",
       kind: "decided",
       tip: "An escalation stopped it, and the decision is in the history",
     });

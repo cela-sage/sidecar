@@ -75,7 +75,7 @@ const rows = (entries: HistoryEntry[], { decisionsOnly = false }: { decisionsOnl
 };
 
 const readAt = (entries: HistoryEntry[]): string | undefined =>
-  entries.findLast((entry) => entry.kind === "read" && entry.who === "PL")?.at;
+  entries.findLast((entry) => entry.kind === "read" && entry.who === "DL")?.at;
 
 const dividerAt = (list: TimelineRow[], read?: string): number | undefined => {
   if (!read || !list[0] || list[0].at <= read) return undefined;

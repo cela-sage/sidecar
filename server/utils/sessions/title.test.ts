@@ -39,7 +39,7 @@ afterEach(() => {
 const nameOf = (key: string): string | undefined => liveSessions({ key }).find((one) => one.key === key)?.name;
 
 test("a rename lands in the job list and the transcript, marked as yours", async () => {
-  const title = "[Cela] TL sidecar-tasks-face macOS zoom";
+  const title = "[Cela] IC sidecar-tasks-face macOS zoom";
   assert.equal(await retitle({ key: JOB.key, title }), true);
   assert.equal(nameOf(JOB.key), title);
   const { name, nameSource, sessionId } = JSON.parse(readFileSync(join(root, "jobs", JOB.key, "state.json"), "utf8"));
@@ -49,7 +49,7 @@ test("a rename lands in the job list and the transcript, marked as yours", async
 });
 
 test("a conversation with no job takes the name from its transcript, and an unknown one is refused", async () => {
-  assert.equal(await retitle({ key: LOOSE.key, title: "[Cela] TL sidecar-tasks-face notes" }), true);
-  assert.equal(nameOf(LOOSE.key), "[Cela] TL sidecar-tasks-face notes");
+  assert.equal(await retitle({ key: LOOSE.key, title: "[Cela] IC sidecar-tasks-face notes" }), true);
+  assert.equal(nameOf(LOOSE.key), "[Cela] IC sidecar-tasks-face notes");
   assert.equal(await retitle({ key: "eeee0003", title: "[Cela] nothing" }), false);
 });

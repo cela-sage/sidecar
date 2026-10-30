@@ -165,7 +165,7 @@ watch(
         <OrgAvatar :project="group.project" :tint="group.tint" />
         <span class="project-name">{{ group.project.name }}</span>
         <span v-if="hot === group.project.key" class="drop mono-meta">{{
-          carried ? `as [${group.project.token}]` : "to its Project Lead"
+          carried ? `as [${group.project.token}]` : "to its Domain Lead"
         }}</span>
         <OrgMark v-if="group.mark" :mark="group.mark" />
       </button>

@@ -26,8 +26,8 @@ const standsEyebrow = computed(() => {
 
 const readLine = computed(() =>
   readAt.value
-    ? `The Project Lead last read it at ${clock(readAt.value)}`
-    : "The Project Lead reads it the next time the task needs it",
+    ? `The Domain Lead last read it at ${clock(readAt.value)}`
+    : "The Domain Lead reads it the next time the task needs it",
 );
 
 function pick(index: number): void {
@@ -86,7 +86,9 @@ useShortcuts(
     <div ref="listEl" class="scroll">
       <div v-if="task.onlyDecisions" class="cold">
         <span class="eyebrow mono-meta">Your decisions</span>
-        <span class="said">The lane shows these to every Task Lead that escalates, so nothing gets asked twice.</span>
+        <span class="said"
+          >The lane shows these to every Individual Contributor that escalates, so nothing gets asked twice.</span
+        >
       </div>
       <div v-else-if="task.entries.length" class="cold" :data-loading="task.isStanding && !task.stands">
         <span class="eyebrow mono-meta">{{ standsEyebrow }}</span>
@@ -101,12 +103,12 @@ useShortcuts(
         {{
           task.onlyDecisions
             ? "You haven't decided anything on this task yet."
-            : `Nothing has happened on ${meta.title || "this task"} yet. Its lane, its Task Lead's turns and your messages land here.`
+            : `Nothing has happened on ${meta.title || "this task"} yet. Its lane, its Individual Contributor's turns and your messages land here.`
         }}
       </UiStateMessage>
 
       <template v-for="(row, index) in rows" :key="row.key">
-        <p v-if="row.key === dividerAt" class="divider mono-meta">new since the Project Lead read it</p>
+        <p v-if="row.key === dividerAt" class="divider mono-meta">new since the Domain Lead read it</p>
         <TaskHistoryRow :is-picked="row === picked" :row="row" @pick="pick(index)" />
       </template>
     </div>

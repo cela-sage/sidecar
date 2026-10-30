@@ -14,7 +14,7 @@ const conversation = computed(() => {
   const oldest = [...rail.value].sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0));
   const held =
     oldest.find((session) => nameOf(session) === lead) ??
-    oldest.find((session) => Titles.parse(nameOf(session))?.role === "TL") ??
+    oldest.find((session) => Titles.parse(nameOf(session))?.role === "IC") ??
     oldest[0];
   return held?.key ?? sc.sessionKey.value;
 });

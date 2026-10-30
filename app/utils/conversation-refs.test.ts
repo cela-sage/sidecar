@@ -8,9 +8,9 @@ const keysOf = (text: string): string[] => ConversationRefs.of(text).map((one) =
 
 test("a conversation reads as @<key> or as the door's @<title> (<key>), resolved by its key", () => {
   assert.deepEqual(keysOf("ask @70ef962c about it"), ["70ef962c"]);
-  assert.deepEqual(keysOf("@[Cela] PL sidecar-task-board plan (70ef962c) and @cded5e9d."), ["70ef962c", "cded5e9d"]);
-  const [long] = ConversationRefs.of("see @[Cela] PL plan (70ef962c) now");
-  assert.deepEqual("see @[Cela] PL plan (70ef962c) now".slice(long?.start, long?.end), "@[Cela] PL plan (70ef962c)");
+  assert.deepEqual(keysOf("@[Cela] DL sidecar-task-board plan (70ef962c) and @cded5e9d."), ["70ef962c", "cded5e9d"]);
+  const [long] = ConversationRefs.of("see @[Cela] DL plan (70ef962c) now");
+  assert.deepEqual("see @[Cela] DL plan (70ef962c) now".slice(long?.start, long?.end), "@[Cela] DL plan (70ef962c)");
 });
 
 test("a bare key, a git hash, an e-mail or a longer hex never reads as a conversation", () => {
@@ -39,10 +39,10 @@ test("a key alone in backticks becomes the chip around its code, and any other c
 });
 
 test("a title in backticks becomes the chip of the conversation that has it, and an unknown one stays code", () => {
-  const titles = new Map([["[meta] PL conversation rename", "a6569a05"]]);
-  const known: Node = ["code", {}, "[meta] PL conversation rename"];
-  assert.deepEqual(ConversationRefs.withRefs([["p", {}, known, ["code", {}, "[meta] PL other"]]], titles), [
-    ["p", {}, ["conversation-ref", { conversation: "a6569a05" }, known], ["code", {}, "[meta] PL other"]],
+  const titles = new Map([["[meta] DL conversation rename", "a6569a05"]]);
+  const known: Node = ["code", {}, "[meta] DL conversation rename"];
+  assert.deepEqual(ConversationRefs.withRefs([["p", {}, known, ["code", {}, "[meta] DL other"]]], titles), [
+    ["p", {}, ["conversation-ref", { conversation: "a6569a05" }, known], ["code", {}, "[meta] DL other"]],
   ]);
   assert.deepEqual(ConversationRefs.withRefs([["p", {}, known]]), [["p", {}, known]]);
 });
