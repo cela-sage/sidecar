@@ -140,7 +140,7 @@ const create = (title: string): TaskFile => {
 
 const leadsOf = (sessions: LiveSession[], slug: string): LiveSession[] =>
   sessions.filter((one) => {
-    const title = (!one.archived || one.live) && one.name ? Titles.parse(one.name) : undefined;
+    const title = (!one.archived || one.life === "alive") && one.name ? Titles.parse(one.name) : undefined;
     return title?.role === "TL" && Titles.belongsTo(title, slug);
   });
 

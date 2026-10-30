@@ -9,6 +9,7 @@ export const MARK_LABEL: Record<Mark, string> = {
   queued: "Not started",
   unseen: "Finished, not opened yet",
   completed: "Completed",
+  killed: "Killed",
   done: "Done",
 };
 </script>
@@ -37,6 +38,9 @@ const { mark } = defineProps<{ mark: Mark }>();
     </svg>
     <svg v-else-if="mark === 'unseen'" class="dot" viewBox="0 0 12 12" aria-hidden="true">
       <circle cx="6" cy="6" r="2.5" />
+    </svg>
+    <svg v-else-if="mark === 'killed'" class="halt" viewBox="0 0 12 12" aria-hidden="true">
+      <rect x="3.5" y="3.5" width="5" height="5" rx="1" />
     </svg>
     <svg v-else class="check" viewBox="0 0 12 12" aria-hidden="true">
       <path d="M2.4 6.3 4.9 8.7 9.6 3.6" />
@@ -100,6 +104,10 @@ svg {
 
 .dot circle {
   @apply fill-primary;
+}
+
+.halt rect {
+  @apply fill-muted;
 }
 
 .check {

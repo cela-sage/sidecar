@@ -59,7 +59,7 @@ test("a session no job owns is archived, and a job directory with no state file 
 test("a live process supplies the id, the name and the cwd, and outranks the transcript", () => {
   const alpha = find(liveSessions(), "aaaaaaaa");
   assert.equal(alpha.id, ALPHA_ID);
-  assert.equal(alpha.live, true);
+  assert.equal(alpha.life, "alive");
   assert.equal(alpha.name, "Alpha, as the process knows it");
   assert.equal(alpha.cwd, "/tmp/alpha-moved");
   assert.equal(alpha.status, "busy");
@@ -67,7 +67,7 @@ test("a live process supplies the id, the name and the cwd, and outranks the tra
 
 test("a dead pid's registry file is not a live session, and its name falls to the transcript", () => {
   const beta = find(liveSessions(), "bbbbbbbb");
-  assert.equal(beta.live, false);
+  assert.equal(beta.life, "killed");
   assert.equal(beta.id, BETA_ID);
   assert.notEqual(beta.name, "Beta, from a process that died");
 });
@@ -99,10 +99,10 @@ test("a session with no subagents folder falls back to the team roster", () => {
   assert.deepEqual(find(liveSessions(), "bbbbbbbb").agents, [{ name: "Three", color: "cyan" }]);
 });
 
-test("live sessions sort ahead of the rest", () => {
+test("alive sessions sort ahead of the rest", () => {
   const all = liveSessions();
-  assert.equal(all[0]?.live, true);
-  assert.equal(all[1]?.live, false);
+  assert.equal(all[0]?.life, "alive");
+  assert.equal(all[1]?.life, "killed");
 });
 
 test("a transcript with no cwd record of its own reads the folder name back into a path", () => {

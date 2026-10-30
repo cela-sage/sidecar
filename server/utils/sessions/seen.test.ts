@@ -27,9 +27,9 @@ test("a turn ending leaves the conversation unseen before the change goes out, a
   assert.deepEqual(
     read().events.map((one) => [one.topic, one.data]),
     [
-      ["conversation.changed", { key: "abcd1234", doing: true, asking: false }],
+      ["conversation.changed", { key: "abcd1234", doing: true, asking: false, life: "killed" }],
       ["conversation.unseen", { key: "abcd1234", endedAt }],
-      ["conversation.changed", { key: "abcd1234", doing: false, asking: false }],
+      ["conversation.changed", { key: "abcd1234", doing: false, asking: false, life: "killed" }],
     ],
   );
 

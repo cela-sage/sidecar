@@ -5,7 +5,7 @@ import { Titles, type RoleTitle } from "../../shared/utils/titles.ts";
 import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
 
 // Amber is a conversation outside a task waiting on you, red a task or its Task Lead waiting on you.
-export type Mark = "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "done";
+export type Mark = "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "killed" | "done";
 
 export interface OrgConversation {
   key: string;
@@ -84,6 +84,7 @@ const RANK: Record<Mark, number> = {
   third: 3,
   queued: 2,
   completed: 1,
+  killed: 0,
   done: 0,
 };
 const TASK_MARK: Record<TaskState, Mark> = {
@@ -131,15 +132,18 @@ const stateOf = (session: LiveSession, { asking, busy }: Heard): AgentState => {
 const finishedOf = (session: LiveSession, { unseen }: Heard): Mark =>
   unseen.has(session.key) ? "unseen" : "completed";
 
+// A process that is gone has no turn to be working or waiting, whatever the bus last heard.
+const markOf = (session: LiveSession, heard: Heard, marks: Record<AgentState, Mark>): Mark =>
+  session.life === "killed" ? "killed" : marks[stateOf(session, heard)];
+
 const looseOf = (session: LiveSession, heard: Heard, name?: string): OrgConversation => {
   const title = session.name || session.cwd.split("/").filter(Boolean).at(-1) || session.key;
-  const state = stateOf(session, heard);
   const marks: Record<AgentState, Mark> = {
     working: "working",
     "needs input": "waits",
     completed: finishedOf(session, heard),
   };
-  return { key: session.key, title, name: name ?? title, mark: marks[state] };
+  return { key: session.key, title, name: name ?? title, mark: markOf(session, heard, marks) };
 };
 
 const nameOf = ({ title }: Placed, slug?: string): string => {
@@ -151,7 +155,6 @@ const nameOf = ({ title }: Placed, slug?: string): string => {
 const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Placing): OrgConversation => {
   const { session, title } = placed;
   const isLead = title.role === "TL";
-  const state = stateOf(session, heard);
   const marks: Record<AgentState, Mark> = {
     working: "working",
     "needs input": isLead ? "needs" : "waits",
@@ -162,7 +165,7 @@ const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Pla
     title: session.name ?? "",
     name: nameOf(placed, slug),
     role: title.role,
-    mark: marks[state],
+    mark: markOf(session, heard, marks),
     ...(slug ? { slug } : {}),
     ...(isLead && session.agents?.length ? { agents: session.agents } : {}),
   };
@@ -175,10 +178,10 @@ const taskOf = (meta: TaskMeta, placed: Placed[], heard: Heard): OrgTask => {
   const mine = placed.filter((one) => one.title.role === "TL" && Titles.belongsTo(one.title, meta.slug)).sort(byLead);
   const placing = { ...heard, slug: meta.slug, waiting: meta.task.state === "waiting" };
   const leads = mine
-    .filter((one) => one.session.live)
+    .filter((one) => one.session.life === "alive")
     .map((one) => conversationOf(one, placing))
     .sort((a, b) => RANK[b.mark] - RANK[a.mark]);
-  const done = mine.filter((one) => !one.session.live).map((one) => conversationOf(one, placing));
+  const done = mine.filter((one) => one.session.life === "killed").map((one) => conversationOf(one, placing));
   const lead = mine.find((one) => one.session.name === meta.task.lead)?.session.key ?? leads[0]?.key;
   // A lead with a turn open shows the task In progress whatever its state, and the state returns when the turn ends.
   const status = leads.some((one) => one.mark === "working") ? "running" : meta.task.state;
@@ -203,7 +206,9 @@ const treeOf = ({
 }: OrgInput): OrgTree => {
   const heard: Heard = { asking: new Set(asking), busy, unseen: new Set(unseen) };
   const inView = sessions.some((session) => typeof session.inView === "boolean");
-  const listed = sessions.filter((session) => (inView ? session.inView : !session.archived || session.live));
+  const listed = sessions.filter((session) =>
+    inView ? session.inView : !session.archived || session.life === "alive",
+  );
   const placed = placedOf(listed);
   const owned = ownedOf(listed);
   const ordered = tasks.filter((one) => isShown(one, now)).sort(Tasks.order);

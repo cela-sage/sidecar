@@ -28,7 +28,7 @@ export function useScreen(): Screen {
   // A live process that has not reported a status yet is treated as idle rather than guessed busy.
   const sessionState = computed<SessionState>(() => {
     const here = session.value;
-    if (!here?.live) return "gone";
+    if (here?.life !== "alive") return "gone";
     return here.status ?? "idle";
   });
 

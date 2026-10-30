@@ -166,7 +166,7 @@ interface ApiSession {
   id?: string;
   key?: string;
   name?: string;
-  live?: boolean;
+  life?: string;
 }
 
 async function readSessions(url: string): Promise<ApiSession[]> {
@@ -273,7 +273,7 @@ async function main(): Promise<void> {
     if (session.id) knownIds.push(session.id);
     if (session.key) knownIds.push(session.key);
   }
-  const expectedNames = sessions.filter((s) => s.live && s.name).map((s) => s.name ?? "");
+  const expectedNames = sessions.filter((s) => s.life === "alive" && s.name).map((s) => s.name ?? "");
 
   const probeInput: ProbeInput = {
     regions: REGIONS.map((spec) => ({ id: spec.id, selectors: spec.selectors, frame: spec.frame })),
@@ -342,9 +342,9 @@ async function main(): Promise<void> {
     // Artifacts first: the read face has nothing to render without one, and a run that
     // opened the wrong conversation would report that as a broken artifact frame.
     const key = (
-      sessions.find((s) => s.live && s.key && s.artifacts?.length) ??
+      sessions.find((s) => s.life === "alive" && s.key && s.artifacts?.length) ??
       sessions.find((s) => s.key && s.artifacts?.length) ??
-      sessions.find((s) => s.live && s.key) ??
+      sessions.find((s) => s.life === "alive" && s.key) ??
       sessions.find((s) => s.key)
     )?.key;
     if (!seen.screen.face && !isFile && key) {
@@ -429,7 +429,7 @@ async function main(): Promise<void> {
       id: s.id ?? "",
       key: s.key ?? "",
       name: s.name,
-      live: Boolean(s.live),
+      live: s.life === "alive",
     })),
     states,
     events,

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { DockKind, type DockTab } from "../../shared/types/dock.ts";
 import { RunStatus } from "../../shared/types/runs.ts";
 import type { SidecarEvent, Topic, Topics } from "../../shared/types/events.ts";
+import { Life } from "../../shared/types/session.ts";
 import { AskKind, Role, TaskState, type Who } from "../../shared/types/task.ts";
 import { Questions } from "../../shared/utils/question.ts";
 import { Sidecar } from "./paths.ts";
@@ -86,7 +87,10 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
   "conversation.changed": (data) => {
     const key = text(data.key);
     const { doing, asking } = data;
-    return key && typeof doing === "boolean" && typeof asking === "boolean" ? { key, doing, asking } : undefined;
+    const life = oneOf(Life, data.life);
+    return key && life && typeof doing === "boolean" && typeof asking === "boolean"
+      ? { key, doing, asking, life }
+      : undefined;
   },
   "conversation.unseen": (data) => {
     const key = text(data.key);

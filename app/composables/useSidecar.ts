@@ -55,7 +55,7 @@ export function loadSidecar(): void {
   function pick(): void {
     const sessions = sc.sessions.value;
     if (sc.sessionKey.value && sessions.some((s) => s.key === sc.sessionKey.value)) return;
-    const first = sessions.find((s) => s.live) ?? sessions.find((s) => s.artifacts.length) ?? sessions[0];
+    const first = sessions.find((s) => s.life === "alive") ?? sessions.find((s) => s.artifacts.length) ?? sessions[0];
     sc.sessionKey.value = first?.key;
   }
 
@@ -77,7 +77,7 @@ export function loadSidecar(): void {
       sc.catalogue.value = await $fetch<ArtifactMeta[]>("/api/artifacts");
     // Left out of a live answer means its process has ended.
     const kept = sc.sessions.value.map(
-      (s) => byKey.get(s.key) ?? (s.live ? { ...s, live: false, status: undefined } : s),
+      (s): LiveSession => byKey.get(s.key) ?? (s.life === "alive" ? { ...s, life: "killed", status: undefined } : s),
     );
     sc.sessions.value = [...fresh.filter((s) => !known.has(s.key)), ...kept].sort(sessionOrder);
     pick();

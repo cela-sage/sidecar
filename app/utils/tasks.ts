@@ -120,7 +120,8 @@ const agentOrder = (a: LiveSession, b: LiveSession): number =>
 const railOf = (sessions: LiveSession[], slug: string): LiveSession[] =>
   sessions
     .filter((session) => {
-      const title = (!session.archived || session.live) && session.name ? Titles.parse(session.name) : undefined;
+      const title =
+        (!session.archived || session.life === "alive") && session.name ? Titles.parse(session.name) : undefined;
       return !!title && Titles.belongsTo(title, slug);
     })
     .sort(agentOrder);

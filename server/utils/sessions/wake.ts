@@ -1,6 +1,7 @@
 import { execFile } from "node:child_process";
 import { setTimeout as sleep } from "node:timers/promises";
 import { promisify } from "node:util";
+import { TurnBus } from "./busy.ts";
 import { liveSessions } from "./index.ts";
 import { claudeBinary, sessionEnv } from "./jobs.ts";
 import { entryOf, keyFileOf } from "./registry.ts";
@@ -26,7 +27,9 @@ const resume = async (key: string): Promise<boolean> => {
     timeout: START_MS,
   });
   for (const until = Date.now() + READY_MS; !isReady(key) && Date.now() < until; ) await sleep(POLL_MS);
-  return isReady(key);
+  const isUp = isReady(key);
+  if (isUp) TurnBus.lived(key);
+  return isUp;
 };
 
 // Resuming a session that already runs starts a copy under a new id, so concurrent wakes of a key share one resume.

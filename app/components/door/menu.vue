@@ -13,7 +13,7 @@ const seen = $seen();
 
 // The turn bus, as the tree reads it, since a polled "working" stays on after the turn ends.
 const markOf = (session: LiveSession): Mark => {
-  if (!session.live) return "done";
+  if (session.life === "killed") return "killed";
   const bus = busy.keys[session.key];
   if (bus?.asking) return "waits";
   if (bus?.doing) return "working";

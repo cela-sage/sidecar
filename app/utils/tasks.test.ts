@@ -11,7 +11,7 @@ const session = (patch: Partial<LiveSession>): LiveSession => ({
   cwd: "/tmp",
   id: "id",
   key: "aaaaaaaa",
-  live: true,
+  life: "alive",
   ...patch,
 });
 
@@ -266,8 +266,8 @@ test("the org tree puts each role where it works, folds what is done and files y
       agents: [{ name: "designer", color: "blue" }],
     }),
     session({ key: "lane", name: "[Cela] TL sidecar-task-board lane" }),
-    session({ key: "loop", name: "[Cela] TL sidecar-task-board loop", live: false }),
-    session({ key: "gone", name: "[Cela] TL sidecar-task-board titles", live: false, archived: true }),
+    session({ key: "loop", name: "[Cela] TL sidecar-task-board loop", life: "killed" }),
+    session({ key: "gone", name: "[Cela] TL sidecar-task-board titles", life: "killed", archived: true }),
     session({ key: "own", name: "contracts guide", status: "busy" }),
     session({ key: "zoom", name: "[Cela] sidecar macOS zoom", status: "waiting" }),
     session({ key: "ops", name: "[Ops] rollout review" }),
@@ -276,7 +276,7 @@ test("the org tree puts each role where it works, folds what is done and files y
     sessions,
     projects,
     asking: ["[Cela] TL sidecar-task-board lane"],
-    busy: Object.fromEntries(["ea", "fol", "own"].map((key) => [key, { doing: true, asking: false }])),
+    busy: Object.fromEntries(["ea", "fol", "own", "loop"].map((key) => [key, { doing: true, asking: false }])),
     tasks: [
       meta("sidecar-task-board", "running", "cela", "[Cela] TL sidecar-task-board lane"),
       meta("session-title-rule", "done", "cela"),
@@ -302,7 +302,7 @@ test("the org tree puts each role where it works, folds what is done and files y
     board?.leads.map((one) => one.agents?.map((agent) => agent.name)),
     [undefined, ["designer"]],
   );
-  assert.deepEqual(board?.done.map(row), ["TL loop completed"]);
+  assert.deepEqual(board?.done.map(row), ["TL loop killed"]);
   assert.deepEqual(
     cela?.done.map((one) => one.meta.slug),
     ["session-title-rule"],

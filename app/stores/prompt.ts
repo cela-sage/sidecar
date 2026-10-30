@@ -148,7 +148,7 @@ export const $prompt = defineStore(() => {
   };
 
   const deliver = async (key: string, path: "message" | "command", body: Record<string, string>): Promise<boolean> => {
-    wakingKey.value = isAsleep(sc.sessions.value, key) ? key : undefined;
+    wakingKey.value = isKilled(sc.sessions.value, key) ? key : undefined;
     const reply = await post(key, path, body);
     wakingKey.value = undefined;
     if (!reply.delivered) chrome.toast(FAILED[reply.reason], "destructive");

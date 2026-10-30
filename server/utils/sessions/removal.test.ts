@@ -13,6 +13,9 @@ import { spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { afterEach, beforeEach, test } from "node:test";
+import { read } from "../../../lib/sidecar/events.ts";
+import { refreshJobs } from "./jobs.ts";
+import { Lifecycle } from "./lifecycle.ts";
 import { isAlive } from "./registry.ts";
 import { removeSession } from "./removal.ts";
 
@@ -22,7 +25,9 @@ const ID = "ffff0001-1111-2222-3333-444444444444";
 const FAKE_DAEMON = `#!/bin/sh
 case "$1" in
   agents) if [ -f "$CLAUDE_CONFIG_DIR/daemon.json" ]; then cat "$CLAUDE_CONFIG_DIR/daemon.json"; else echo "[]"; fi ;;
-  stop) echo "stop $2" >> "$CLAUDE_CONFIG_DIR/calls" ;;
+  stop)
+    echo "stop $2" >> "$CLAUDE_CONFIG_DIR/calls"
+    if [ -f "$CLAUDE_CONFIG_DIR/after-stop.json" ]; then cp "$CLAUDE_CONFIG_DIR/after-stop.json" "$CLAUDE_CONFIG_DIR/daemon.json"; fi ;;
   rm)
     echo "rm $2" >> "$CLAUDE_CONFIG_DIR/calls"
     if [ -f "$CLAUDE_CONFIG_DIR/rm-fails" ]; then echo "Session $2 is still running" >&2; exit 1; fi
@@ -154,6 +159,24 @@ test("a background job claude rm refuses keeps everything the sidecar holds for 
   const outcome = await removeSession(KEY);
   assert.match(outcome.refused ?? "", /claude rm ffff0001 failed: Session ffff0001 is still running/);
   assert.equal(existsSync(join(root, "artifacts", `session-${KEY}`)), true);
+});
+
+test("a kill ends the job through claude stop, keeps the job and the transcript, and announces killed", async () => {
+  const sleeper = spawn("sleep", ["30"]);
+  listed({ pid: sleeper.pid });
+  put(join(root, "after-stop.json"), JSON.stringify([{ id: KEY, sessionId: ID, kind: "background", state: "done" }]));
+  try {
+    await refreshJobs();
+    assert.deepEqual(await Lifecycle.kill(KEY), { key: KEY, life: "killed" });
+    assert.equal(calls(), `stop ${KEY}\n`);
+    assert.equal(existsSync(join(root, "jobs", KEY, "state.json")), true);
+    assert.equal(existsSync(join(root, "projects", "-tmp", `${ID}.jsonl`)), true);
+    assert.deepEqual(read().events.at(-1)?.data, { key: KEY, doing: false, asking: false, life: "killed" });
+    await assert.rejects(Lifecycle.kill(KEY), /already killed/);
+    await assert.rejects(Lifecycle.kill("../../etc"), /not a session key/);
+  } finally {
+    sleeper.kill();
+  }
 });
 
 test("a job in worktree isolation the daemon lists is removed through it too", async () => {

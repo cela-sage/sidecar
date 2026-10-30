@@ -23,7 +23,7 @@ export const $notes = defineStore(() => {
   async function deliver({ text, key = sc.sessionKey.value, slug }: DeliverOptions): Promise<Delivery | undefined> {
     if (!key || !text || isSending.value) return undefined;
     isSending.value = true;
-    isWaking.value = isAsleep(sc.sessions.value, key);
+    isWaking.value = isKilled(sc.sessions.value, key);
     try {
       return await $fetch<Delivery>(`/api/sessions/${encodeURIComponent(key)}/message`, {
         body: { text, ...(slug ? { slug } : {}) },

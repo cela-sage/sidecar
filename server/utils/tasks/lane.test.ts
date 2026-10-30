@@ -219,12 +219,12 @@ test("a remove in any state trashes the task with one history entry, and only it
     TaskHistory.read("loop").map((entry) => HistoryLines.of(entry).text),
     ["Removed it."],
   );
-  const session = (key: string, name: string, live = true) => ({
+  const session = (key: string, name: string, life: "alive" | "killed" = "alive") => ({
     key,
     id: key,
     name,
     cwd: "/tmp",
-    live,
+    life,
     artifacts: [],
   });
   assert.deepEqual(
@@ -233,7 +233,7 @@ test("a remove in any state trashes the task with one history entry, and only it
         session("aaaa0001", "[Cela] TL loop build"),
         session("aaaa0002", "[Cela] PL loop plan"),
         session("aaaa0003", "[Cela] TL loop-two build"),
-        { ...session("aaaa0004", "[Cela] TL loop old", false), archived: true },
+        { ...session("aaaa0004", "[Cela] TL loop old", "killed"), archived: true },
       ],
       "loop",
     ).map((one) => one.key),

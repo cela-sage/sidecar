@@ -2,6 +2,14 @@ export type SessionAgent = { name: string; color: string };
 
 export type SessionStatus = "busy" | "idle" | "waiting";
 
+export const Life = ["alive", "killed"] as const;
+export type Life = (typeof Life)[number];
+
+export interface LifeChange {
+  key: string;
+  life: Life;
+}
+
 // What the sidecar shows of a conversation: the registry's status, or gone once no process holds it.
 export type SessionState = SessionStatus | "gone";
 
@@ -16,7 +24,7 @@ export interface LiveSession {
   key: string;
   name?: string;
   cwd: string;
-  live: boolean;
+  life: Life;
   color?: string;
   artifacts: string[];
   agents?: SessionAgent[];

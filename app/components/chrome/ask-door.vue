@@ -78,7 +78,7 @@ const who = computed(() => {
 
 const sub = computed<{ text: string; tone: Tone }>(() => {
   if (door.mode === "new") {
-    const anyLive = door.assistants.some((one) => one.live);
+    const anyLive = door.assistants.some((one) => one.life === "alive");
     return anyLive
       ? { text: "a new assistant · starts with no history", tone: "quiet" }
       : { text: "No assistant is running · your message starts one", tone: "quiet" };

@@ -5,6 +5,7 @@ import { agentsOf } from "./agents.ts";
 import { artifactsOf, keysWithArtifacts } from "./artifact-lists.ts";
 import { sessionColor } from "./identity.ts";
 import { agentView, jobs, type JobEntry } from "./jobs.ts";
+import { Lives } from "./life.ts";
 import { conversationsHome, isKey, keyOf } from "./paths.ts";
 import { liveEntries, type RegistryEntry } from "./registry.ts";
 import { cwdFromSlug } from "./slug.ts";
@@ -45,7 +46,7 @@ function build(key: string, { entry, job, ref, view }: Sources): LiveSession | u
     key,
     name: [job?.name, entry?.name, ...identity.names].map((one) => realName(one, key, id)).find(Boolean),
     cwd,
-    live: !!entry || !!job?.pid,
+    life: Lives.of({ entry, job }),
     color: sessionColor(key),
     artifacts: artifactsOf(key),
     agents: ref ? agentsOf(ref) : undefined,

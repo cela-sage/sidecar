@@ -6,7 +6,9 @@ import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { setTimeout as sleep } from "node:timers/promises";
+import { read } from "../../../lib/sidecar/events.ts";
 import { deliver } from "./inbox.ts";
+import { Lifecycle } from "./lifecycle.ts";
 
 const FAKE = join(dirname(fileURLToPath(import.meta.url)), "__fixtures__", "resuming-claude.ts");
 const ASLEEP = "cafe0000-1111-2222-3333-444444444444";
@@ -76,4 +78,11 @@ test("a passive ask never starts a process, and neither does a key with no trans
   });
   assert.deepEqual(await deliver({ key: "feedbeef", text: "hello" }), { delivered: false, reason: "no-live-session" });
   assert.equal(resumes().length, 1);
+});
+
+test("a resume wakes a killed conversation without a message, announces alive, and refuses a running one", async () => {
+  assert.deepEqual(await Lifecycle.resume("cafe1111"), { key: "cafe1111", life: "alive" });
+  assert.deepEqual(resumes().at(-1)?.args, ["--bg", "--resume", OTHER]);
+  assert.deepEqual(read().events.at(-1)?.data, { key: "cafe1111", doing: false, asking: false, life: "alive" });
+  await assert.rejects(Lifecycle.resume("cafe1111"), /already running/);
 });

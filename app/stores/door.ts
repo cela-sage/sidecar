@@ -69,17 +69,19 @@ export const $door = defineStore(() => {
   const following = new Map<string, Following>();
 
   const isAssistant = (session: LiveSession): boolean =>
-    (!session.archived || session.live) && !!session.name && Titles.parse(session.name)?.role === "EA";
+    (!session.archived || session.life === "alive") && !!session.name && Titles.parse(session.name)?.role === "EA";
 
   const assistants = computed(() =>
     sc.sessions.value
       .filter(isAssistant)
-      .sort((a, b) => Number(b.live) - Number(a.live) || (b.lastActive ?? 0) - (a.lastActive ?? 0)),
+      .sort(
+        (a, b) => Number(b.life === "alive") - Number(a.life === "alive") || (b.lastActive ?? 0) - (a.lastActive ?? 0),
+      ),
   );
 
   const key = computed(() => {
     if (target.value.kind !== "assistant") return undefined;
-    return target.value.key ?? assistants.value.find((one) => one.live)?.key;
+    return target.value.key ?? assistants.value.find((one) => one.life === "alive")?.key;
   });
 
   const assistant = computed(() => assistants.value.find((one) => one.key === key.value));
@@ -193,7 +195,7 @@ export const $door = defineStore(() => {
   const ask = async (sent: DoorSend, to: string): Promise<void> => {
     const made = exchange(sent.text, to);
     await follow(made.id, to);
-    update(made.id, { isWaking: isAsleep(sc.sessions.value, to) });
+    update(made.id, { isWaking: isKilled(sc.sessions.value, to) });
     const reply = await tell({ key: to, text: composed(sent), slug: slugOf(sent.context) });
     update(made.id, { isWaking: false });
     if (reply.delivered) return;
@@ -204,7 +206,7 @@ export const $door = defineStore(() => {
 
   const runCommand = async (command: CommandCall, to: string): Promise<void> => {
     const made = exchange(SlashCommand.line(command), to);
-    update(made.id, { isWaking: isAsleep(sc.sessions.value, to) });
+    update(made.id, { isWaking: isKilled(sc.sessions.value, to) });
     const ran = await prompt.run(to, command);
     update(made.id, { isWaking: false });
     if (ran === "sent") return update(made.id, { step: "answered" });
