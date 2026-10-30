@@ -7,7 +7,7 @@ import { Sidecar, configRoot } from "../../../lib/sidecar/paths.ts";
 import { artifactListsHome, canvasHome, conversationsHome, isKey, jobsHome, keyOf, teamsHome } from "./paths.ts";
 import { Links } from "./links.ts";
 import { isAlive, liveEntries } from "./registry.ts";
-import { claudeBinary, jobStateOf, refreshJobs } from "./jobs.ts";
+import { claudeBinary, jobStateOf, refreshJobs, type JobEntry } from "./jobs.ts";
 
 export interface Removal {
   key: string;
@@ -111,36 +111,37 @@ const forgetMode = (key: string): void => {
   }
 };
 
-export async function removeSession(key: string): Promise<Removal> {
-  if (!isKey(key)) return { key, removed: [], refused: "not a session key" };
+export interface Stopped {
+  job?: JobEntry;
+  killed?: boolean;
+  refused?: string;
+}
+
+export async function stopSession(key: string): Promise<Stopped> {
+  if (!isKey(key)) return { refused: "not a session key" };
 
   const state = jobStateOf(key);
   const id = typeof state?.sessionId === "string" ? state.sessionId : undefined;
   // The key is a truncation of the uuid, so a mismatch means this directory is somebody else's.
-  if (state && (!id || keyOf(id) !== key)) {
-    return { key, removed: [], refused: "the job's state file does not key to this session" };
-  }
+  if (state && (!id || keyOf(id) !== key)) return { refused: "the job's state file does not key to this session" };
   const job = (await refreshJobs()).find((one) => one.key === key);
-  const dir = join(jobsHome(), key);
   const isolation = state?.bgIsolation;
-  let killed: boolean | undefined;
   // The daemon resumes a background session it owns after a signal, so only its own stop and rm end one.
-  if (job?.background) {
-    killed = !(await claude("stop", key));
-  } else if (isolation && isolation !== "none") {
-    return {
-      key,
-      removed: [],
-      refused: `the job runs in ${String(isolation)} isolation; remove it with \`claude agents\``,
-    };
-  } else if (job?.pid && isAlive(job.pid)) {
-    if (!ours(job.pid)) {
-      return { key, removed: [], refused: `pid ${job.pid} is not a Claude process; refusing to signal it` };
-    }
-    killed = await kill(job.pid);
-    if (!killed) return { key, removed: [], killed: false, refused: `pid ${job.pid} did not stop` };
+  if (job?.background) return { job, killed: !(await claude("stop", key)) };
+  if (isolation && isolation !== "none") {
+    return { job, refused: `the job runs in ${String(isolation)} isolation; remove it with \`claude agents\`` };
   }
+  if (!job?.pid || !isAlive(job.pid)) return { job };
+  if (!ours(job.pid)) return { job, refused: `pid ${job.pid} is not a Claude process; refusing to signal it` };
+  const killed = await kill(job.pid);
+  return killed ? { job, killed } : { job, killed, refused: `pid ${job.pid} did not stop` };
+}
 
+export async function removeSession(key: string): Promise<Removal> {
+  const { job, ...stopped } = await stopSession(key);
+  if (stopped.refused) return { key, removed: [], ...stopped };
+  const { killed } = stopped;
+  const dir = join(jobsHome(), key);
   const held = existsSync(dir) ? holder(dir) : undefined;
   if (held) return { key, removed: [], killed, refused: `pid ${held} is running inside the job directory` };
 
