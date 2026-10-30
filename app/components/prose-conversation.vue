@@ -5,6 +5,7 @@ import { MARK_LABEL } from "~/components/org/mark.vue";
 const { conversation } = defineProps<{ conversation: string }>();
 
 const DWELL_MS = 350;
+const GRACE_MS = 120;
 const CARD_W = 300;
 
 const sc = useSidecar();
@@ -13,7 +14,7 @@ const conversationMenu = $conversationMenu();
 const tree = useOrgTree();
 const chip = useTemplateRef<HTMLElement>("chip");
 const at = ref<{ left: number; top: number }>();
-let dwell: ReturnType<typeof setTimeout> | undefined;
+let timer: ReturnType<typeof setTimeout> | undefined;
 
 const place = computed(() => Org.placeOf(tree.value, conversation));
 const session = computed(() => sc.sessions.value.find((one) => one.key === conversation));
@@ -41,59 +42,62 @@ const open = (): void => {
 const peek = (): void => {
   const box = chip.value?.getBoundingClientRect();
   if (!box) return;
-  at.value = { left: Math.max(8, Math.min(box.left - 6, window.innerWidth - CARD_W - 8)), top: box.bottom + 8 };
+  at.value = { left: Math.max(8, Math.min(box.left - 6, window.innerWidth - CARD_W - 8)), top: box.bottom + 4 };
   conversationMenu.peeking = conversation;
 };
 
-const enter = (): void => {
-  if (!window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-  dwell = setTimeout(peek, DWELL_MS);
-};
-
-const leave = (): void => {
-  clearTimeout(dwell);
+const close = (): void => {
+  clearTimeout(timer);
   at.value = undefined;
   if (conversationMenu.peeking === conversation) conversationMenu.peeking = undefined;
 };
 
+const enter = (): void => {
+  clearTimeout(timer);
+  if (at.value || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
+  timer = setTimeout(peek, DWELL_MS);
+};
+
+const hold = (): void => clearTimeout(timer);
+
+// The card holds a button, so the pointer gets a beat to cross from the chip onto it.
+const leave = (): void => {
+  clearTimeout(timer);
+  timer = setTimeout(close, GRACE_MS);
+};
+
 const menuFor = (event: MouseEvent): void => {
   const row = place.value?.row;
-  leave();
+  close();
   if (row) conversationMenu.openFor(event, { key: row.key, title: row.title });
 };
 
-onScopeDispose(leave);
+const attach = (): void => {
+  close();
+  void terminal.attach(conversation);
+};
+
+onScopeDispose(close);
 </script>
 
 <template>
-  <span
-    v-if="place"
-    ref="chip"
-    class="chip"
-    @contextmenu.prevent="menuFor"
-    @mouseenter="enter"
-    @mouseleave="leave"
-  >
-    <OrgAvatar v-if="place.group" :project="place.group.project" :tint="place.group.tint" />
+  <span v-if="place" ref="chip" class="chip" @contextmenu.prevent="menuFor" @mouseenter="enter" @mouseleave="leave">
     <button class="open plain-button focusable" :aria-label="place.row.title" type="button" @click="open">
       <OrgMark :mark="place.row.mark" />
       <span v-if="place.row.role" class="role">{{ place.row.role }}</span>
       <span class="name">{{ place.row.name }}</span>
     </button>
-    <button
-      class="attach plain-button focusable"
-      type="button"
-      :aria-label="isHeld ? 'In your terminal' : 'Attach in your terminal'"
-      :aria-pressed="isHeld"
-      :data-tip="isHeld ? 'Your terminal holds this one' : 'Attach in your terminal'"
-      :disabled="terminal.switching === conversation"
-      @click.stop="!isHeld && terminal.attach(conversation)"
-    >
-      <UiIcon :icon="Terminal" size="xs" />
-    </button>
     <Teleport to="body">
       <Transition name="peek">
-        <span v-if="at" class="peek" role="tooltip" :style="{ left: `${at.left}px`, top: `${at.top}px` }">
+        <span
+          v-if="at"
+          class="peek"
+          role="group"
+          :aria-label="place.row.title"
+          :style="{ left: `${at.left}px`, top: `${at.top}px` }"
+          @mouseenter="hold"
+          @mouseleave="leave"
+        >
           <span class="peek-head">
             <OrgAvatar v-if="place.group" :project="place.group.project" :tint="place.group.tint" />
             <span class="peek-title">{{ place.row.title }}</span>
@@ -103,6 +107,14 @@ onScopeDispose(leave);
             <span class="peek-line" :data-working="place.row.mark === 'working'">{{ step }}</span>
           </span>
           <span class="peek-meta mono-meta">{{ meta }}</span>
+          <UiButton
+            :disabled="isHeld || terminal.switching === conversation"
+            :icon="Terminal"
+            size="xs"
+            variant="outline"
+            @click="attach"
+            >{{ isHeld ? "In your terminal" : "Attach in your terminal" }}</UiButton
+          >
         </span>
       </Transition>
     </Teleport>
@@ -112,7 +124,7 @@ onScopeDispose(leave);
 
 <style scoped>
 .chip {
-  @apply relative -top-px inline-flex h-5.5 items-center gap-0.75 rounded-full border border-border bg-raised py-0 pr-0.75 pl-1.5 align-middle leading-none transition-colors duration-(--duration-fast) ease-out;
+  @apply relative -top-px inline-flex h-4.5 items-center rounded-full border border-border bg-raised px-1.5 align-middle leading-none transition-colors duration-(--duration-fast) ease-out;
   max-width: min(100%, --spacing(68));
 }
 
@@ -123,7 +135,7 @@ onScopeDispose(leave);
 }
 
 .open {
-  @apply inline-flex min-w-0 items-center gap-1.75 border-0 bg-transparent py-0 pr-1 pl-1 text-left text-fg;
+  @apply inline-flex min-w-0 items-center gap-1.5 border-0 bg-transparent p-0 text-left text-fg;
 }
 
 .role {
@@ -138,27 +150,13 @@ onScopeDispose(leave);
   @apply max-w-40 min-w-0 truncate typo-caption font-semibold;
 }
 
-.attach {
-  @apply inline-flex size-4.5 flex-none items-center justify-center rounded-full border border-transparent bg-transparent p-0 text-subtle transition-colors duration-(--duration-fast) ease-out;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .attach:hover {
-    @apply border-border-strong text-fg;
-  }
-}
-
-.attach[aria-pressed="true"] {
-  @apply cursor-default border-fg bg-fg text-canvas;
-}
-
 .peek {
-  @apply pointer-events-none fixed z-40 flex w-75 flex-col gap-2 rounded-xl border border-border bg-raised px-3.5 py-3 text-left shadow-lg;
+  @apply fixed z-40 flex w-75 flex-col items-start gap-2 rounded-xl border border-border bg-raised px-3.5 py-3 text-left shadow-lg;
 }
 
 .peek-head,
 .peek-step {
-  @apply flex min-w-0 items-center gap-2;
+  @apply flex w-full min-w-0 items-center gap-2;
 }
 
 .peek-title {
@@ -174,7 +172,7 @@ onScopeDispose(leave);
 }
 
 .peek-meta {
-  @apply truncate text-muted normal-case;
+  @apply w-full truncate text-muted normal-case;
 }
 
 .peek-enter-active,
