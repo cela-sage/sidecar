@@ -378,7 +378,7 @@ printed under it, and a name the session does not have prints the reason under i
 for the turn to end, and a conversation started before 0.48.0 has to be restarted before it runs one, since its
 mod hands the command to Claude as words.
 
-The prompt carries a context meter after the model, a ring and the share of the window used. Its popover breaks the
+The prompt carries a context meter at its bottom right beside Send, a ring and the share of the window used. Its popover breaks the
 window down as `/context` does, Messages, Memory files, Tools and System in one bar of ink shades with Free beside
 them, and holds Compact, which runs `/compact` with the field's text as its arguments, so what the summary keeps is
 yours to name. Compact is off while Claude works, and while it runs the meter reads Compacting and the popover offers

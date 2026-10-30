@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.64.0
+
+### Changed
+
+- **The context ring sits at the prompt's bottom right, beside Send,** where it sat after the model.
+- **The dock strip says nothing about an empty tool.** Terminal and Run read as just their names until a shell or a run
+  exists, and Run carries a play icon like Terminal's. The dock's Terminal and Run switch carries the same two icons, so
+  the strip and the switch read as one control.
+
 ## 0.63.1
 
 ### Fixed
