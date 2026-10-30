@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { commandReceipts, echoesNote } from "./transcript.ts";
+import { commandReceipts, echoesNote, isRun } from "./transcript.ts";
 
 interface Drawn {
   kind: string;
@@ -16,6 +16,13 @@ const drawn = (turns: Drawn[]): string[] => {
     return joined ? [] : [turn.text];
   });
 };
+
+test("the Simple chat drops narration, calls and notes and keeps the words", () => {
+  for (const kind of ["narration", "acting", "note"]) assert.equal(isRun({ kind, text: "" }), true, kind);
+  for (const kind of ["answer", "command", "printed", "summary", undefined]) {
+    assert.equal(isRun({ kind, text: "" }), false, String(kind));
+  }
+});
 
 test("only a note repeated back to back is an echo", () => {
   const note = { kind: "note", text: "Command(compact)" };

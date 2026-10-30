@@ -5,13 +5,15 @@ import type { PromptSent } from "~/stores/prompt";
 import type { AskedQuestion } from "~/stores/questions";
 
 type Block =
-  | { kind: "said" | "summary"; key: string; turn: ConversationTurn }
+  | { kind: "said" | "note" | "summary"; key: string; turn: ConversationTurn }
   | { kind: "you"; key: string; turn: ConversationTurn; text: string; images: string[] }
   | { kind: "pictures"; key: string; paths: string[] }
   | { kind: "ran"; key: string; line?: string; printed: string[] }
-  | { kind: "asking"; key: string; ask: AskedQuestion };
+  | { kind: "asking"; key: string; ask: AskedQuestion }
+  | { kind: "tools"; key: string; turns: ConversationTurn[] };
 
 const sc = useSidecar();
+const chatDetail = useChatDetail();
 const prompt = $prompt();
 const usage = $usage();
 const questions = $questions();
@@ -41,12 +43,20 @@ const mode = computed(() => {
   return newest && newest.at > move.at ? live.mode.value : move.mode;
 });
 
+const isDetailed = computed(() => chatDetail.detail.value === "detailed");
+
 const blocks = computed<Block[]>(() => {
   const out: Block[] = [];
   for (const [at, turn] of live.stream.value.entries()) {
+    if (!isDetailed.value && isRun(turn)) continue;
     const id = `${turn.at}-${at}`;
     const last = out.at(-1);
-    if (turn.kind === "command") {
+    if (turn.kind === "acting") {
+      const ask = turn.tool === "AskUserQuestion" && turn.ref ? questions.open[turn.ref] : undefined;
+      if (ask) out.push({ kind: "asking", key: id, ask });
+      else if (last?.kind === "tools") last.turns.push(turn);
+      else out.push({ kind: "tools", key: id, turns: [turn] });
+    } else if (turn.kind === "command") {
       out.push({ kind: "ran", key: id, line: turn.text, printed: [] });
     } else if (turn.kind === "printed") {
       if (last?.kind === "ran") last.printed.push(turn.text);
@@ -59,10 +69,12 @@ const blocks = computed<Block[]>(() => {
       const paths = pasted.length ? pasted : attached.paths;
       if (paths.length) out.push({ kind: "pictures", key: `${id}-pictures`, paths });
     } else if (turn.kind === "summary") out.push({ kind: "summary", key: id, turn });
+    else if (turn.role === "system") out.push({ kind: "note", key: id, turn });
     else out.push({ kind: "said", key: id, turn });
   }
+  const claimed = new Set(out.flatMap((block) => (block.kind === "asking" ? [block.ask.ref] : [])));
   for (const ask of Object.values(questions.open)) {
-    if (ask.key === key.value) out.push({ kind: "asking", key: ask.ref, ask });
+    if (ask.key === key.value && !claimed.has(ask.ref)) out.push({ kind: "asking", key: ask.ref, ask });
   }
   return out;
 });
@@ -116,6 +128,7 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
             <p v-if="block.line" class="line"><span class="arrow" aria-hidden="true">❯</span>{{ block.line }}</p>
             <pre v-for="(text, at) in block.printed" :key="at" class="printed">{{ text }}</pre>
           </div>
+          <p v-else-if="block.kind === 'note'" class="note mono-meta">{{ block.turn.text }}</p>
           <ConversationSummary
             v-else-if="block.kind === 'summary'"
             :at="block.turn.at"
@@ -124,6 +137,12 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
           />
           <Prose v-else-if="block.kind === 'said'" class="said" :conversation="key" :value="block.turn.text" />
           <QuestionAsk v-else-if="block.kind === 'asking'" :ask="block.ask" />
+          <ConversationTools
+            v-else-if="block.kind === 'tools'"
+            :is-busy="isBusy"
+            :results="live.results.value"
+            :turns="block.turns"
+          />
         </template>
         <template v-for="one in pending" :key="one.at">
           <div v-if="SlashCommand.parse(one.text)" class="ran" data-pending="true">
@@ -145,7 +164,7 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
         </p>
         <p v-if="isBusy && !isAsking" class="busy" role="status">
           <ClaudeMascot :size="20" :state="live.mascot.value" />
-          <span class="busy-line shimmer">{{ live.phase.value }}</span>
+          <span class="busy-line shimmer">{{ (isDetailed && live.step.value) || live.phase.value }}</span>
         </p>
       </div>
     </div>
@@ -196,6 +215,10 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
 
 .typed {
   @apply inline-flex items-center gap-1.25 pr-1 text-muted normal-case;
+}
+
+.note {
+  @apply m-0 self-center text-subtle normal-case;
 }
 
 .ran {

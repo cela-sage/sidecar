@@ -62,6 +62,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
   let quiet: ReturnType<typeof setTimeout> | undefined;
   const open = new Map<string, number>();
   const received = new Set<ConversationTurn>();
+  const heard = new Set<string>();
   const commands = commandReceipts<ConversationTurn>();
 
   // Timed from the call's own start and cancelled by its result, so silence in the transcript proves nothing.
@@ -119,15 +120,36 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     clearTimeout(quiet);
   }
 
-  // Nothing marks a text block final as it is written, so the newest one is held back and only drawn once the turn is over.
+  // Runs stay out of `turns`, so a replay of one is recognised here instead.
+  function repeats(turn: ConversationTurn): boolean {
+    if (turn.kind !== "acting" && turn.kind !== "narration" && turn.kind !== "thinking") return false;
+    const key = `${turn.at}|${turn.kind}|${turn.ref ?? turn.text}`;
+    if (heard.has(key)) return true;
+    heard.add(key);
+    return false;
+  }
+
+  // The answer is the narration it ends as, so it takes that row's place instead of adding a second one.
+  function land(answer: ConversationTurn): void {
+    turns.push(answer);
+    const at = stream.value.findIndex(
+      (row) => row.kind === "narration" && row.at === answer.at && row.text === answer.text,
+    );
+    if (at < 0) {
+      show(answer);
+      return;
+    }
+    stream.value[at] = answer;
+    triggerRef(stream);
+  }
+
+  // Nothing marks a text block final as it is written, so the newest one is only told apart once the turn is over.
   function settle(): void {
     rest();
     if (!candidate) return;
     const answer: ConversationTurn = { ...candidate, kind: "answer" };
     candidate = undefined;
-    if (held(answer)) return;
-    turns.push(answer);
-    show(answer);
+    if (!held(answer)) land(answer);
   }
 
   // The transcript writes a delivery's row only when the running turn next reads it, so the mod's receipt shows it sooner.
@@ -186,27 +208,31 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
       if (echoesNote(turn, turns.at(-1))) return;
       const joined = commands.join(turn, turns);
       turns.push(turn);
-      if (!joined && turn.kind !== "note") show(turn);
+      if (!joined) show(turn);
       return;
     }
+    if (repeats(turn)) return;
     awaiting.value = false;
     if (turn.model) model.value = turn.model;
     if (turn.kind === "acting") {
       if (turn.ref) open.set(turn.ref, turn.at);
       block(turn);
       if (wroteIn(turn)) wrote.value = true;
+      show(turn);
       return;
     }
     // Narration detects no state of its own, so it drops the mascot back to thinking.
     if (turn.kind === "narration" || turn.kind === "thinking") {
       block(turn);
-      if (turn.kind === "narration") candidate = turn;
+      if (turn.kind === "narration") {
+        candidate = turn;
+        show(turn);
+      }
       return;
     }
     candidate = undefined;
     doing.value = undefined;
-    turns.push(turn);
-    show(turn);
+    land(turn);
   }
 
   function listen(key: string): void {
@@ -225,6 +251,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     turns = [];
     stream.value = [];
     received.clear();
+    heard.clear();
     commands.clear();
     results.value = new Map();
     model.value = undefined;
