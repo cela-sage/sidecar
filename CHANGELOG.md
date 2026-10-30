@@ -7,6 +7,25 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.66.0
+
+### Added
+
+- **A conversation reads alive or killed, and you kill and resume it from the page.** The tree row shows a stop square
+  and the faces row says Killed with a Resume, whatever the turn bus last heard. Kill and Resume are on the
+  conversation menu, which the ellipsis beside the faces opens too. `POST /api/sessions/:key/kill` runs `claude stop`,
+  Remove's first half, and `POST /api/sessions/:key/resume` is the wake a message does, without the message. Each
+  answers `{ key, life }`, or 409 with a reason when the conversation already is that way.
+- **A killed conversation never says loading.** Its context meter, model picker and permission mode picker open on a
+  one-line reason and a Resume instead of asking a process that is gone, and Stop does not show, since no turn runs.
+  The prompt, the door and the notes still work, because a message resumes it.
+
+### Changed
+
+- **`/api/sessions` answers `life: "alive" | "killed"` in place of `live: boolean`,** and `conversation.changed` carries
+  `life`, which a kill or a wake publishes, so every open page agrees at once. Anything that reads `live` off the API
+  reads `life === "alive"` now; the render check in this repo is updated.
+
 ## 0.65.1
 
 ### Fixed

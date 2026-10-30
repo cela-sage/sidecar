@@ -206,7 +206,8 @@ and only a title with no known project lists under No project at the bottom. Eac
 or icon, and each row carries its mark: a
 spinner while it works, red when a task or
 its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
-else, a small dot once its turn ended until you open it, then a check. A conversation works only while the turn bus says it has a turn open, through
+else, a small dot once its turn ended until you open it, then a check, and a stop square once its process is gone,
+which reads Killed and wins over every other mark until it resumes. A conversation works only while the turn bus says it has a turn open, through
 `conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
 task in progress spins only while one of its Task Leads works. The dot clears when the conversation comes in front, by a click on its
 row or any other road, and a turn that ends while it is in front in a visible window never draws it. The sidecar
@@ -257,6 +258,18 @@ in it, and Enter writes it through `PATCH /api/sessions/<key>`, and Remove stops
 `DELETE /api/sessions/<key>` with the transcript staying on disk. A background session the daemon owns ends
 through `claude stop <key>` and then `claude rm <key>`, because the daemon resumes one that only got a signal,
 and the row goes once `claude agents` no longer lists it. Any other process still gets SIGTERM.
+
+Every session carries `life`, `alive` or `killed`, read from the registry's process in
+`server/utils/sessions/life.ts`, with a job's pid covering the moment before its registry file is written. Kill, on
+the row's menu and on the menu behind the ellipsis beside the conversation's faces, runs `POST /api/sessions/<key>/kill`,
+which is Remove's first half: `claude stop`, with the transcript, the job and the title staying. Resume, in the same
+two menus and beside the Killed note at the right of the faces, runs `POST /api/sessions/<key>/resume`, the wake below
+without a message, answering once the inbox is up. Both answer `{ key, life }`, or 409 with a reason when the state
+already holds. A kill or a wake announces itself as `conversation.changed` with the new `life`, so every open page
+agrees at once, and a process that dies on its own shows within the poll. While a conversation is killed its context
+meter, model picker and permission mode picker open on a one-line reason and a Resume instead of asking a process
+that is gone, and Stop does not show, since no turn runs. The prompt, the door and the notes stay usable, because a
+message resumes it.
 
 A conversation named by its key alone in backticks, as the sidecar's rule asks, or as `@<key>` or the door's
 `@<title> (<key>)`, in the chat, an answer in the door, a comment thread or a side question, draws as its tree
@@ -633,7 +646,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | Every Attach, pressed on the one it holds   |
 | `dock.changed`     | `tabs`                  | the server, when a dock tab opens, ends or its running program changes          | The dock's tabs and the shells still running, and each run's status and failing lines |
 | `runs.changed`     | `project`               | `sidecar run <project> add` and `remove`                                        | The run widget's menu reads the project again |
-| `conversation.changed` | `key`, `doing`, `asking` | the turn bus, when a conversation's turn opens or ends, or a question opens or closes | The tree's marks, working or waiting on you |
+| `conversation.changed` | `key`, `doing`, `asking`, `life` | the turn bus, when a conversation's turn opens or ends, a question opens or closes, or a kill or a wake changes its `life` | The tree's marks, working, waiting on you or killed |
 | `conversation.unseen` | `key`, `endedAt` | the turn bus, when a turn ends, and again without `endedAt` once the turn is looked at | The tree's dot, while `endedAt` is there |
 | `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion or a permission prompt and again, without `questions`, when it settles | The door and the chat draw the question and its options |
 | `message.landed`   | `key`, `text`           | the server, when the mod tells it that a session took a sidecar message         | The chat shows the message as landed        |
