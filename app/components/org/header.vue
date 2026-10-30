@@ -121,6 +121,7 @@ useShortcuts(
         size="sm"
         @click="desk.isNaming = true"
       />
+      <ChromeDetailToggle shape="inset" size="sm" />
       <ChromeThemeToggle shape="inset" size="sm" />
     </header>
 
