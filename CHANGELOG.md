@@ -7,6 +7,18 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.64.1
+
+### Changed
+
+- **A reply leaves one blank line below every block,** as the terminal does, where a paragraph had 8px, so a bold
+  run-in paragraph reads as a block of its own.
+- **A conversation's chip inside a sentence is compact,** the status mark, the role token and the name, no taller than
+  the line. Attach in your terminal moved into its hover card, and the right-click menu still has it, while the door's
+  receipts and the tree keep their own rows.
+- **The busy line under a running turn says Reading your message, Thinking or Working,** where it said Working alone,
+  so it moves with the turn and still names nothing of what the turn does.
+
 ## 0.64.0
 
 ### Changed

@@ -295,14 +295,16 @@ never hides the row that delivers it. The chat shows only words: your messages, 
 printed, the Compacted note with its summary and Claude's answer. The answer is the last text of a turn and the chat
 holds it back until the turn ends, on its `end` turn or when the registry stops calling the session busy, then draws
 it whole. Thinking, narration, tool calls and their results, and notes such as a task notification, a hook receipt or
-the interruption mark never draw, and a running turn is only the mascot and Working. A pending AskUserQuestion or
+the interruption mark never draw, and a running turn is only the mascot and one phase word that names nothing of
+its content: Reading your message while it starts, Thinking while it thinks and Working otherwise. A pending AskUserQuestion or
 permission prompt draws under the newest row while it waits on you, as the door draws it, with its header, options and
 picks, and a click answers it through the same `POST /api/questions/:ref/answer`; once it settles it leaves the chat.
 Every run stays in History, where a turn opens with its tools, and every edit in Review. The server still carries
 them on the stream, clipping a run's output to its head and tail and a diff to 240 lines, and leaving a read's file
 and an edit's receipt out.
 
-Claude's prose renders as everywhere else, with more in the chat. A fence named as `ts [src/menu.ts:3-9]`, or
+Claude's prose renders as everywhere else, with more in the chat, and leaves one blank line below every block, a
+paragraph, a list, a quote, a fence or a table, as the terminal does. A fence named as `ts [src/menu.ts:3-9]`, or
 with the path bare after the language, gets a caption that opens Files at those lines with them selected, and
 every fence a Copy. A fence whose first line starts with `! `, Claude Code's mark for a command you run yourself,
 and an inline code span that does, get a Run beside it, which opens the dock on Run and runs the command without
@@ -322,8 +324,10 @@ markdown, an image, a video, audio or a PDF) and opens Files for anything else, 
 path and Copy filename. The chat reads such a file through `files/stat`, `files/raw` and `files/content` for a path
 it touched, sits under, or names in a message of its own, and writes through none of them. A markdown quote draws with a grey bar
 at its left, a lighter background and a text a size smaller. A conversation's title in backticks draws as that
-conversation's chip like its key does, when exactly one conversation in the tree has it, and the chip is capped in
-width with its subject cut, so it stays one token of its paragraph.
+conversation's chip like its key does, when exactly one conversation in the tree has it. In a sentence the chip is the
+status mark, the role token and the name, capped in width and no taller than the line, so it stays one token of its
+paragraph. Hovering it shows a card with the title, what it is doing, its project and task, and Attach in your terminal,
+which the right-click menu offers too.
 
 An image you paste into Claude Code's own prompt draws in the chat where you sent it. Claude Code writes it as two
 user messages, your words with an `[Image #2]` marker and a second one that holds only
