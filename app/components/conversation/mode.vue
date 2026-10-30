@@ -7,6 +7,7 @@ const { current } = defineProps<{ current?: string }>();
 const sc = useSidecar();
 const prompt = $prompt();
 const terminal = $terminal();
+const life = $life();
 const popover = useTemplateRef<{ close: () => void }>("popover");
 const asking = ref<string>();
 
@@ -48,8 +49,9 @@ const attach = (): void => {
         {{ name }}<UiIcon class="chevron" :icon="ChevronDown" size="xs" />
       </button>
     </template>
+    <ConversationKilled v-if="life.isKilled" reason="Killed, so it can't change mode" />
     <div
-      v-if="asking"
+      v-else-if="asking"
       class="confirm"
       role="alertdialog"
       :aria-label="`Change to ${SessionModes.nameOf(asking)} in your terminal`"

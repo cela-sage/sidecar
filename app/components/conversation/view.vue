@@ -19,13 +19,14 @@ const usage = $usage();
 const questions = $questions();
 const terminal = $terminal();
 const busy = $busy();
+const life = $life();
 const tree = useOrgTree();
 const live = useConversation(() => sc.sessionKey.value);
 const clock = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
 
 const key = computed(() => sc.sessionKey.value ?? "");
 // The turn bus knows a turn is open before its first block lands, which is when Stop matters most.
-const isBusy = computed(() => !!busy.keys[key.value]?.doing || live.isBusy.value);
+const isBusy = computed(() => !life.isKilled && (!!busy.keys[key.value]?.doing || live.isBusy.value));
 const session = computed(() => sc.sessions.value.find((one) => one.key === key.value));
 const name = computed(() => Org.placeOf(tree.value, key.value)?.row.name ?? (session.value ? nameOf(session.value) : ""));
 // A pick stands in until a turn lands after it, which names the model the session really runs, switched or refused.
@@ -158,7 +159,7 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
           <span>Run /{{ refusal.name }} in your terminal</span>
           <UiButton size="xs" variant="outline" @click="terminal.attach(key)">Attach</UiButton>
         </p>
-        <p v-if="prompt.isWaking" class="busy" role="status">
+        <p v-if="prompt.isWaking || life.isResuming" class="busy" role="status">
           <ClaudeMascot :size="20" state="thinking" />
           <span class="busy-line shimmer">Waking {{ name }}</span>
         </p>

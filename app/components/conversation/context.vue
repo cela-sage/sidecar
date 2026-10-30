@@ -2,6 +2,7 @@
 const { isBusy } = defineProps<{ isBusy: boolean }>();
 
 const usage = $usage();
+const life = $life();
 
 const CIRCUMFERENCE = 2 * Math.PI * 6;
 
@@ -38,7 +39,8 @@ const tip = computed(() =>
       </button>
     </template>
     <template #default="{ close }">
-      <ConversationContextPanel :is-busy="isBusy" @done="close" />
+      <ConversationKilled v-if="life.isKilled" reason="Killed, so its context can't be read" />
+      <ConversationContextPanel v-else :is-busy="isBusy" @done="close" />
     </template>
   </UiPopover>
 </template>

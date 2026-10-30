@@ -4,6 +4,7 @@ const follow = $follow();
 const task = $task();
 const terminal = $terminal();
 const busy = $busy();
+const life = $life();
 const questions = $questions();
 const seen = $seen();
 const dock = $dock();
@@ -105,7 +106,10 @@ useEvents().on("artifact.created", ({ data, key = sc.sessionKey.value }) => {
 useTaskNotices();
 const events = useEvents();
 events.on("terminal.changed", ({ data }) => terminal.heard(data));
-events.on("conversation.changed", ({ data }) => busy.heard(data));
+events.on("conversation.changed", ({ data }) => {
+  busy.heard(data);
+  life.heard(data);
+});
 events.on("conversation.unseen", ({ data }) => seen.heard(data));
 events.on("dock.changed", ({ data }) => dock.heard(data));
 events.on("runs.changed", ({ data }) => void runs.load(data.project));

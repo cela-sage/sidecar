@@ -6,6 +6,7 @@ const { current, hasHistory = false } = defineProps<{ current?: string; hasHisto
 const sc = useSidecar();
 const prompt = $prompt();
 const terminal = $terminal();
+const life = $life();
 const popover = useTemplateRef<{ close: () => void }>("popover");
 const isOlder = ref(false);
 const asking = ref<string>();
@@ -52,7 +53,13 @@ const confirm = async (): Promise<void> => {
         {{ name }}<UiIcon class="chevron" :icon="ChevronDown" size="xs" />
       </button>
     </template>
-    <div v-if="asking" class="confirm" role="alertdialog" :aria-label="`Switch to ${SessionModels.nameOf(asking)}?`">
+    <ConversationKilled v-if="life.isKilled" reason="Killed, so it can't switch model" />
+    <div
+      v-else-if="asking"
+      class="confirm"
+      role="alertdialog"
+      :aria-label="`Switch to ${SessionModels.nameOf(asking)}?`"
+    >
       <span class="title">Switch to {{ SessionModels.nameOf(asking) }}?</span>
       <span class="about">
         The next reply re-reads the whole history, so it is slower and uses more tokens, and Claude Code asks you to

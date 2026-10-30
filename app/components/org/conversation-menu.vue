@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ArrowUpRight, AtSign, Copy, ListTree, Pencil, Terminal, Trash2 } from "@lucide/vue";
+import { ArrowUpRight, AtSign, Copy, ListTree, Pencil, Play, Power, Terminal, Trash2 } from "@lucide/vue";
 import type { ConversationTarget } from "~/stores/conversation-menu";
 
 const sc = useSidecar();
@@ -7,10 +7,12 @@ const chrome = useChrome();
 const desk = $desk();
 const terminal = $terminal();
 const prompt = $prompt();
+const life = $life();
 const conversationMenu = $conversationMenu();
 const menu = useTemplateRef<{ openAt: (x: number, y: number) => void; close: () => void }>("menu");
 const target = ref<ConversationTarget>();
 const isRenaming = ref(false);
+const isKilledTarget = computed(() => !!target.value && isKilled(sc.sessions.value, target.value.key));
 
 const nameOf = (one: ConversationTarget): string => one.title || one.key;
 
@@ -84,6 +86,10 @@ watch(
         <UiMenuItem :icon="Copy" @click="act(close, copyId)">Copy id</UiMenuItem>
         <span class="rule" aria-hidden="true" />
         <UiMenuItem :icon="Pencil" @click="isRenaming = true">Rename</UiMenuItem>
+        <UiMenuItem v-if="isKilledTarget" :icon="Play" @click="act(close, (one) => life.resume(one.key))"
+          >Resume</UiMenuItem
+        >
+        <UiMenuItem v-else :icon="Power" @click="act(close, (one) => life.kill(one.key))">Kill</UiMenuItem>
         <UiMenuItem
           :icon="Trash2"
           tone="destructive"

@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import { Ellipsis } from "@lucide/vue";
 import type { LiveSession } from "~~/shared/types/session";
 
 const { session } = defineProps<{ session: LiveSession }>();
@@ -15,6 +16,11 @@ const sc = useSidecar();
 const chrome = useChrome();
 const review = useReview();
 const layout = $layout();
+const life = $life();
+const conversationMenu = $conversationMenu();
+
+const openMenu = (event: MouseEvent): void =>
+  conversationMenu.openFor(event, { key: session.key, title: session.name ?? "" });
 
 // Counted only from what is already held, so the row never reads a face's data before that face opens.
 const counts = computed<Partial<Record<Face, number>>>(() => {
@@ -45,6 +51,21 @@ const counts = computed<Partial<Record<Face, number>>>(() => {
         <span v-if="layout.hasCounts && counts[face]" class="count">{{ counts[face] }}</span>
       </button>
     </div>
+    <div class="life">
+      <template v-if="session.life === 'killed'">
+        <span class="state mono-meta">Killed</span>
+        <UiButton :disabled="life.isResuming" size="xs" variant="outline" @click="life.resume(session.key)">
+          {{ life.isResuming ? "Resuming" : "Resume" }}
+        </UiButton>
+      </template>
+      <UiIconButton
+        :icon="Ellipsis"
+        aria-label="Conversation menu"
+        data-tip="Conversation menu"
+        size="xs"
+        @click="openMenu"
+      />
+    </div>
   </nav>
 </template>
 
@@ -73,6 +94,14 @@ const counts = computed<Partial<Record<Face, number>>>(() => {
 
 .count {
   @apply typo-mono-micro font-medium text-muted;
+}
+
+.life {
+  @apply ml-auto flex items-center gap-2;
+}
+
+.state {
+  @apply text-muted;
 }
 
 @media (prefers-reduced-motion: reduce) {
