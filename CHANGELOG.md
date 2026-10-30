@@ -7,6 +7,15 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.65.1
+
+### Fixed
+
+- **The caret sits where the text shows after a mention or an attached file,** in the door, the prompt and a Task Lead's
+  message field. The mark under the text was semibold over a regular-weight textarea, so the text after a mention sat
+  about 13 px right of the caret and wrapped earlier. The mark keeps the field's weight and shows through its tint and
+  colour alone, and a test fails when a mark sets anything that changes a glyph's width.
+
 ## 0.65.0
 
 ### Added

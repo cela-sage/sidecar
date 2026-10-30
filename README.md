@@ -373,7 +373,9 @@ slash lists the commands and skills the session has, on the keystroke, in the ch
 Task Lead's message field alike, since all three are one component, `app/components/composer/input.vue` (the door
 lists the conversation it routes to, and sends a picked command there). An `@` in any of them lists conversations
 too, the project's own in a conversation's prompt and a Task Lead's field, so in Moneyfarm only Moneyfarm's, and
-everyone in the tree in the door: ↑ and ↓ move, Tab or Enter
+everyone in the tree in the door. A picked mention and an attached file draw as a tinted mark in the field's own weight,
+because the caret belongs to the textarea and a wider glyph in the copy under it would put the caret left of the text
+(`app/utils/mentions.test.ts` holds that). ↑ and ↓ move, Tab or Enter
 completes the name, and esc closes the list. A row reads as Claude Code's does, the name and its line, then where it
 comes from, `user` for yours, the plugin's name, or `mcp`, and nothing for a builtin. The list is loaded when the
 conversation opens and again when it changes, from `GET /api/sessions/:key/commands`, which answers at once with the
