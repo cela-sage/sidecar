@@ -145,7 +145,7 @@ watch([() => live.stream.value.length, () => prompt.sent.length], () => {
         </p>
         <p v-if="isBusy && !isAsking" class="busy" role="status">
           <ClaudeMascot :size="20" :state="live.mascot.value" />
-          <span class="busy-line shimmer">Working</span>
+          <span class="busy-line shimmer">{{ live.phase.value }}</span>
         </p>
       </div>
     </div>

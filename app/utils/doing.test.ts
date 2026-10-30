@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { doingOf, stepOf, wroteIn } from "./doing.ts";
+import { doingOf, phaseOf, stepOf, wroteIn } from "./doing.ts";
 
 const acting = (tool: string, arg?: string) => ({
   at: 1,
@@ -67,6 +67,14 @@ test("the step line says what the newest block does, in words", () => {
   assert.equal(stepOf({ turn: { ...said, kind: "thinking" } }), "Thinking");
   assert.equal(stepOf({ turn: { ...said, text: "Routing the inbox.\nThen the board." } }), "Routing the inbox.");
   assert.equal(stepOf({}), undefined);
+});
+
+test("the chat's phase moves with the turn and names nothing of its content", () => {
+  assert.equal(phaseOf({ awaiting: true, turn: acting("Edit", "secret.ts") }), "Reading your message");
+  assert.equal(phaseOf({ turn: { ...said, kind: "thinking" } }), "Thinking");
+  assert.equal(phaseOf({ turn: acting("Edit", "secret.ts") }), "Working");
+  assert.equal(phaseOf({ turn: said }), "Working");
+  assert.equal(phaseOf({}), "Working");
 });
 
 test("wroteIn spots the calls that set the latch", () => {

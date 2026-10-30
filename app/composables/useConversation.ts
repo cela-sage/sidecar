@@ -15,6 +15,7 @@ export interface Conversation {
   /** What the mascot acts out: the newest tool call, or thinking while nothing has come back yet. */
   mascot: ComputedRef<MascotState>;
   step: MaybeComputed<string>;
+  phase: ComputedRef<string>;
   isBusy: ComputedRef<boolean>;
   stream: ShallowRef<ConversationTurn[]>;
   model: Maybe<string>;
@@ -52,6 +53,7 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     }),
   );
   const step = computed(() => stepOf({ turn: doing.value, awaiting: awaiting.value }));
+  const phase = computed(() => phaseOf({ turn: doing.value, awaiting: awaiting.value }));
   const busy = ref<Busy>(BusyRules.IDLE);
   const isBusy = computed(() => busy.value.doing);
   let ageing: ReturnType<typeof setTimeout> | undefined;
@@ -266,5 +268,5 @@ export function useConversation(keyOf: () => string | undefined): Conversation {
     });
   });
 
-  return { isBusy, mascot, mode, model, step, stream };
+  return { isBusy, mascot, mode, model, phase, step, stream };
 }

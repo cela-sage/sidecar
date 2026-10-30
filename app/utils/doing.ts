@@ -54,6 +54,11 @@ const actingOf = (tool: string, arg?: string): string => {
   return arg ? `${verb} ${arg}` : verb;
 };
 
+export function phaseOf({ turn, awaiting }: Doing): string {
+  if (awaiting) return "Reading your message";
+  return turn?.kind === "thinking" ? "Thinking" : "Working";
+}
+
 export function stepOf({ turn, awaiting }: Doing): string | undefined {
   if (awaiting) return "Reading your message";
   if (!turn) return undefined;
