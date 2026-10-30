@@ -142,15 +142,15 @@ screen, with the toast a new page gets, and one said while the sidecar was stopp
 A task is a `.md` in the artifacts folder whose stamp holds a state, which the Mode plugin writes with
 `artifact stamp <slug> --project cela --state running`. The state is one of unassigned, assigned, assessed,
 running, blocked, waiting, finished and done, and a task is unassigned exactly while its project is empty. Done is
-your mark alone: a Task Lead's work ends in finished, and only you move it to done. A task picked
+your mark alone: an Individual Contributor's work ends in finished, and only you move it to done. A task picked
 in the tree opens in the main panel in place of the conversation, and the sheet shows where the task is in its
 life, its four parts, and the conversations on it: a conversation is the task's when its title has a role token and the task's slug, as
-`[Cela] TL sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
+`[Cela] IC sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
 the state `claude agents` gives it and the subagents running inside it. A comment on the document goes to the
-conversation the stamp's `lead` names, else the first Task Lead on it. The selected Task Lead row, that one
+conversation the stamp's `lead` names, else the first Individual Contributor on it. The selected Individual Contributor row, that one
 unless you click another, has a message field that sends what you write through `/api/sessions/:key/message`,
-and anything the sidecar sends a Task Lead that way lands in the task's history as your message. The field is the
-chat's composer, so `/` lists the Task Lead's commands, which run as commands and not as a message, and `@` points
+and anything the sidecar sends an Individual Contributor that way lands in the task's history as your message. The field is the
+chat's composer, so `/` lists the Individual Contributor's commands, which run as commands and not as a message, and `@` points
 at the project's other conversations.
 
 Edit, or E, puts the markdown in an editor beside the page it renders, and saves as you type unless the file
@@ -192,11 +192,11 @@ conversation in front the way the model menu does and attaches your terminal for
 there. A window at 100% says when Claude picks up again.
 
 The tree is built from the conversations agent view lists, which the server reads with
-`claude agents --json --all`, since without `--all` the CLI returns only the running ones, parsed by their titles. The backlog of tasks on no project heads
-it, then each project with its Project Lead and Design Lead conversations and its tasks, each task with its Task
-Leads and, under each one, the specialists it hired. The assistant's conversations, titled with EA, live in the
-door rather than the tree. A Task
-Lead whose process ended folds under the task as done. A task in Done folds under its project, and it leaves the
+`claude agents --json --all`, since without `--all` the CLI returns only the running ones, parsed by their titles, `[<project>] <role> <subject>` with
+the role EA, DL, SL or IC and a task slug after the role for SL and IC only. The backlog of tasks on no project heads
+it, then each project with its Domain Lead and Solution Lead conversations and its tasks, each task with its
+Individual Contributors and, under each one, the specialists it hired. The assistant's conversations, titled with EA, live
+in the door rather than the tree. An Individual Contributor whose process ended folds under the task as done. A task in Done folds under its project, and it leaves the
 list when you remove it with its ✕ or a day after it went Done, kept in `~/.claude/sidecar/tasks-hidden.json`
 with its file and history untouched, and it comes back when it moves out of Done. A project starts folded
 unless something in it waits on you or it holds the open task or the conversation in front, and a fold you
@@ -205,18 +205,18 @@ conversations, whose titles have no role token, list under the project their `[t
 and only a title with no known project lists under No project at the bottom. Each project row shows its image
 or icon, and each row carries its mark: a
 spinner while it works, red when a task or
-its Task Lead waits on you, amber when a conversation outside a task does, a clock while it waits on someone
+its Individual Contributor waits on you, amber when a conversation outside a task does, a clock while it waits on someone
 else, a small dot once its turn ended until you open it, then a check, and a stop square once its process is gone,
 which reads Killed and wins over every other mark until it resumes. A conversation works only while the turn bus says it has a turn open, through
 `conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
-task in progress spins only while one of its Task Leads works. The dot clears when the conversation comes in front, by a click on its
+task in progress spins only while one of its Individual Contributors works. The dot clears when the conversation comes in front, by a click on its
 row or any other road, and a turn that ends while it is in front in a visible window never draws it. The sidecar
 keeps which turns nobody opened in `~/.claude/sidecar/seen.json` with each turn's end time, so a reload, the desktop
 app and Chrome agree. A question open or a wait keeps its red, amber or clock mark over the dot, and a project or a
-task shows the dot while one of its conversations does and nothing waits on you. A task with a Task Lead working under it reads In progress
+task shows the dot while one of its conversations does and nothing waits on you. A task with an Individual Contributor working under it reads In progress
 whatever its state, and its own status comes back when the turn ends, so a Done fold never lists a task someone still
 works on. A finished task sits under In progress with the red mark and heads its project's tasks, since it waits on
-your mark, and the Done fold lists done alone. What a fold of done tasks or done Task Leads holds sits one level under it.
+your mark, and the Done fold lists done alone. What a fold of done tasks or done Individual Contributors holds sits one level under it.
 Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead while the lead's own row is
 folded away, and the row in front has an ink bar. Clicking a conversation brings it in front, and clicking a
 task opens it in the main panel in place of the conversation, on any screen, until you pick a conversation again.
@@ -232,9 +232,9 @@ Agents move the same states through the lane's verbs. Dropping a backlog row on 
 assistant's home `CLAUDE.md` as the map of what goes where, cached until the task changes and left out when the
 task says too little to tell, assigns it through the lane
 with `PATCH /api/tasks/:slug`, so it lands in the history and on the bus, and the toast's Undo, or ⌘Z, puts it
-back. Eight seconds after the drop, unless undone, the project's Project Lead, its newest live conversation
-titled with PL and the project's token, gets the task to assess, told it is that project's Project Lead. With no
-Project Lead running, the sidecar starts one, `claude --bg --agent project-lead --name "[<token>] PL <slug>"` in
+back. Eight seconds after the drop, unless undone, the project's Domain Lead, its newest live conversation
+titled with DL and the project's token, gets the task to assess, told it is that project's Domain Lead. With no
+Domain Lead running, the sidecar starts one, `claude --bg --agent domain-lead --name "[<token>] DL <project>"` in
 the project's folder, with the same message, and `agents` in `~/.claude/sidecar/config.json` renames the agent
 for any role. New task, or N, drafts a row in the backlog,
 writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
@@ -244,10 +244,10 @@ Right-click on a task row, in the backlog or under a project, opens its menu. At
 already Done. Rename turns the row into the New task field with the
 title in it, and Enter writes it through `PATCH /api/tasks/:slug {title}`, which rewrites the stamp title and the
 heading and keeps the file name, so every link by slug holds. Remove, like a backlog row's trash, goes through
-`DELETE /api/tasks/:slug` in any state: it stops every live conversation titled as one of the task's Task Leads,
+`DELETE /api/tasks/:slug` in any state: it stops every live conversation titled as one of the task's Individual Contributors,
 the way a conversation's own delete does, writes one history entry naming them, and moves the `.md` and its
 history into `~/.claude/sidecar/trash/`. Undo, or ⌘Z, moves those two back through
-`POST /api/tasks/:slug/restore`, and the toast says the stopped Task Leads stay stopped, since their transcripts
+`POST /api/tasks/:slug/restore`, and the toast says the stopped Individual Contributors stay stopped, since their transcripts
 remain but their processes are gone. A Done row's ✕ keeps its own path and only takes it off the list.
 
 Right-click on a conversation row, or on a conversation chip, opens the same conversation menu under its title
@@ -280,12 +280,12 @@ ended one shows its check, while a key the tree does not list stays code or plai
 or other code stays as it is.
 
 Your own conversations drag. Dropped on another project it is renamed `[<project token>] <subject>`, and on an
-open task it becomes one of the task's Task Leads, renamed `[<project token>] TL <slug> <subject>`, while a
+open task it becomes one of the task's Individual Contributors, renamed `[<project token>] IC <slug> <subject>`, while a
 folded project opens as the row passes over it. Either keeps a leading deadline, and its tickets while the
 project stays the same, through `PATCH /api/sessions/<key>`. That appends a title record to the transcript and writes the name, marked as yours,
 into the job's state file, which is where the job list and the running process read it. A drop on a task goes
 through `POST /api/tasks/:slug/lead`, and eight seconds later the conversation is told it now leads that task,
-with the path of the task-lead agent's file to read as its role, since it was never started as that agent, and
+with the path of the individual-contributor agent's file to read as its role, since it was never started as that agent, and
 the message lands in the task's history. Undo, or ⌘Z, cancels that message with `DELETE` on the same route and
 puts the old title back when it had one.
 
@@ -383,9 +383,9 @@ A message that opens with `/` and a name is a command, and the session runs it a
 included: `/compact`, `/effort status`, `/mode:ic new nav`. It goes through `POST /api/sessions/:key/command` as
 `{ name, args }`, and a slash later in the text, or a path such as `/Users/me/notes`, stays a message. Typing the
 slash lists the commands and skills the session has, on the keystroke, in the chat's prompt, the door's field and a
-Task Lead's message field alike, since all three are one component, `app/components/composer/input.vue` (the door
+Individual Contributor's message field alike, since all three are one component, `app/components/composer/input.vue` (the door
 lists the conversation it routes to, and sends a picked command there). An `@` in any of them lists conversations
-too, the project's own in a conversation's prompt and a Task Lead's field, so in Moneyfarm only Moneyfarm's, and
+too, the project's own in a conversation's prompt and an Individual Contributor's field, so in Moneyfarm only Moneyfarm's, and
 everyone in the tree in the door. A picked mention and an attached file draw as a tinted mark in the field's own weight,
 because the caret belongs to the textarea and a wider glyph in the copy under it would put the caret left of the text
 (`app/utils/mentions.test.ts` holds that). ↑ and ↓ move, Tab or Enter
@@ -536,7 +536,7 @@ reads, and only the `command` shape carries its own, the way the websocket types
 
 ### The task lane
 
-A task's life goes through `sidecar task`, which the Task Leads and the Project Lead call so the logic that
+A task's life goes through `sidecar task`, which the Individual Contributors and the Domain Lead call so the logic that
 comments the board and notifies you lives in one place:
 
 ```sh
@@ -545,27 +545,27 @@ sidecar task <slug>                                   # its state, what waits on
 sidecar task <slug> state waiting --on "Cosmico" --reason "they confirm they have Fattura 1/2026"
 sidecar task <slug> assign cela
 sidecar task <slug> rename "Right-click menu on the Tasks tree"  # a new title, the same slug
-sidecar task <slug> escalate "Which model runs a Task Lead?" --options "Sonnet xhigh" --options "Opus" --quote "the text it is about"  # --options a,b splits one-word options only
+sidecar task <slug> escalate "Which model runs an Individual Contributor?" --options "Sonnet xhigh" --options "Opus" --quote "the text it is about"  # --options a,b splits one-word options only
 sidecar task <slug> hire "a tester, to drive the CLI, Sonnet xhigh"
 sidecar task <slug> judge "Yours, it sets the budget of every task" --pick 1
-sidecar task <slug> judge "The transcripts settle it" --pick 1 --settle  # within the Project Lead's reach
+sidecar task <slug> judge "The transcripts settle it" --pick 1 --settle  # within the Domain Lead's reach
 sidecar task <slug> decide 1                          # or decide "your own words"; --thread <n> names one
 sidecar task <slug> done                              # a lead's: finished, waiting on your mark; at your own terminal: Done
 ```
 
 Each verb rewrites the stamp in the layout Mode writes, appends to the task's history and publishes on the
 event bus, so an open task updates as it happens. An escalation is a thread on the document with an `ask`
-holding its options, the Project Lead's verdict and pick, and in the end the decision; it blocks the task, and
+holding its options, the Domain Lead's verdict and pick, and in the end the decision; it blocks the task, and
 deciding it puts the task back to running and tells the conversation that asked, under the `[[sidecar]]`
 marker. A hire is the same thread with Approve and Refuse, and blocks nothing. Who called is read off the
 conversation's title: a role token makes it that role, and no token makes it you, except that a decide is always
 yours, whichever conversation runs it. A done from a role conversation moves the task to finished, which waits on
 your mark, and a done typed at your own terminal, from the task's status control or from the tree row's menu is your
 mark: the task goes to Done and the history files it as your decision, the way a decide does. A lead's done on a task
-you already marked leaves it Done, and nothing migrates, so tasks that were Done stay Done. A judge alone is the Project Lead's read and waits on you, while
-`judge --settle` settles one within its reach the way a decide does, filed as the Project Lead's decision under
+you already marked leaves it Done, and nothing migrates, so tasks that were Done stay Done. A judge alone is the Domain Lead's read and waits on you, while
+`judge --settle` settles one within its reach the way a decide does, filed as the Domain Lead's decision under
 its title, so it stays out of your decisions and a later decide on that thread is refused as settled. `--settle`
-with no verdict settles the verdict already standing, which lets a Task Lead close one the Project Lead judged.
+with no verdict settles the verdict already standing, which lets an Individual Contributor close one the Domain Lead judged.
 Waiting needs `--reason`.
 
 Escalate and hire notify you. When a sidecar page is open, the one holding the `sidecar:task-notices` lock
@@ -574,22 +574,22 @@ it is `osascript display notification`, whose click can only open Script Editor,
 
 ### The history
 
-Each task keeps `~/.claude/sidecar/history/<slug>.jsonl`, one entry a line, from four feeds: every turn a Task
-Lead ends with an answer, which the mod hands over off `turn.complete` for a conversation whose title holds TL
+Each task keeps `~/.claude/sidecar/history/<slug>.jsonl`, one entry a line, from four feeds: every turn an Individual
+Contributor ends with an answer, which the mod hands over off `turn.complete` for a conversation whose title holds IC
 and the task's slug or ticket; status and content changes, from the lane and from Edit mode's saves and Keep;
-escalations, verdicts and your decisions; and what you type at a Task Lead's own prompt or send it from the
+escalations, verdicts and your decisions; and what you type at an Individual Contributor's own prompt or send it from the
 sidecar, while a relayed message stays out, since one from another lead reads the same. A message the sidecar
-sends with a task's slug, from the assistant's door while that task is open, joins that task's history whoever it went to. `sidecar task <slug>` run from a Project Lead also marks
+sends with a task's slug, from the assistant's door while that task is open, joins that task's history whoever it went to. `sidecar task <slug>` run from a Domain Lead also marks
 the history read.
 
 History, beside Document in the task sheet's bar, opens on where it stands: the fast model's two or three
 sentences over the history, cached in `<slug>.stands.json` until the file changes. Below it each entry has its
-time, a TL, PL or YOU badge and chips for what it moved, consecutive turns and nearby edits fold into one, a
-line marks what is new since the Project Lead read it, and your decisions filters to those. The entry you pick
+time, an IC, DL or YOU badge and chips for what it moved, consecutive turns and nearby edits fold into one, a
+line marks what is new since the Domain Lead read it, and your decisions filters to those. The entry you pick
 opens to its full text in place.
 
-On the document, an open escalation sits above the task with its options as one-click choices, the Project
-Lead's pick marked, or your own words, the four parts fold to one line each, and the Task Lead's rail row turns
+On the document, an open escalation sits above the task with its options as one-click choices, the Domain
+Lead's pick marked, or your own words, the four parts fold to one line each, and the Individual Contributor's rail row turns
 red. Once settled it folds to a row that links to the history, and the strip says it was settled by you. A
 waiting task says what it waits on, nothing for you to do, and a resumed or done one says when.
 
@@ -738,7 +738,7 @@ chose. Typing in a session's prompt points the sidecar there too, at most once e
 holds up a keystroke, and what that point does is the switching mode below. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
 is how the sidecar still lists a conversation after it has ended. A turn that ends on the main loop with an
 answer, and a prompt you type, go to `sidecar task --heard turn` and `--heard message` on stdin, which keeps them
-only for a Task Lead's conversation, in its task's history.
+only for an Individual Contributor's conversation, in its task's history.
 
 An AskUserQuestion call races its own dialog against the door. The mod's `tool.call` hook opens the question
 with `POST /api/questions/<tool id>` and the session's key, which the server publishes as `question.changed`

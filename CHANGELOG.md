@@ -7,6 +7,28 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.67.0
+
+### Changed
+
+- **The roles are the Domain Lead (DL), the Solution Lead (SL) and the Individual Contributor (IC),** and the sidecar
+  reads and writes only those tokens and EA, with no mapping of the old PL, DL and TL kept. The tree files a Domain Lead
+  and a Solution Lead per project and an Individual Contributor under its task, the drop on a task writes
+  `[<project>] IC <slug> <subject>`, and the history, the escalation card, the CLI help, the rule and `agents` in
+  `~/.claude/sidecar/config.json` (now keyed DL, SL, IC) say the new names. A title that still holds PL or TL is no
+  longer a role conversation, so it files as a plain one.
+- **Only SL and IC carry a task slug,** so a drop or a project move strips a hyphenated word after the role only for
+  those two, and a Domain Lead the sidecar starts for a task is named `[<project token>] DL <project name>`.
+
+### Migration
+
+Run once, by the old meaning (PL to DL, DL to SL, TL to IC), because DL is reused and a second pass would turn every
+Domain Lead into a Solution Lead. The sweep retitles every conversation through `PATCH /api/sessions/:key`, rewrites the
+`who` and the titles in `~/.claude/sidecar/history/*.jsonl`, and rewrites the `lead:` stamp and the escalation threads
+in the task documents, which the app reads by exact name and would otherwise drop. It leaves a marker at
+`~/.claude/sidecar/roles-renamed.json` that refuses a second run. `events.jsonl` keeps its old `task.decided` lines,
+which the reader skips.
+
 ## 0.66.0
 
 ### Added
