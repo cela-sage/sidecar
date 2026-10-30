@@ -262,11 +262,11 @@ defineExpose({ edit, focus });
 }
 
 .mention {
-  @apply rounded-sm bg-primary-soft box-decoration-clone font-semibold text-primary-deep;
+  @apply rounded-sm bg-primary-soft box-decoration-clone text-primary-deep;
 }
 
 .file {
-  @apply rounded-sm bg-info-soft box-decoration-clone font-semibold text-info;
+  @apply rounded-sm bg-info-soft box-decoration-clone text-info;
 }
 
 /* The glyph sits over a transparent @, so the copy keeps the textarea's widths and the caret lines up. */
