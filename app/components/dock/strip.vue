@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ChevronUp, Terminal } from "@lucide/vue";
+import { ChevronUp, Play, Terminal } from "@lucide/vue";
 
 const route = useRoute();
 const dock = $dock();
@@ -29,7 +29,7 @@ const failing = computed(() => (run.value?.status === "failed" ? run.value.faili
     >
       <UiIcon :icon="Terminal" size="xs" />
       <span class="name">Terminal</span>
-      <span v-if="dock.isReady" class="holds">{{ shells.join(" · ") || "no shells" }}</span>
+      <span v-if="shells.length" class="holds">{{ shells.join(" · ") }}</span>
     </button>
 
     <span class="rule" aria-hidden="true" />
@@ -40,9 +40,10 @@ const failing = computed(() => (run.value?.status === "failed" ? run.value.faili
       :data-tip="failing ? 'Open the failed run' : `Open ${front.name}'s runs`"
       @click="dock.open('run', run)"
     >
-      <RunStatusMark :status="run?.status" />
+      <UiIcon :icon="Play" size="xs" />
       <span class="name">Run</span>
-      <span v-if="dock.isReady" class="holds">{{ run ? `${run.title} · ${run.status}` : "nothing running" }}</span>
+      <RunStatusMark :status="run?.status" />
+      <span v-if="run" class="holds">{{ run.title }} · {{ run.status }}</span>
     </button>
     <span v-if="failing" class="line" data-tip="The line that names the failure">{{ failing }}</span>
 

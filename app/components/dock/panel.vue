@@ -1,6 +1,7 @@
 <script lang="ts" setup>
 import { useShortcuts } from "@cela/design";
-import { ChevronDown, Plus, Terminal, X } from "@lucide/vue";
+import { ChevronDown, Play, Plus, Terminal, X } from "@lucide/vue";
+import type { Component } from "vue";
 import type { DockTab } from "~~/shared/types/dock";
 import type { DockProject, DockTool } from "~/stores/dock";
 
@@ -9,9 +10,9 @@ interface Kept {
   count: number;
 }
 
-const TOOLS: { label: string; value: DockTool }[] = [
-  { label: "Terminal", value: "terminal" },
-  { label: "Run", value: "run" },
+const TOOLS: { icon: Component; label: string; value: DockTool }[] = [
+  { icon: Terminal, label: "Terminal", value: "terminal" },
+  { icon: Play, label: "Run", value: "run" },
 ];
 const HEIGHT = 300;
 
