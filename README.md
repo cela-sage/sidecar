@@ -615,9 +615,12 @@ an escalation does, through `channel.raised`. An agent can @ only the channel's 
 while you and the Assistant can @ any conversation, and one outside the channel gets the message with the command for
 its one read, the channel up to that message, and may answer in that thread alone. A mention never wakes a killed
 member, so the post's reach lists it as missed. What a member receives says who said it in which channel and gives
-the exact command to answer in its thread. A mention resolves through one function, case-insensitively: a member's
+the exact command to answer in its thread, with the asking agent's `@<name>` already in it, since a reply with no @
+reaches no one. A mention resolves through one function, case-insensitively, `@ALL` and `@Boss` included: a member's
 name first, then a name only one conversation outside the channel holds, and the eight-hex key always works, while a
-name more than one outside conversation holds is refused with a request for the key.
+name more than one outside conversation holds is refused with a request for the key, and an @ that matches no one is
+refused with the channel's members. A mention inside backticks or a code fence is only the word, so a post can write
+`` `@boss` `` about the feature without raising anything.
 A channel's DMs are the relays between two of its members, which `sendToInbox` records as `relay.sent` whenever its
 caller passes the sending conversation as `from`, and a channel's own deliveries are its posts, not DMs. The channel
 folds them into its own file as it catches up, reading `events.jsonl` only from the offset it stopped at last time,

@@ -7,6 +7,19 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.69.1
+
+### Fixed
+
+- **A mention inside backticks or a code fence is only the word,** so a post that writes about `@boss` or `@all` no
+  longer raises it to you or interrupts every member, which a kickoff describing the syntax did.
+- **An @ that matches no one is refused** with the channel's members, instead of posting as if it reached someone.
+  `@ALL` and `@Boss` work in any case, like names.
+- **What a member receives says to answer with the asking agent's @ in it,** since a thread reply with no @ notifies
+  no one and the agent that asked never heard back.
+- **`sidecar restart` from inside a conversation no longer hands the server that conversation's id,** which stamped
+  it on every event the server published.
+
 ## 0.69.0
 
 ### Added
