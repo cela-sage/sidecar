@@ -3,6 +3,7 @@ import { Refusal } from "../../../lib/sidecar/refusal.ts";
 import { Sidecar } from "../../../lib/sidecar/paths.ts";
 import type { ChannelMember, ChannelPost } from "../../../shared/types/channel.ts";
 import type { Role, Who } from "../../../shared/types/task.ts";
+import { Handles } from "../../../shared/utils/handles.ts";
 import { isKey } from "../sessions/paths.ts";
 import type { PostMentions } from "./store.ts";
 
@@ -58,9 +59,6 @@ export interface NoteInput {
   thread: string;
 }
 
-const MENTION = /(?<![\p{L}\p{N}_@./-])@([\p{L}\p{N}_-]+)/gu;
-const CODE = /```[\s\S]*?```|`[^`\n]*`/g;
-
 // The one place a mention becomes conversations: a key, else a member's name, else a name outside the channel.
 const resolve = (word: string, { members, everyone }: Roster): string[] => {
   const lower = word.toLowerCase();
@@ -71,9 +69,8 @@ const resolve = (word: string, { members, everyone }: Roster): string[] => {
   return inside.length ? inside : [...new Set(named(everyone))];
 };
 
-// Backticks keep a mention as the word itself, the way Slack leaves code alone.
 const mentioned = (text: string, roster: Roster): Mentioned => {
-  const words = [...text.replace(CODE, " ").matchAll(MENTION)].map((hit) => (hit[1] ?? "").toLowerCase());
+  const words = Handles.of(text).map((one) => one.word.toLowerCase());
   const named = words
     .filter((word) => word !== "all" && word !== "boss")
     .map((word) => ({
