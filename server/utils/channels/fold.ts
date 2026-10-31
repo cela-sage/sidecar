@@ -19,6 +19,7 @@ export interface Folded {
   lines: ChannelLine[];
   posts: Map<string, ChannelPost>;
   reads: Map<string, string>;
+  dms: Map<string, DirectMessage>;
 }
 
 export interface ViewInput {
@@ -26,7 +27,6 @@ export interface ViewInput {
   title: string;
   folded: Folded;
   members: ChannelMember[];
-  relays: DirectMessage[];
 }
 
 const by = (said?: string): { by?: string } => (said ? { by: said } : {});
@@ -101,6 +101,10 @@ const STEPS: { [K in Kind]: (folded: Folded, entry: EntryOf<K>) => void } = {
     const token = post ? folded.posts.get(post)?.reach.outside.find((one) => one.key === key) : undefined;
     if (token && !token.read) token.read = at;
   },
+  dm: (folded, { at, from, to, text }) => {
+    const sent = `${at}|${from}|${to}`;
+    if (!folded.dms.has(sent)) folded.dms.set(sent, { at, from, to, text });
+  },
 };
 
 const apply = <K extends Kind>(folded: Folded, kind: K, entry: EntryOf<K>): void => STEPS[kind](folded, entry);
@@ -113,6 +117,7 @@ const fold = (entries: ChannelEntry[]): Folded => {
     lines: [],
     posts: new Map(),
     reads: new Map(),
+    dms: new Map(),
   };
   for (const entry of entries) apply(folded, entry.kind, entry);
   return folded;
@@ -121,11 +126,9 @@ const fold = (entries: ChannelEntry[]): Folded => {
 const raisedOf = ({ posts, archived }: Folded): string[] =>
   archived ? [] : [...posts.values()].filter((one) => one.reach.boss && !one.answered).map((one) => one.id);
 
-const dmsOf = (relays: DirectMessage[], members: ChannelMember[]): ChannelDm[] => {
-  const inside = new Set(members.map((one) => one.key));
+const dmsOf = ({ dms }: Folded): ChannelDm[] => {
   const pairs = new Map<string, ChannelDm>();
-  for (const one of relays) {
-    if (!inside.has(one.from) || !inside.has(one.to)) continue;
+  for (const one of dms.values()) {
     const pair: [string, string] = one.from < one.to ? [one.from, one.to] : [one.to, one.from];
     const dm = pairs.get(pair.join(":")) ?? { pair, messages: [] };
     dm.messages.push(one);
@@ -134,7 +137,7 @@ const dmsOf = (relays: DirectMessage[], members: ChannelMember[]): ChannelDm[] =
   return [...pairs.values()].sort((x, y) => (y.messages.at(-1)?.at ?? "").localeCompare(x.messages.at(-1)?.at ?? ""));
 };
 
-const view = ({ slug, title, folded, members, relays }: ViewInput): Channel => {
+const view = ({ slug, title, folded, members }: ViewInput): Channel => {
   const threads: Record<string, ChannelPost[]> = {};
   for (const one of folded.lines) {
     if (one.kind === "post" && one.thread) (threads[one.thread] ??= []).push(one);
@@ -147,7 +150,7 @@ const view = ({ slug, title, folded, members, relays }: ViewInput): Channel => {
     members,
     lines: folded.lines.filter((one) => one.kind !== "post" || !one.thread),
     threads,
-    dms: dmsOf(relays, members),
+    dms: dmsOf(folded),
   };
 };
 

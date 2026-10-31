@@ -1,4 +1,4 @@
-import { appendFileSync, mkdirSync, readdirSync } from "node:fs";
+import { appendFileSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import z from "zod";
 import { readTextSafe } from "../../../lib/files.ts";
@@ -38,7 +38,10 @@ const Entry = z.discriminatedUnion("kind", [
   z.object({ ...Said, ...By, kind: z.literal("archive") }),
   z.object({ ...Said, ...By, kind: z.literal("restore") }),
   z.object({ ...Said, kind: z.literal("read"), key: z.string(), upto: z.string(), post: z.string().optional() }),
+  z.object({ ...Said, kind: z.literal("dm"), from: z.string(), to: z.string(), text: z.string() }),
 ]);
+
+const Offset = z.coerce.number().int().nonnegative().catch(0);
 
 export type ChannelEntry = z.infer<typeof Entry>;
 export type PostMentions = Extract<ChannelEntry, { kind: "post" }>["mentions"];
@@ -79,4 +82,14 @@ const slugs = (): string[] => {
   }
 };
 
-export const ChannelStore = { append, file, read, slugs };
+const offsetFile = (slug: string): string => join(home(), `${slug}.offset`);
+
+// Where the channel's last catch-up stopped in events.jsonl, kept apart so a read that finds nothing writes no line.
+const offset = (slug: string): number => Offset.parse(readTextSafe(offsetFile(slug))?.trim());
+
+const advance = (slug: string, to: number): void => {
+  mkdirSync(home(), { recursive: true });
+  writeFileSync(offsetFile(slug), `${to}\n`);
+};
+
+export const ChannelStore = { advance, append, offset, read, slugs };

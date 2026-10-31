@@ -8,6 +8,7 @@ import { setTimeout as sleep } from "node:timers/promises";
 import { fileURLToPath } from "node:url";
 import * as Events from "../../../lib/sidecar/events.ts";
 import { Faces } from "../sessions/faces.ts";
+import { deliver } from "../sessions/inbox.ts";
 import { refreshJobs } from "../sessions/jobs.ts";
 import { Spawns } from "../sessions/spawns.ts";
 import { TaskLane } from "../tasks/lane.ts";
@@ -219,6 +220,17 @@ test("two agents in one project never share a name, and a drawn pair reads back 
     drawn,
   );
   assert.deepEqual(Faces.draw({ key: keys[0] ?? "", project: "MF" }), drawn[0]);
+});
+
+test("a relay between two members folds in once as a DM, a relay with an outsider never does, and both survive the log", async () => {
+  await deliver({ key: SL, text: "row menu is yours after Reveal", from: DL });
+  await deliver({ key: NELL, text: "same order in mf-ui?", from: DL });
+  const dms = (): unknown =>
+    Channels.read("board").dms.map(({ pair, messages }) => [pair, messages.map(({ text }) => text)]);
+  assert.deepEqual(dms(), [[[DL, SL], ["row menu is yours after Reveal"]]]);
+  assert.deepEqual(dms(), [[[DL, SL], ["row menu is yours after Reveal"]]]);
+  writeFileSync(Events.logFile(), "");
+  assert.deepEqual(dms(), [[[DL, SL], ["row menu is yours after Reveal"]]]);
 });
 
 test("an archived channel is read only, and it says who archived it", async () => {

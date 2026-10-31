@@ -1,5 +1,6 @@
 import * as Events from "../../../lib/sidecar/events.ts";
 import type { Refused } from "../../../shared/types/channel.ts";
+import type { SidecarEvent } from "../../../shared/types/events.ts";
 import type { Life, LiveSession } from "../../../shared/types/session.ts";
 import { Titles } from "../../../shared/utils/titles.ts";
 import { Workstreams } from "../../../shared/utils/workstream.ts";
@@ -23,6 +24,12 @@ export interface Synced {
 export interface Settled {
   done: string[];
   refused: Refused[];
+}
+
+interface RelaysInput {
+  folded: Folded;
+  joining: NewEntry[];
+  events: SidecarEvent[];
 }
 
 // A kill or resume in flight writes its own line, so a read meanwhile must not write one for the same keys.
@@ -84,12 +91,26 @@ const missing = (synced: Synced): NewEntry[] => {
   ];
 };
 
+const relaysOf = ({ folded, joining, events }: RelaysInput): NewEntry[] => {
+  const inside = new Set([...folded.joined.keys(), ...joining.flatMap((one) => (one.kind === "join" ? one.key : []))]);
+  return events.flatMap((one) => {
+    if (one.topic !== "relay.sent") return [];
+    const { from, to, text } = one.data;
+    const isKnown = folded.dms.has(`${one.at}|${from}|${to}`);
+    return inside.has(from) && inside.has(to) && !isKnown ? [{ kind: "dm" as const, at: one.at, from, to, text }] : [];
+  });
+};
+
 // The channel catches up on what the titles, the processes and the task say each time it is read or posted to.
 const sync = (given: string): Synced => {
   const file = TaskFiles.open(given);
   const sessions = liveSessions();
   const folded = refold(file.slug);
-  const lines = missing({ file, folded, sessions });
+  const since = ChannelStore.offset(file.slug);
+  const log = Events.read(since);
+  const joining = missing({ file, folded, sessions });
+  const lines = [...joining, ...relaysOf({ folded, joining, events: log.events })];
+  if (log.offset !== since) ChannelStore.advance(file.slug, log.offset);
   if (!lines.length) return { file, folded, sessions };
   for (const one of lines) {
     if (one.kind === "join") Faces.draw({ key: one.key, project: Titles.parse(one.title)?.token ?? "" });

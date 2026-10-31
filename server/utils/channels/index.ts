@@ -1,6 +1,6 @@
 import * as Events from "../../../lib/sidecar/events.ts";
 import { Refusal } from "../../../lib/sidecar/refusal.ts";
-import type { Channel, ChannelLine, ChannelMember, ChannelPost, DirectMessage } from "../../../shared/types/channel.ts";
+import type { Channel, ChannelLine, ChannelMember, ChannelPost } from "../../../shared/types/channel.ts";
 import type { LiveSession } from "../../../shared/types/session.ts";
 import { Titles } from "../../../shared/utils/titles.ts";
 import { Workstreams } from "../../../shared/utils/workstream.ts";
@@ -35,20 +35,9 @@ export interface Taken {
   lines: ChannelLine[];
 }
 
-const relays = (): DirectMessage[] =>
-  Events.read(0).events.flatMap((one) =>
-    one.topic === "relay.sent" ? [{ at: one.at, from: one.data.from, to: one.data.to, text: one.data.text }] : [],
-  );
-
 const read = (given: string): Channel => {
   const { file, folded, sessions } = ChannelSync.sync(given);
-  return ChannelFold.view({
-    slug: file.slug,
-    title: file.title,
-    folded,
-    members: Members.of(folded, sessions),
-    relays: relays(),
-  });
+  return ChannelFold.view({ slug: file.slug, title: file.title, folded, members: Members.of(folded, sessions) });
 };
 
 const rootOf = (folded: Folded, thread: string): ChannelPost => {
