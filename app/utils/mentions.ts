@@ -35,10 +35,12 @@ const typing = ({ text, caret }: Typed): Picking | undefined => {
   return hit ? { query: hit[1] ?? "" } : undefined;
 };
 
-const insert = ({ text, caret }: Typed, { title, key }: Mentioned): Typed => {
+const put = ({ text, caret }: Typed, handle: string): Typed => {
   const before = text.slice(0, caret).replace(/@[^\s@]*$/, "");
-  const token = `@${title} (${key}) `;
+  const token = `${handle} `;
   return { text: `${before}${token}${text.slice(caret)}`, caret: before.length + token.length };
 };
 
-export const Mentions = { insert, of, typing };
+const insert = (from: Typed, { title, key }: Mentioned): Typed => put(from, `@${title} (${key})`);
+
+export const Mentions = { insert, of, put, typing };
