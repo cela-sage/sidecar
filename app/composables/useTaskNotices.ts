@@ -2,27 +2,45 @@ import type { SidecarEvent } from "~~/shared/types/events";
 
 const LOCK = "sidecar:task-notices";
 
+interface Notice {
+  slug: string;
+  subtitle: string;
+  title: string;
+  text: string;
+  tag: string;
+}
+
 export const useTaskNotices = (): void => {
   const task = $task();
   const isLeading = ref(false);
 
-  function raise({ data }: SidecarEvent<"task.escalated">): void {
+  const notify = ({ slug, subtitle, title, text, tag }: Notice): void => {
     if (!isLeading.value) return;
-    const subtitle = data.kind === "hire" ? "A hire needs you" : "Needs you";
     if ("Notification" in window && Notification.permission === "granted") {
-      const notice = new Notification(`${subtitle} · ${data.title}`, { body: data.question, tag: data.thread });
+      const notice = new Notification(`${subtitle} · ${title}`, { body: text, tag });
       notice.onclick = () => {
         window.focus();
         notice.close();
-        task.show({ slug: data.slug });
+        task.show({ slug });
       };
       return;
     }
-    void $fetch(`/api/tasks/${encodeURIComponent(data.slug)}/notify`, {
-      method: "POST",
-      body: { subtitle, text: data.question },
-    }).catch(() => undefined);
-  }
+    void $fetch(`/api/tasks/${encodeURIComponent(slug)}/notify`, { method: "POST", body: { subtitle, text } }).catch(
+      () => undefined,
+    );
+  };
+
+  const escalated = ({ data }: SidecarEvent<"task.escalated">): void =>
+    notify({
+      slug: data.slug,
+      subtitle: data.kind === "hire" ? "A hire needs you" : "Needs you",
+      title: data.title,
+      text: data.question,
+      tag: data.thread,
+    });
+
+  const raised = ({ data }: SidecarEvent<"channel.raised">): void =>
+    notify({ slug: data.slug, subtitle: "@boss", title: data.title, text: data.text, tag: data.post });
 
   onMounted(() => {
     if (!navigator.locks) isLeading.value = true;
@@ -35,5 +53,6 @@ export const useTaskNotices = (): void => {
       void Notification.requestPermission().catch(() => undefined);
   });
 
-  useEvents().on("task.escalated", raise);
+  useEvents().on("task.escalated", escalated);
+  useEvents().on("channel.raised", raised);
 };
