@@ -1,11 +1,9 @@
 <script lang="ts" setup>
-import { Terminal } from "@lucide/vue";
 import type { Role } from "~~/shared/types/task";
 import type { Mark } from "~/utils/org";
 
 const {
-  attach,
-  attachTip = "Attach in your terminal",
+  conversation,
   depth = 0,
   id,
   isFront = false,
@@ -16,8 +14,7 @@ const {
   role,
   tip,
 } = defineProps<{
-  attach?: string;
-  attachTip?: string;
+  conversation?: string;
   depth?: number;
   id?: string;
   isFront?: boolean;
@@ -30,10 +27,8 @@ const {
 }>();
 const emit = defineEmits<{ open: [] }>();
 
-const terminal = $terminal();
 const conversationMenu = $conversationMenu();
-const isHeld = computed(() => !!attach && terminal.holds(attach));
-const isLit = computed(() => !!attach && conversationMenu.lit === attach);
+const isLit = computed(() => !!conversation && conversationMenu.lit === conversation);
 </script>
 
 <template>
@@ -41,7 +36,7 @@ const isLit = computed(() => !!attach && conversationMenu.lit === attach);
     class="row"
     role="treeitem"
     :aria-selected="isSelected"
-    :data-conversation="attach"
+    :data-conversation="conversation"
     :data-depth="depth"
     :data-done="mark === 'done'"
     :data-front="isFront"
@@ -59,18 +54,6 @@ const isLit = computed(() => !!attach && conversationMenu.lit === attach);
       <span v-if="id" class="id">{{ id }}</span>
     </button>
     <slot name="after" />
-    <button
-      v-if="attach"
-      class="attach plain-button focusable"
-      type="button"
-      :aria-label="isHeld ? 'In your terminal' : 'Attach'"
-      :aria-pressed="isHeld"
-      :data-tip="isHeld ? 'Your terminal holds this one' : attachTip"
-      :disabled="terminal.switching === attach"
-      @click.stop="!isHeld && terminal.attach(attach)"
-    >
-      <UiIcon :icon="Terminal" size="xs" />
-    </button>
   </div>
 </template>
 
@@ -175,19 +158,5 @@ const isLit = computed(() => !!attach && conversationMenu.lit === attach);
 
 .id {
   @apply flex-none typo-mono-micro text-subtle;
-}
-
-.attach {
-  @apply inline-flex size-6 flex-none items-center justify-center rounded-full border border-transparent bg-transparent p-0 text-subtle transition-colors duration-(--duration-fast) ease-out;
-}
-
-@media (hover: hover) and (pointer: fine) {
-  .attach:hover {
-    @apply border-border-strong text-fg;
-  }
-}
-
-.attach[aria-pressed="true"] {
-  @apply cursor-default border-border-strong bg-sunken text-fg;
 }
 </style>

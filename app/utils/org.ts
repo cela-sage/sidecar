@@ -21,7 +21,6 @@ export interface OrgTask {
   meta: TaskMeta;
   status: TaskState;
   mark: Mark;
-  lead?: string;
   leads: OrgConversation[];
   done: OrgConversation[];
 }
@@ -182,11 +181,10 @@ const taskOf = (meta: TaskMeta, placed: Placed[], heard: Heard): OrgTask => {
     .map((one) => conversationOf(one, placing))
     .sort((a, b) => RANK[b.mark] - RANK[a.mark]);
   const done = mine.filter((one) => one.session.life === "killed").map((one) => conversationOf(one, placing));
-  const lead = mine.find((one) => one.session.name === meta.task.lead)?.session.key ?? leads[0]?.key;
   // A lead with a turn open shows the task In progress whatever its state, and the state returns when the turn ends.
   const status = leads.some((one) => one.mark === "working") ? "running" : meta.task.state;
   const mark = worst([TASK_MARK[status], ...leads.map((one) => one.mark)]) ?? "queued";
-  return { meta, status, mark, ...(lead ? { lead } : {}), leads, done };
+  return { meta, status, mark, leads, done };
 };
 
 const projectsOf = (tasks: TaskMeta[], projects: Project[]): Project[] => {

@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { ArrowRight, ArrowUp, ChevronDown, Paperclip, Plus, Terminal, Trash2, X } from "@lucide/vue";
+import { ArrowRight, ArrowUp, ChevronDown, Paperclip, Plus, Trash2, X } from "@lucide/vue";
 import { useResizeObserver } from "@vueuse/core";
 import { Titles } from "~~/shared/utils/titles";
 import type { MascotState } from "~/components/claude/mascot.vue";
@@ -17,7 +17,6 @@ const task = $task();
 const desk = $desk();
 const door = $door();
 const prompt = $prompt();
-const terminal = $terminal();
 const busy = $busy();
 const questions = $questions();
 const field = useTemplateRef<{ edit: (change: (from: Typed) => Typed) => void; focus: () => void }>("field");
@@ -103,7 +102,6 @@ const placeholder = computed(() =>
     : "Ask the assistant, or @ someone in the tree…",
 );
 
-const attachKey = computed(() => (door.mode === "assistant" ? door.key : undefined));
 const commands = computed(() => prompt.commandsOf(door.key));
 
 const pieces = computed<ComposerPieceItem[]>(() =>
@@ -288,14 +286,6 @@ onMounted(() => {
             data-tip="Clear this thread"
             size="xs"
             @click="door.clear()"
-          />
-          <UiIconButton
-            v-if="attachKey"
-            :icon="Terminal"
-            aria-label="Attach in your terminal"
-            data-tip="Attach in your terminal"
-            size="xs"
-            @click="terminal.attach(attachKey)"
           />
           <UiIconButton
             :icon="ChevronDown"

@@ -9,7 +9,7 @@ const emit = defineEmits<{
   over: [event: DragEvent];
   drop: [event: DragEvent];
   leave: [];
-  menu: [event: MouseEvent, lead?: string];
+  menu: [event: MouseEvent];
 }>();
 
 const sc = useSidecar();
@@ -27,15 +27,6 @@ const lines = computed(() =>
     keyOf: (row) => row.key,
   }),
 );
-
-const attach = computed(() =>
-  lines.value.some((line) => "item" in line && line.item.key === one.lead) ? undefined : one.lead,
-);
-
-const leadTip = computed(() => {
-  const lead = [...one.leads, ...one.done].find((row) => row.key === one.lead);
-  return lead ? `Attach its lead, ${lead.title}, in your terminal` : "Attach in your terminal";
-});
 
 const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.sessionKey.value;
 </script>
@@ -55,15 +46,13 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
   <OrgRow
     v-else
     class="landing"
-    :attach="attach"
-    :attach-tip="leadTip"
     :data-hot="isHot"
     :depth="depth"
     is-task
     :is-front="one.meta.slug === task.slug"
     :mark="one.mark"
     :name="one.meta.title || deslug(one.meta.slug)"
-    @contextmenu.prevent="emit('menu', $event, one.lead)"
+    @contextmenu.prevent="emit('menu', $event)"
     @dragleave="emit('leave')"
     @dragover="emit('over', $event)"
     @drop="emit('drop', $event)"
@@ -84,7 +73,7 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
     <OrgFold v-if="'fold' in line" :depth="line.depth" :fold="line.key" :label="`${line.fold} done`" />
     <template v-else>
       <OrgRow
-        :attach="line.item.key"
+        :conversation="line.item.key"
         :depth="line.depth"
         :is-front="front(line.item)"
         :mark="line.item.mark"

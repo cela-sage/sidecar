@@ -1,11 +1,10 @@
 <script lang="ts" setup>
-import { ArrowUpRight, AtSign, Copy, ListTree, Pencil, Play, Power, Terminal, Trash2 } from "@lucide/vue";
+import { ArrowUpRight, AtSign, Copy, ListTree, Pencil, Play, Power, Trash2 } from "@lucide/vue";
 import type { ConversationTarget } from "~/stores/conversation-menu";
 
 const sc = useSidecar();
 const chrome = useChrome();
 const desk = $desk();
-const terminal = $terminal();
 const prompt = $prompt();
 const life = $life();
 const conversationMenu = $conversationMenu();
@@ -71,12 +70,6 @@ watch(
           <span class="key mono-meta">{{ target.key }}</span>
         </div>
         <UiMenuItem :icon="ArrowUpRight" @click="act(close, open)">Open</UiMenuItem>
-        <UiMenuItem
-          :disabled="!target || terminal.switching === target.key"
-          :icon="Terminal"
-          @click="act(close, (one) => terminal.attach(one.key))"
-          >Attach in your terminal</UiMenuItem
-        >
         <UiMenuItem :icon="AtSign" @click="act(close, (one) => prompt.mention({ key: one.key, title: nameOf(one) }))"
           >Mention in the prompt</UiMenuItem
         >

@@ -76,6 +76,7 @@ useResizeObserver(boardEl, ([entry]) => {
   >
     <ChromeBar :inert="isDown">
       <slot name="bar" />
+      <ChromeTools />
     </ChromeBar>
 
     <div class="workspace" :style="{ '--side-w': `${side}px` }">
@@ -86,7 +87,6 @@ useResizeObserver(boardEl, ([entry]) => {
         :data-listed="artifact.isFull && artifact.isListed"
         :inert="isDown"
       >
-        <OrgHeader />
         <OrgTree />
         <UsagePlan />
       </aside>

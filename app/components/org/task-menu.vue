@@ -1,26 +1,20 @@
 <script lang="ts" setup>
-import { Check, Pencil, Terminal, Trash2 } from "@lucide/vue";
+import { Check, Pencil, Trash2 } from "@lucide/vue";
 import type { TaskMeta } from "~/utils/tasks";
 
-interface Target {
-  meta: TaskMeta;
-  lead?: string;
-}
-
 const desk = $desk();
-const terminal = $terminal();
 const menu = useTemplateRef<{ openAt: (x: number, y: number) => void }>("menu");
-const target = ref<Target>();
+const target = ref<TaskMeta>();
 
-const openFor = (event: MouseEvent, meta: TaskMeta, lead?: string): void => {
-  target.value = { meta, ...(lead ? { lead } : {}) };
+const openFor = (event: MouseEvent, meta: TaskMeta): void => {
+  target.value = meta;
   menu.value?.openAt(event.clientX, event.clientY);
 };
 
-const act = (close: () => void, run: (one: Target) => unknown): void => {
-  const one = target.value;
+const act = (close: () => void, run: (meta: TaskMeta) => unknown): void => {
+  const meta = target.value;
   close();
-  if (one) void run(one);
+  if (meta) void run(meta);
 };
 
 defineExpose({ openFor });
@@ -30,19 +24,13 @@ defineExpose({ openFor });
   <UiContextMenu ref="menu" data-region="org-task-menu" label="Task" width="w-48">
     <template #default="{ close }">
       <UiMenuItem
-        :disabled="!target?.lead"
-        :icon="Terminal"
-        @click="act(close, (one) => one.lead && terminal.attach(one.lead))"
-        >Attach</UiMenuItem
-      >
-      <UiMenuItem
-        :disabled="!target?.meta.task.project || target.meta.task.state === 'done'"
+        :disabled="!target?.task.project || target.task.state === 'done'"
         :icon="Check"
-        @click="act(close, (one) => desk.markDone(one.meta))"
+        @click="act(close, (meta) => desk.markDone(meta))"
         >Mark done</UiMenuItem
       >
-      <UiMenuItem :icon="Pencil" @click="act(close, (one) => (desk.renaming = one.meta.slug))">Rename</UiMenuItem>
-      <UiMenuItem :icon="Trash2" tone="destructive" @click="act(close, (one) => desk.remove(one.meta))"
+      <UiMenuItem :icon="Pencil" @click="act(close, (meta) => (desk.renaming = meta.slug))">Rename</UiMenuItem>
+      <UiMenuItem :icon="Trash2" tone="destructive" @click="act(close, (meta) => desk.remove(meta))"
         >Remove</UiMenuItem
       >
     </template>

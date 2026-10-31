@@ -72,11 +72,6 @@ const menuFor = (event: MouseEvent): void => {
   if (row) conversationMenu.openFor(event, { key: row.key, title: row.title });
 };
 
-const attach = (): void => {
-  close();
-  void terminal.attach(conversation);
-};
-
 onScopeDispose(close);
 </script>
 
@@ -86,6 +81,9 @@ onScopeDispose(close);
       <OrgMark :mark="place.row.mark" />
       <span v-if="place.row.role" class="role">{{ place.row.role }}</span>
       <span class="name">{{ place.row.name }}</span>
+      <span v-if="isHeld" class="held" role="img" aria-label="In your terminal" data-tip="Your terminal holds this one">
+        <UiIcon :icon="Terminal" size="xs" />
+      </span>
     </button>
     <Teleport to="body">
       <Transition name="peek">
@@ -107,14 +105,6 @@ onScopeDispose(close);
             <span class="peek-line" :data-working="place.row.mark === 'working'">{{ step }}</span>
           </span>
           <span class="peek-meta mono-meta">{{ meta }}</span>
-          <UiButton
-            :disabled="isHeld || terminal.switching === conversation"
-            :icon="Terminal"
-            size="xs"
-            variant="outline"
-            @click="attach"
-            >{{ isHeld ? "In your terminal" : "Attach in your terminal" }}</UiButton
-          >
         </span>
       </Transition>
     </Teleport>
@@ -148,6 +138,10 @@ onScopeDispose(close);
 
 .name {
   @apply max-w-40 min-w-0 truncate typo-caption font-semibold;
+}
+
+.held {
+  @apply inline-flex flex-none text-subtle;
 }
 
 .peek {

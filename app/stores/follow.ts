@@ -1,8 +1,4 @@
-import { useLocalStorage } from "@vueuse/core";
 import type { FollowTarget } from "~~/shared/types/review";
-
-export const FOLLOW_MODES = ["auto", "ask", "manual"] as const;
-export type FollowMode = (typeof FOLLOW_MODES)[number];
 
 export interface FollowOptions {
   /** Jump on the very first read too, for a page that has no conversation of its own to stay on. */
@@ -27,11 +23,8 @@ export const $follow = defineStore(() => {
   /** The artifact Claude Code asked to show, held until Artifacts mounts and opens it. */
   const opening = ref<string>();
   const isSwitching = ref(false);
-  const mode = useLocalStorage<FollowMode>("sc:follow-mode", "ask");
-  const offer = ref<FollowTarget>();
   let switches = 0;
   let landing: string | undefined = window.location.pathname;
-  let lastKey: string | undefined;
 
   function claimLanding(path: string): boolean {
     const isLanding = path === landing;
@@ -67,37 +60,11 @@ export const $follow = defineStore(() => {
     else if (next.key) show(next);
   }
 
-  // Asked once per move, so a dismissed card stays gone while you keep typing in that conversation.
   function heard(next: FollowTarget, isEager: boolean): void {
     if (!next.key) return;
-    const isRepeat = next.key === lastKey;
-    lastKey = next.key;
     const isHere = next.key === router.currentRoute.value.params.key;
-    if (isHere || isEager || next.source === "claude" || mode.value === "auto") {
-      if (isHere || offer.value?.key === next.key) offer.value = undefined;
-      go(next);
-    } else if (mode.value === "ask" && !isRepeat) offer.value = next;
+    if (isHere || isEager || next.source === "claude") go(next);
   }
-
-  function accept(): void {
-    const next = offer.value;
-    offer.value = undefined;
-    if (next) go(next);
-  }
-
-  function decline(): void {
-    offer.value = undefined;
-  }
-
-  watch(mode, (now) => {
-    if (now !== "ask") offer.value = undefined;
-  });
-  watch(
-    () => router.currentRoute.value.params.key,
-    (key) => {
-      if (offer.value?.key === key) offer.value = undefined;
-    },
-  );
 
   // Otherwise the first read is a baseline, so a conversation opened by hand stays put until Claude Code points elsewhere.
   function listen({ isEager = false }: FollowOptions = {}): void {
@@ -123,5 +90,5 @@ export const $follow = defineStore(() => {
     });
   }
 
-  return { accept, decline, isSwitching, listen, mode, offer, opening, show, target };
+  return { isSwitching, listen, opening, show, target };
 });

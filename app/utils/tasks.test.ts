@@ -293,7 +293,6 @@ test("the org tree puts each role where it works, folds what is done and files y
   assert.deepEqual(cela?.leads.map(row), ["DL sidecar plan waits", "SL sidecar-task-board design completed"]);
   const [board] = cela?.tasks ?? [];
   assert.equal(board?.mark, "needs");
-  assert.equal(board?.lead, "lane");
   assert.deepEqual(board?.leads.map(row), ["IC lane needs", "IC follower working"]);
   assert.deepEqual(
     board?.leads.map((one) => one.agents?.map((agent) => agent.name)),

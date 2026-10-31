@@ -15,7 +15,7 @@ const conversationMenu = $conversationMenu();
 const folds = useOrgFolds();
 const hot = ref<string>();
 const hotTask = ref<string>();
-const menu = useTemplateRef<{ openFor: (event: MouseEvent, meta: TaskMeta, lead?: string) => void }>("menu");
+const menu = useTemplateRef<{ openFor: (event: MouseEvent, meta: TaskMeta) => void }>("menu");
 
 const tree = useOrgTree();
 
@@ -174,7 +174,7 @@ watch(
         <OrgRow
           v-for="row in group.leads"
           :key="row.key"
-          :attach="row.key"
+          :conversation="row.key"
           :depth="1"
           :is-front="front(row)"
           :mark="row.mark"
@@ -203,7 +203,7 @@ watch(
             :one="line.item"
             @drop="dropOnTask($event, line.item)"
             @leave="hotTask = undefined"
-            @menu="(event, lead) => menu?.openFor(event, line.item.meta, lead)"
+            @menu="(event) => menu?.openFor(event, line.item.meta)"
             @open="openConversation"
             @over="overTask($event, line.item)"
           />
@@ -213,7 +213,7 @@ watch(
           v-for="row in group.conversations"
           :key="row.key"
           class="carry"
-          :attach="row.key"
+          :conversation="row.key"
           :data-ghost="desk.carrying === row.key"
           :depth="1"
           draggable="true"
@@ -235,7 +235,7 @@ watch(
         v-for="row in tree.unplaced"
         :key="row.key"
         class="carry"
-        :attach="row.key"
+        :conversation="row.key"
         :data-ghost="desk.carrying === row.key"
         draggable="true"
         :is-front="front(row)"
