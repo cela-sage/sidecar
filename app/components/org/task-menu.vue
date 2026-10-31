@@ -9,7 +9,7 @@ const target = ref<TaskMeta>();
 
 const one = computed(() => (target.value ? Org.taskIn(tree.value, target.value.slug) : undefined));
 const alive = computed(() => (one.value ? Org.aliveOf(one.value.leads) : []));
-const isArchived = computed(() => !!one.value && Tasks.isArchived(one.value.status));
+const isArchived = computed(() => !!one.value && Workstreams.isArchived(one.value.status));
 const killTip = computed(() => {
   const names = new Intl.ListFormat("en").format(alive.value.map((row) => row.agent?.name ?? row.name));
   return `Kills ${names}. The Domain Lead, the Solution Lead and your Assistant stay. Undo · ⌘Z`;

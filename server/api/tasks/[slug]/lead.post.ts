@@ -7,6 +7,7 @@ import { retitle } from "~~/server/utils/sessions/title";
 import { TaskRoute } from "~~/server/utils/tasks/route";
 import type { LeadJoined } from "~~/shared/types/desk";
 import { Titles } from "~~/shared/utils/titles";
+import { Workstreams } from "~~/shared/utils/workstream";
 
 const Body = z.object({ key: z.string().toLowerCase().refine(isKey, "a session's 8-hex key") });
 
@@ -14,7 +15,7 @@ export default defineEventHandler(async (event): Promise<LeadJoined> => {
   const file = await TaskRoute.task(getRouterParam(event, "slug") ?? "");
   const { key } = await readValidatedBody(event, (raw) => Body.parse(raw));
   const project = Projects.list().find((one) => one.key === file.task.project);
-  if (!project || file.task.state === "done")
+  if (!project || Workstreams.isArchived(file.task.state))
     throw createError({
       statusCode: 409,
       statusMessage: "refused",

@@ -151,7 +151,7 @@ export const $desk = defineStore(() => {
 
   const archive = async (meta: TaskMeta): Promise<void> => {
     const was = meta.task.state;
-    if (!(await shelve(meta, "done", `Could not archive ${titleOf(meta)}`))) return;
+    if (!(await shelve(meta, "archived", `Could not archive ${titleOf(meta)}`))) return;
     offer(`${titleOf(meta)} is archived. Restore it from Archived.`, () =>
       shelve(meta, was, `Could not bring ${titleOf(meta)} back`),
     );
@@ -163,7 +163,7 @@ export const $desk = defineStore(() => {
     const back = Tasks.stateBeforeArchive(entries);
     if (!(await shelve(meta, back, `Could not restore ${titleOf(meta)}`))) return;
     offer(`${titleOf(meta)} is back, with its channel. Its agents stay killed.`, () =>
-      shelve(meta, "done", `Could not archive ${titleOf(meta)} again`),
+      shelve(meta, "archived", `Could not archive ${titleOf(meta)} again`),
     );
   };
 

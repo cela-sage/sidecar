@@ -2,6 +2,7 @@ import type { AgentFace, LiveSession, SessionAgent } from "~~/shared/types/sessi
 import type { Project, Role, TaskState } from "~~/shared/types/task";
 import type { Busy } from "../../shared/utils/busy.ts";
 import { Titles, type RoleTitle } from "../../shared/utils/titles.ts";
+import { Workstreams } from "../../shared/utils/workstream.ts";
 import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
 
 // Amber is a conversation outside a task waiting on you, red a task or its Individual Contributor waiting on you.
@@ -97,7 +98,7 @@ const TASK_MARK: Record<TaskState, Mark> = {
   blocked: "needs",
   waiting: "third",
   finished: "needs",
-  done: "archived",
+  archived: "archived",
 };
 const LEAD_ORDER: Role[] = ["DL", "SL", "IC"];
 
@@ -226,7 +227,7 @@ const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, unseen = []
       .filter((one) => one.title.role !== "IC" || !claimed.has(one.session.key))
       .sort(byLead)
       .map((one) => conversationOf(one, heard));
-    const open = built.filter((one) => !Tasks.isArchived(one.status));
+    const open = built.filter((one) => !Workstreams.isArchived(one.status));
     const conversations = owned
       .filter((one) => sameWord(one.title.token, project.token))
       .sort((a, b) => Tasks.agentOrder(a.session, b.session))
@@ -237,7 +238,7 @@ const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, unseen = []
       mark: worst([...leads, ...open, ...conversations].map((one) => one.mark)),
       leads,
       tasks: open,
-      archived: built.filter((one) => Tasks.isArchived(one.status)),
+      archived: built.filter((one) => Workstreams.isArchived(one.status)),
       conversations,
     };
   });
@@ -264,7 +265,7 @@ const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, unseen = []
     inbox: ordered.filter((one) => one.task.state === "unassigned"),
     projects: groups,
     unplaced,
-    open: tasks.filter((one) => !Tasks.isArchived(one.task.state)).length,
+    open: tasks.filter((one) => !Workstreams.isArchived(one.task.state)).length,
     conversations: seen.size + unplaced.length,
   };
 };

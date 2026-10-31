@@ -124,23 +124,29 @@ test("a decide typed at an Individual Contributor's prompt is Marco's, in the hi
   assert.equal(entry.from, lead.from);
 });
 
-test("a lead's done files the task finished, Marco's mark makes it Done as his decision, and a lead never undoes it", () => {
+test("a lead asking for archived files the workstream finished, only Marco archives it, and a lead never undoes it", async (context) => {
   const path = task("check", "running");
-  TaskLane.state({ given: "check", caller: lead, state: "done" });
+  TaskLane.state({ given: "check", caller: lead, state: "archived" });
   assert.equal(stateOf(path), "finished");
-  TaskLane.state({ given: "check", caller: { who: "YOU" }, state: "done" });
-  assert.equal(stateOf(path), "done");
-  TaskLane.state({ given: "check", caller: lead, state: "done" });
-  assert.equal(stateOf(path), "done");
+  TaskLane.state({ given: "check", caller: { who: "DL" }, state: "archived" });
+  assert.equal(stateOf(path), "finished");
+  const said = context.mock.method(console, "log", () => undefined);
+  assert.equal(await TaskCommand.run(["check", "done"], "http://localhost:0"), 0);
+  assert.deepEqual(said.mock.calls.at(-1)?.arguments, ["check is archived"]);
+  assert.equal(stateOf(path), "archived");
+  TaskLane.state({ given: "check", caller: lead, state: "archived" });
+  assert.equal(stateOf(path), "archived");
   assert.deepEqual(
     TaskHistory.read("check")
       .map((entry) => HistoryLines.of(entry))
       .map(({ text, chips, isDecision }) => [text, chips, isDecision]),
     [
       ["Finished it, and it waits on your mark.", ["running to finished"], false],
-      ["You marked it done.", ["decision", "finished to done"], true],
+      ["You archived it.", ["decision", "finished to archived"], true],
     ],
   );
+  context.mock.method(console, "error", () => undefined);
+  assert.equal(await TaskCommand.run(["check", "state", "done"], "http://localhost:0"), 2);
 });
 
 test("a new task is an unassigned .md with the four parts, and Undo after a drop puts it back in the inbox", () => {

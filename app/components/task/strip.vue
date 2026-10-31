@@ -6,18 +6,26 @@ import type { TaskStory } from "~/utils/timeline";
 
 const { meta, status, story = {} } = defineProps<{ meta: TaskMeta; status: TaskState; story?: TaskStory }>();
 
-const LIVE = new Set<string>(["running", "waiting", "needs", "done"]);
+const LIVE = new Set<string>(["running", "waiting", "needs", "archived"]);
 
 const task = $task();
 const chrome = useChrome();
+const tree = useOrgTree();
 const moving = ref<TaskState>();
 
 const steps = computed(() => Tasks.stepsOf(status, story));
+const alive = computed(() => Org.aliveOf(Org.taskIn(tree.value, meta.slug)?.leads ?? []).length);
 const isLive = (kind: string): kind is TaskLook => LIVE.has(kind);
+const isHeld = (step: TaskStep): boolean => !!step.state && Workstreams.isArchived(step.state) && !!alive.value;
 const canMove = (step: TaskStep): step is TaskStep & { state: TaskState } =>
-  !!step.state && step.state !== meta.task.state && step.state !== "unassigned" && !!meta.task.project;
+  !!step.state &&
+  step.state !== meta.task.state &&
+  step.state !== "unassigned" &&
+  !!meta.task.project &&
+  !isHeld(step);
 
 const tipOf = (step: TaskStep): string => {
+  if (isHeld(step) && step.state !== meta.task.state) return "Kill its agents first";
   if (canMove(step)) return `Move it to ${step.label} · ${step.tip}`;
   if (step.state && step.state !== meta.task.state && !meta.task.project)
     return `${step.tip}. Drag it onto a project in the tree first`;
@@ -120,7 +128,7 @@ button.step:disabled {
   @apply border-error text-error;
 }
 
-.step[data-kind="done"] {
+.step[data-kind="archived"] {
   @apply bg-sunken;
 }
 

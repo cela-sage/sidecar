@@ -4,6 +4,7 @@ import { Refusal } from "../lib/sidecar/refusal.ts";
 import { TaskState } from "../shared/types/task.ts";
 import type { HistoryEntry } from "../shared/types/history.ts";
 import { HistoryLines } from "../shared/utils/history.ts";
+import { Workstreams } from "../shared/utils/workstream.ts";
 import { TaskCaller, type Caller } from "../server/utils/tasks/caller.ts";
 import { TaskLane, type AskThread, type Decided } from "../server/utils/tasks/lane.ts";
 import { TaskNotice } from "../server/utils/tasks/notice.ts";
@@ -214,9 +215,11 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
     return 0;
   },
   done: async ({ slug }) => {
-    const file = TaskLane.state({ given: slug, caller: caller(), state: "done" });
+    const file = TaskLane.state({ given: slug, caller: caller(), state: "archived" });
     console.log(
-      file.task.state === "done" ? `${file.slug} is done` : `${file.slug} is finished, and waits on Marco's mark`,
+      Workstreams.isArchived(file.task.state)
+        ? `${file.slug} is archived`
+        : `${file.slug} is finished, and waits on Marco's mark`,
     );
     return 0;
   },

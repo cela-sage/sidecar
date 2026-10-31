@@ -1,6 +1,7 @@
 import type { HistoryEntry, HistoryKind, Move } from "../types/history.ts";
 import type { Role } from "../types/task.ts";
 import { Titles } from "./titles.ts";
+import { Workstreams } from "./workstream.ts";
 
 export interface HistoryLine {
   lead: string;
@@ -29,13 +30,13 @@ const toldWhom = (to: string): string => {
   return role ? ROLE_NAME[role] : to;
 };
 
-const isMark = ({ move, who }: EntryOf["state"]): boolean => who === "YOU" && move.now === "done";
+const isMark = ({ move, who }: EntryOf["state"]): boolean => who === "YOU" && Workstreams.isArchived(move.now);
 
 const movedTo = (entry: EntryOf["state"]): string => {
   const { move } = entry;
   if (move.now === "running" && move.was === "waiting") return "Picked it back up.";
   if (move.now === "finished") return "Finished it, and it waits on your mark.";
-  if (move.now === "done") return isMark(entry) ? "You marked it done." : "Marked it done.";
+  if (Workstreams.isArchived(move.now)) return isMark(entry) ? "You archived it." : "Archived it.";
   return `Moved it to ${move.now}.`;
 };
 

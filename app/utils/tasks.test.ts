@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { HistoryEntry } from "../../shared/types/history.ts";
 import type { LiveSession } from "../../shared/types/session.ts";
+import { TaskState } from "../../shared/types/task.ts";
+import { Workstreams } from "../../shared/utils/workstream.ts";
 import { Org, type OrgConversation } from "./org.ts";
 import { Tasks, type TaskMeta } from "./tasks.ts";
 import { Timeline } from "./timeline.ts";
@@ -20,17 +22,23 @@ test("the strip passes what is behind, marks where it is, and dashes what is ahe
     Tasks.stepsOf(state)
       .map((step) => `${step.label}:${step.kind}`)
       .join(" ");
-  assert.equal(strip("running"), "Backlog:past Assigned:past Assessed:past In progress:running Done:future");
-  assert.equal(strip("blocked"), "Backlog:past Assigned:past Assessed:past In progress:past Blocked:needs Done:future");
+  assert.equal(strip("running"), "Backlog:past Assigned:past Assessed:past In progress:running Archived:future");
+  assert.equal(
+    strip("blocked"),
+    "Backlog:past Assigned:past Assessed:past In progress:past Blocked:needs Archived:future",
+  );
   assert.equal(
     strip("finished"),
-    "Backlog:past Assigned:past Assessed:past In progress:past Finished:needs Done:future",
+    "Backlog:past Assigned:past Assessed:past In progress:past Finished:needs Archived:future",
   );
-  assert.equal(strip("unassigned"), "Backlog:waiting Assigned:future Assessed:future In progress:future Done:future");
-  assert.equal(strip("done"), "Backlog:past Assigned:past Assessed:past In progress:past Done:done");
+  assert.equal(
+    strip("unassigned"),
+    "Backlog:waiting Assigned:future Assessed:future In progress:future Archived:future",
+  );
+  assert.equal(strip("archived"), "Backlog:past Assigned:past Assessed:past In progress:past Archived:archived");
   assert.deepEqual(
     Tasks.stepsOf("blocked").map((step) => step.state),
-    ["unassigned", "assigned", "assessed", "running", undefined, "done"],
+    ["unassigned", "assigned", "assessed", "running", undefined, "archived"],
   );
   assert.deepEqual(
     Tasks.stepsOf("running").map((step) => step.joint),
@@ -74,24 +82,24 @@ test("the history folds runs, puts the divider under what the Domain Lead read, 
       .slice(3)
       .map((step) => `${step.label}:${step.kind}`)
       .join(" ");
-  assert.equal(steps("running", story), "In progress:running Blocked, settled by you:decided Done:future");
+  assert.equal(steps("running", story), "In progress:running Blocked, settled by you:decided Archived:future");
 
   const waited: HistoryEntry[] = [
     { at: "2026-10-26T16:40:00Z", who: "IC", kind: "state", move: { was: "running", now: "waiting" }, on: "Cosmico", reason: "they confirm" },
     { at: "2026-10-27T16:40:00Z", who: "IC", kind: "state", move: { was: "waiting", now: "running" } },
   ];
-  assert.equal(steps("waiting", Timeline.story(waited.slice(0, 1), "waiting")), "In progress:past Waiting on Cosmico:waiting Done:future");
-  assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past In progress:running Done:future");
+  assert.equal(steps("waiting", Timeline.story(waited.slice(0, 1), "waiting")), "In progress:past Waiting on Cosmico:waiting Archived:future");
+  assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past In progress:running Archived:future");
 });
 
 test("the tree keeps every archived workstream, and lists only what agent view lists", () => {
-  const done = (slug: string): TaskMeta => ({
+  const archived = (slug: string): TaskMeta => ({
     slug,
     title: slug,
     kind: "page",
     format: "md",
     path: `/tmp/${slug}.md`,
-    task: { state: "done", project: "cela" },
+    task: { state: "archived", project: "cela" },
   });
   const tree = Org.treeOf({
     projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
@@ -99,7 +107,7 @@ test("the tree keeps every archived workstream, and lists only what agent view l
       session({ key: "seen", name: "[Cela] sidecar zoom", inView: true }),
       session({ key: "gone", name: "[Cela] sage storybook", inView: false }),
     ],
-    tasks: [done("today"), done("yesterday"), done("removed")],
+    tasks: [archived("today"), archived("yesterday"), archived("removed")],
   });
   const [cela] = tree.projects;
   assert.deepEqual(
@@ -211,7 +219,7 @@ test("a finished task heads the list with the needs-you mark, and a lead with a 
       session({ key: "board", name: "[Cela] IC board build" }),
       session({ key: "old", name: "[Cela] IC old build" }),
     ],
-    tasks: [meta("calm", "running"), meta("old", "done"), meta("board", "finished")],
+    tasks: [meta("calm", "running"), meta("old", "archived"), meta("board", "finished")],
   };
   const shown = (busy: Record<string, { doing: boolean; asking: boolean }>): string[][] => {
     const [cela] = Org.treeOf({ ...input, busy }).projects;
@@ -235,8 +243,8 @@ test("a finished task heads the list with the needs-you mark, and a lead with a 
   assert.equal(raised?.mark, "raised");
 
   const at = "2026-10-29T09:00:00Z";
-  const marked: HistoryEntry = { at, who: "YOU", kind: "state", move: { was: "finished", now: "done" } };
-  assert.deepEqual(Timeline.story([marked], "done"), { done: { at, who: "YOU" } });
+  const marked: HistoryEntry = { at, who: "YOU", kind: "state", move: { was: "finished", now: "archived" } };
+  assert.deepEqual(Timeline.story([marked], "archived"), { archived: { at, who: "YOU" } });
 });
 
 test("a restored workstream returns to the state it was archived from, and to finished when the history never says", () => {
@@ -249,15 +257,17 @@ test("a restored workstream returns to the state it was archived from, and to fi
   });
   const entries = [
     move("running", "finished"),
-    move("finished", "done"),
-    move("done", "running"),
-    move("running", "done"),
+    move("finished", "archived"),
+    move("archived", "running"),
+    move("running", "archived"),
   ];
   assert.equal(Tasks.stateBeforeArchive(entries), "running");
   assert.equal(Tasks.stateBeforeArchive(entries.slice(0, 2)), "finished");
   assert.equal(Tasks.stateBeforeArchive([]), "finished");
-  assert.equal(Tasks.isArchived("done"), true);
-  assert.equal(Tasks.isArchived("finished"), false);
+  assert.deepEqual(
+    TaskState.filter((one) => Workstreams.isArchived(one)),
+    ["archived"],
+  );
 });
 
 test("the org tree puts each role where it works, sorts killed agents after the alive by name, archives what is done and files your own conversations by their prefix", () => {
@@ -297,7 +307,7 @@ test("the org tree puts each role where it works, sorts killed agents after the 
     busy: Object.fromEntries(["ea", "fol", "own", "loop"].map((key) => [key, { doing: true, asking: false }])),
     tasks: [
       meta("sidecar-task-board", "running", "cela", "[Cela] IC sidecar-task-board lane"),
-      meta("session-title-rule", "done", "cela"),
+      meta("session-title-rule", "archived", "cela"),
       meta("settings-hook", "unassigned"),
     ],
   });

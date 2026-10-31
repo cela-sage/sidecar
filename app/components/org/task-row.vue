@@ -16,7 +16,7 @@ const task = $task();
 const desk = $desk();
 const conversationMenu = $conversationMenu();
 
-const rows = computed(() => (Tasks.isArchived(one.status) ? [] : one.leads));
+const rows = computed(() => (Workstreams.isArchived(one.status) ? [] : one.leads));
 
 const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.sessionKey.value;
 </script>
@@ -49,7 +49,7 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
     @open="task.show({ slug: one.meta.slug })"
   >
     <span v-if="isHot" class="drop mono-meta">as its Individual Contributor</span>
-    <template v-if="Tasks.isArchived(one.status)" #after>
+    <template v-if="Workstreams.isArchived(one.status)" #after>
       <UiButton
         class="restore"
         data-tip="Brings it back with its channel. Its agents stay killed"

@@ -85,7 +85,7 @@ const letGo = (): void => {
 };
 
 const overTask = (event: DragEvent, one: OrgTask): void => {
-  if (!carried.value || Tasks.isArchived(one.meta.task.state)) return;
+  if (!carried.value || Workstreams.isArchived(one.meta.task.state)) return;
   event.preventDefault();
   event.stopPropagation();
   if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
@@ -95,7 +95,7 @@ const overTask = (event: DragEvent, one: OrgTask): void => {
 
 const dropOnTask = (event: DragEvent, one: OrgTask): void => {
   const row = carried.value;
-  if (!row || Tasks.isArchived(one.meta.task.state)) return;
+  if (!row || Workstreams.isArchived(one.meta.task.state)) return;
   event.preventDefault();
   event.stopPropagation();
   letGo();

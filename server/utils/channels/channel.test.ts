@@ -278,7 +278,7 @@ test("a relay between two members folds in once as a DM, a relay with an outside
 });
 
 test("an archived channel is read only, and it says who archived it", async () => {
-  TaskLane.state({ given: "board", caller: { who: "YOU" }, state: "done" });
+  TaskLane.state({ given: "board", caller: { who: "YOU" }, state: "archived" });
   await assert.rejects(Channels.post({ given: "board", author: asYou, text: "one more thing" }), /archived/);
   const channel = Channels.read("board");
   assert.deepEqual(

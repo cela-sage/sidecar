@@ -79,7 +79,7 @@ const missing = (synced: Synced): NewEntry[] => {
       (key) => !settling.has(key) && folded.life.get(key) === from && (now.get(key) ?? "killed") !== from,
     );
   const [killed, resumed] = [moved("alive"), moved("killed")];
-  const archived = Workstreams.isArchived(file.task);
+  const archived = Workstreams.isArchived(file.task.state);
   const mover = archived === folded.archived ? undefined : moverOf(file.slug);
   return [
     ...joinsOf(synced),

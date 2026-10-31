@@ -6,7 +6,7 @@ export const TaskState = [
   "blocked",
   "waiting",
   "finished",
-  "done",
+  "archived",
 ] as const;
 export type TaskState = (typeof TaskState)[number];
 

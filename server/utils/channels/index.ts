@@ -175,7 +175,7 @@ const take = (input: TakeInput): Taken => {
 const summary = (): Record<string, { raised: number }> => {
   const archived = new Set(
     TaskFiles.all()
-      .filter((one) => Workstreams.isArchived(one.task))
+      .filter((one) => Workstreams.isArchived(one.task.state))
       .map((one) => one.slug),
   );
   return Object.fromEntries(

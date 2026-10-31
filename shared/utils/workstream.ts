@@ -1,5 +1,5 @@
-import type { ArtifactTask } from "../types/task.ts";
+import type { TaskState } from "../types/task.ts";
 
-const isArchived = (task: ArtifactTask): boolean => task.state === "done";
+const isArchived = (state: TaskState): boolean => state === "archived";
 
 export const Workstreams = { isArchived };

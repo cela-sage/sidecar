@@ -18,7 +18,7 @@ const day = (at: string): string => {
 };
 
 const note = computed<Note | undefined>(() => {
-  const { done, finished, resumed, waiting } = story;
+  const { archived, finished, resumed, waiting } = story;
   if (waiting)
     return {
       look: "waiting",
@@ -35,16 +35,16 @@ const note = computed<Note | undefined>(() => {
     return {
       look: "needs",
       title: `Finished at ${day(finished.at)}`,
-      text: "The Individual Contributor finished its work, and only your mark puts the task in Done. Check it, then press Done in the strip.",
+      text: "The Individual Contributor finished its work, and only you archive it. Check it, kill its agents, then archive it from the strip or the row's menu.",
     };
-  if (done)
+  if (archived)
     return {
-      look: "done",
-      title: `Done at ${day(done.at)}`,
+      look: "archived",
+      title: `Archived at ${day(archived.at)}`,
       text:
-        done.who === "YOU"
-          ? "You checked it and marked it Done."
-          : "An Individual Contributor marked it done, before Done became your mark.",
+        archived.who === "YOU"
+          ? "You checked it and archived it."
+          : "An Individual Contributor closed it, before archiving became your mark.",
     };
   return undefined;
 });

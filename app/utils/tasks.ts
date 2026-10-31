@@ -3,10 +3,11 @@ import type { HistoryEntry } from "~~/shared/types/history";
 import type { LiveSession } from "~~/shared/types/session";
 import type { ArtifactTask, TaskState } from "~~/shared/types/task";
 import { Titles } from "../../shared/utils/titles.ts";
+import { Workstreams } from "../../shared/utils/workstream.ts";
 import type { TaskStory } from "./timeline";
 
-// Violet runs on its own, hollow while it waits on someone else, red waits on you, grey is done.
-export type TaskLook = "running" | "waiting" | "needs" | "done";
+// Violet runs on its own, hollow while it waits on someone else, red waits on you, grey is archived.
+export type TaskLook = "running" | "waiting" | "needs" | "archived";
 export type StepKind = TaskLook | "past" | "future" | "decided";
 export type StepJoint = "none" | "solid" | "primary" | "dashed";
 export type AgentState = "working" | "needs input" | "completed";
@@ -29,7 +30,7 @@ const LOOK: Record<TaskState, TaskLook> = {
   blocked: "needs",
   waiting: "waiting",
   finished: "needs",
-  done: "done",
+  archived: "archived",
 };
 
 const STEP_LABEL: Partial<Record<TaskState, string>> = { unassigned: "Backlog", running: "In progress" };
@@ -42,7 +43,7 @@ const TIP: Record<TaskState, string> = {
   blocked: "The Individual Contributor is blocked on you",
   waiting: "It waits on a third party",
   finished: "The Individual Contributor finished it, and it waits on your mark",
-  done: "Done is your mark, and it means you checked it",
+  archived: "Archived is your mark, and it means you checked it and closed it",
 };
 
 // Each project keeps its colour from the design, in the order the default lanes come in.
@@ -56,15 +57,13 @@ const PRESSING: TaskState[] = [
   "assessed",
   "assigned",
   "unassigned",
-  "done",
+  "archived",
 ];
 const AGENT_ORDER: AgentState[] = ["needs input", "working", "completed"];
 
-const isArchived = (state: TaskState): boolean => state === "done";
-
 const stateBeforeArchive = (entries: HistoryEntry[]): TaskState => {
   for (const entry of entries.toReversed()) {
-    if ("move" in entry && entry.move && isArchived(entry.move.now)) return entry.move.was;
+    if ("move" in entry && entry.move && Workstreams.isArchived(entry.move.now)) return entry.move.was;
   }
   return "finished";
 };
@@ -104,7 +103,12 @@ const stepsOf = (state: TaskState, { resumed, settledBy, waiting }: TaskStory = 
   if (state === "finished") steps.push({ label: "Finished", kind: LOOK[state], tip: TIP[state] });
   if (state === "waiting")
     steps.push({ label: waiting?.on ? `Waiting on ${waiting.on}` : "Waiting", kind: LOOK[state], tip: TIP[state] });
-  steps.push({ label: "Done", kind: state === "done" ? "done" : "future", tip: TIP.done, state: "done" });
+  steps.push({
+    label: "Archived",
+    kind: Workstreams.isArchived(state) ? "archived" : "future",
+    tip: TIP.archived,
+    state: "archived",
+  });
   return steps.map((step, i) => ({
     ...step,
     joint: !i ? "none" : step.kind === "future" ? "dashed" : step.label === STEP_LABEL.running ? "primary" : "solid",
@@ -139,7 +143,6 @@ const railOf = (sessions: LiveSession[], slug: string): LiveSession[] =>
 export const Tasks = {
   agentOrder,
   agentStateOf,
-  isArchived,
   of,
   order,
   railOf,

@@ -11,7 +11,7 @@ const {
   slug,
 } = defineProps<{ asking?: ReviewThread[]; conversation?: string; sessions: LiveSession[]; slug: string }>();
 
-const LOOK: Record<AgentState, TaskLook> = { working: "running", "needs input": "needs", completed: "done" };
+const LOOK: Record<AgentState, TaskLook> = { working: "running", "needs input": "needs", completed: "archived" };
 
 const terminal = $terminal();
 const picked = ref<string>();

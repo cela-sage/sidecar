@@ -6,6 +6,7 @@ import type { HistoryEntry, Move, Said } from "../../../shared/types/history.ts"
 import type { AskKind, TaskAsk, TaskState } from "../../../shared/types/task.ts";
 import { Parts } from "../../../shared/utils/parts.ts";
 import { Titles } from "../../../shared/utils/titles.ts";
+import { Workstreams } from "../../../shared/utils/workstream.ts";
 import { Projects } from "../projects.ts";
 import { deliver } from "../sessions/inbox.ts";
 import { Ask } from "./ask.ts";
@@ -101,10 +102,10 @@ const move = (file: TaskFile, now: TaskState): { file: TaskFile; move?: Move } =
   return { file: TaskFiles.restamp(file, { ...file.task, state: now }), move: { was, now } };
 };
 
-// Done is Marco's mark, so a lead's done files the task finished for him to check and never undoes a mark he gave.
+// Archived is Marco's mark, so a lead asking for it files the workstream finished and never undoes a mark he gave.
 const reached = (was: TaskState, asked: TaskState, caller: Caller): TaskState => {
-  if (asked !== "done" || caller.who === "YOU") return asked;
-  return was === "done" ? was : "finished";
+  if (!Workstreams.isArchived(asked) || caller.who === "YOU") return asked;
+  return Workstreams.isArchived(was) ? was : "finished";
 };
 
 const state = ({ given, caller, state: asked, reason, on }: StateInput): TaskFile => {

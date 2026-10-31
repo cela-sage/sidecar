@@ -29,7 +29,7 @@ const { look, size = "md" } = defineProps<{ look: TaskLook; size?: "sm" | "md" }
   @apply bg-error;
 }
 
-.task-dot[data-look="done"] {
+.task-dot[data-look="archived"] {
   @apply bg-subtle;
 }
 </style>
