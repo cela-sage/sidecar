@@ -75,54 +75,53 @@ useResizeObserver(boardEl, ([entry]) => {
     :data-drags="frame.drags"
     :data-full="artifact.isFull"
     :data-lights="frame.hasLights"
-    :style="dockHeight ? { '--dock-h': `${dockHeight}px` } : undefined"
+    :style="{ '--side-w': `${side}px`, ...(dockHeight ? { '--dock-h': `${dockHeight}px` } : {}) }"
   >
-    <ChromeBar :inert="isDown">
-      <slot name="bar" />
-      <ChromeTools />
-    </ChromeBar>
+    <aside
+      class="side"
+      aria-label="Every workstream and conversation"
+      data-region="workspace-tree"
+      :data-listed="artifact.isFull && artifact.isListed"
+      :inert="isDown"
+    >
+      <ChromeWindowRow class="window" />
+      <OrgTree />
+      <UsagePlan />
+    </aside>
 
-    <div class="workspace" :style="{ '--side-w': `${side}px` }">
-      <aside
-        class="side"
-        aria-label="Every workstream and conversation"
-        data-region="workspace-tree"
-        :data-listed="artifact.isFull && artifact.isListed"
-        :inert="isDown"
-      >
-        <OrgTree />
-        <UsagePlan />
-      </aside>
+    <PaneResizer v-model="tree" :initial="TREE_W" label="Resize the tree" :max="480" />
 
-      <PaneResizer v-model="tree" :initial="TREE_W" label="Resize the tree" :max="480" />
+    <div class="column">
+      <ChromeBar :inert="isDown">
+        <slot name="bar" />
+        <ChromeTools />
+      </ChromeBar>
 
-      <div class="column">
-        <div class="body">
-          <!-- Covered rather than unmounted, so Listening keeps its stream and opens what is in front once the server is back. -->
-          <div v-show="!task.slug" class="page" :inert="isDown">
-            <slot />
-          </div>
-          <ChannelFront v-if="task.slug" :inert="isDown" />
-
-          <!-- One row, so the notes take whatever width the board leaves rather than
-               the two hugging opposite corners and colliding in the middle. -->
-          <div class="foot" data-region="dock-row">
-            <div ref="boardEl" class="foot-board" data-region="board-corner">
-              <slot name="board" />
-            </div>
-
-            <div ref="dockEl" class="foot-dock" data-region="dock-corner">
-              <slot name="dock" />
-            </div>
-
-            <ChromeAskDoor v-if="!isDown" />
-          </div>
+      <div class="body">
+        <!-- Covered rather than unmounted, so Listening keeps its stream and opens what is in front once the server is back. -->
+        <div v-show="!task.slug" class="page" :inert="isDown">
+          <slot />
         </div>
+        <ChannelFront v-if="task.slug" :inert="isDown" />
 
-        <!-- Under the body rather than over it, so the notes and the door ride above it on the prompt's line. -->
-        <div v-if="!task.slug" class="contents" :inert="isDown">
-          <slot name="strip" />
+        <!-- One row, so the notes take whatever width the board leaves rather than
+             the two hugging opposite corners and colliding in the middle. -->
+        <div class="foot" data-region="dock-row">
+          <div ref="boardEl" class="foot-board" data-region="board-corner">
+            <slot name="board" />
+          </div>
+
+          <div ref="dockEl" class="foot-dock" data-region="dock-corner">
+            <slot name="dock" />
+          </div>
+
+          <ChromeAskDoor v-if="!isDown" />
         </div>
+      </div>
+
+      <!-- Under the body rather than over it, so the notes and the door ride above it on the prompt's line. -->
+      <div v-if="!task.slug" class="contents" :inert="isDown">
+        <slot name="strip" />
       </div>
     </div>
 
@@ -132,11 +131,7 @@ useResizeObserver(boardEl, ([entry]) => {
 
 <style scoped>
 .shell {
-  @apply relative flex h-screen min-h-140 min-w-190 flex-col overflow-hidden bg-raised;
-}
-
-.workspace {
-  @apply grid min-h-0 flex-1 grid-cols-pane;
+  @apply relative grid h-screen min-h-140 min-w-190 grid-cols-pane overflow-hidden bg-raised;
 }
 
 .side {
@@ -146,6 +141,15 @@ useResizeObserver(boardEl, ([entry]) => {
 /* Over a grown sheet the tree floats at its left edge, so another task opens without leaving fullscreen. */
 .side[data-listed="true"] {
   @apply fixed top-14 bottom-2 left-2 z-28 w-85 rounded-box border border-border shadow-lg;
+}
+
+.side[data-listed="true"] .window {
+  @apply hidden;
+}
+
+/* Over the window's rows the handle still resizes, where a drag region would move the window instead. */
+.shell[data-drags="true"] .resizer {
+  app-region: no-drag;
 }
 
 /* The notes and the door float over the panes, so a pane's last row pads by --float-clear to stay clickable above them. */
