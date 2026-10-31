@@ -1,6 +1,7 @@
 import { readdirSync } from "node:fs";
 import type { AgentFace, LiveSession } from "../../../shared/types/session.ts";
 import { sessionOrder } from "../../../shared/utils/sessions.ts";
+import { Titles } from "../../../shared/utils/titles.ts";
 import { agentsOf } from "./agents.ts";
 import { artifactsOf, keysWithArtifacts } from "./artifact-lists.ts";
 import { sessionColor } from "./identity.ts";
@@ -64,6 +65,12 @@ function build(key: string, { entry, job, ref, view, agent }: Sources): LiveSess
   };
 }
 
+const withFace = (session: LiveSession): LiveSession => {
+  const title = session.life === "alive" && session.name ? Titles.parse(session.name) : undefined;
+  if (session.agent || !title || title.role === "EA") return session;
+  return { ...session, agent: Faces.draw({ key: session.key, project: title.token }) };
+};
+
 export interface SessionsQuery {
   scope?: "all" | "live";
   key?: string;
@@ -83,7 +90,7 @@ export function liveSessions({ scope = "all", key }: SessionsQuery = {}): LiveSe
   for (const one of keys) {
     const sources = { entry: entries.get(one), job: running.get(one), ref: transcripts.get(one), view };
     const session = build(one, { ...sources, agent: faces.get(one) });
-    if (session) out.push(session);
+    if (session) out.push(withFace(session));
   }
   return out.sort(sessionOrder);
 }
