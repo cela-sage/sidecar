@@ -8,7 +8,7 @@ const append = (text: string, paths: string[]): string =>
   [text.trim(), ...(paths.length ? [paths.map(line).join("\n")] : [])].filter(Boolean).join("\n\n");
 
 // The sidecar appends its files as the last lines of a message, so only that trailing run is read back, never a quote.
-const imagesOf = (text: string): { text: string; paths: string[] } => {
+const imagesOf = (text: string, isShown: (path: string) => boolean = () => true): { text: string; paths: string[] } => {
   const lines = text.trimEnd().split("\n");
   let start = lines.length;
   while (start > 0 && LINE.test(lines[start - 1] ?? "")) start--;
@@ -16,7 +16,7 @@ const imagesOf = (text: string): { text: string; paths: string[] } => {
   const paths: string[] = [];
   for (const one of lines.slice(start)) {
     const path = LINE.exec(one)?.[1] ?? "";
-    if (FileKind.of(path) === "image") paths.push(path);
+    if (FileKind.of(path) === "image" && isShown(path)) paths.push(path);
     else kept.push(one);
   }
   return { text: kept.join("\n").trimEnd(), paths };

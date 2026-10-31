@@ -3,6 +3,7 @@ import { basename, join } from "node:path";
 import { Sidecar } from "../../lib/sidecar/paths.ts";
 import type { ArtifactUpload } from "../../shared/types/artifact.ts";
 import type { AttachedFile } from "../../shared/types/files.ts";
+import { UploadedFiles } from "../../shared/utils/uploaded-files.ts";
 
 const EXTENSIONS: Record<string, string> = {
   "image/gif": "gif",
@@ -11,7 +12,6 @@ const EXTENSIONS: Record<string, string> = {
   "image/webp": "webp",
 };
 const LINK = "../uploads/";
-const SAFE = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
 const DOOR = "door";
 const NAME_MAX = 120;
 
@@ -20,7 +20,7 @@ const maxBytes = 20 * 1024 * 1024;
 const extensionOf = (contentType: string | undefined): string | undefined =>
   EXTENSIONS[(contentType ?? "").split(";")[0]?.trim().toLowerCase() ?? ""];
 
-const isSafe = (segment: string): boolean => SAFE.test(segment);
+const { isSafe } = UploadedFiles;
 
 const pathOf = ({ name, slug }: { name: string; slug: string }): string | undefined =>
   isSafe(slug) && isSafe(name) ? join(Sidecar.uploads(), slug, name) : undefined;
