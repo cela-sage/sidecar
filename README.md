@@ -64,6 +64,7 @@ brings it up when it is down, so nothing runs it at login.
 | Where artifacts live   | `NOTES_ARTIFACTS`, then `~/.claude/sidecar/artifacts`                   |
 | Who a comment is from  | The `user` key in `~/.claude/sidecar/config.json`, defaulting to "User" |
 | What runs a notebook   | `SIDECAR_PYTHON`, then `python3`                                        |
+| When an unheard specialist's open turn reads idle | `SIDECAR_SPECIALIST_STALE_MS`, then ten minutes with no write |
 | What a workstream's on | `projects` in `~/.claude/sidecar/config.json`, then the five lanes      |
 
 ## Artifacts and their comments
@@ -213,7 +214,14 @@ which reads Killed and wins over every other mark until it resumes, and a red @ 
 channel holds an `@boss` waiting on you, which wins over every mark, counts for its project's row too and goes back to
 the workstream's own mark once you answer. A conversation works only while the turn bus says it has a turn open, through
 `conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
-workstream in progress spins only while one of its Individual Contributors works. The dot clears when the conversation comes in front, by a click on its
+workstream in progress spins only while one of its Individual Contributors works. Each specialist under an Individual
+Contributor is a chip with the same marks, a spinner while its turn is open, the check once it ends and the stop
+square once it was stopped or its lead's process is gone, and its tip names it and what it works on. A conversation
+with a specialist working reads working even with its own turn closed, and its tip says which, `Working: its own turn
+and 2 of 7 specialists`, while a question or a wait on you still wins. The mod tells the server each specialist's turn
+start and end, published as `agent.changed`, and a conversation on an older mod, or one the server has not heard since
+it started, reads the specialist's own `subagents/agent-<id>.jsonl`, whose turn stays open until the model's last
+message ends without asking for a tool, so an open turn with no write for ten minutes reads idle. The dot clears when the conversation comes in front, by a click on its
 row or any other road, and a turn that ends while it is in front in a visible window never draws it. The sidecar
 keeps which turns nobody opened in `~/.claude/sidecar/seen.json` with each turn's end time, so a reload, the desktop
 app and Chrome agree. A question open or a wait keeps its red, amber or clock mark over the dot, and a project or a
@@ -763,6 +771,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `runs.changed`     | `project`               | `sidecar run <project> add` and `remove`                                        | The run widget's menu reads the project again |
 | `conversation.changed` | `key`, `doing`, `asking`, `life` | the turn bus, when a conversation's turn opens or ends, a question opens or closes, or a kill or a wake changes its `life` | The tree's marks, working, waiting on you or killed |
 | `conversation.unseen` | `key`, `endedAt` | the turn bus, when a turn ends, and again without `endedAt` once the turn is looked at | The tree's dot, while `endedAt` is there |
+| `agent.changed`    | `key`, `id`, `state`    | the server, when the mod tells it a specialist's turn started or ended          | The specialist's chip and its lead's mark   |
 | `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion or a permission prompt and again, without `questions`, when it settles | The door and the chat draw the question and its options |
 | `message.landed`   | `key`, `text`           | the server, when the mod tells it that a session took a sidecar message         | The chat shows the message as landed        |
 | `usage.changed`    | `key`                   | the server, when the usage the mod posts differs from the last it held          | The plan block and the context meter read again |
@@ -857,7 +866,10 @@ chose. Typing in a session's prompt still points the sidecar there, at most once
 holds up a keystroke, and the page ignores that point, as the follow section below says. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
 is how the sidecar still lists a conversation after it has ended. A turn that ends on the main loop with an
 answer, and a prompt you type, go to `sidecar task --heard turn` and `--heard message` on stdin, which keeps them
-only for an Individual Contributor's conversation, in its workstream's history.
+only for an Individual Contributor's conversation, in its workstream's history. A subagent's or a teammate's turn
+start and end go to `POST /api/sessions/<key>/agents` as `{ id, state }`, `working`, then `idle`, or `killed` when the
+turn was aborted, since `$.agent.list()` has already dropped a finished subagent by its `turn.complete`. The review
+module's `turn.start` and `turn.complete` hooks hand them over, because a plugin hooks each event once.
 
 An AskUserQuestion call races its own dialog against the door. The mod's `tool.call` hook opens the question
 with `POST /api/questions/<tool id>` and the session's key, which the server publishes as `question.changed`

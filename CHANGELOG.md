@@ -7,6 +7,23 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.73.0
+
+### Added
+
+- **Each specialist reads working, idle or killed.** The chips under an Individual Contributor carry a conversation
+  row's marks, with the specialist's name and what it works on in the tip, and grey once it was stopped or its lead's
+  process is gone.
+- **A lead reads working while any of its specialists works,** its tip saying which, `Working: 2 of 7 specialists`,
+  and a question or a wait on you still wins.
+- **The mod tells the sidecar each specialist's turn start and end** with `POST /api/sessions/<key>/agents`, published
+  as `agent.changed`. A conversation on an older mod reads the specialist's transcript instead until it restarts, and
+  `SIDECAR_SPECIALIST_STALE_MS` sets how long an open turn with no write stays working, ten minutes by default.
+
+### Changed
+
+- **`SessionAgent` carries `id`, `state` and `description`** beside its name and colour.
+
 ## 0.72.0
 
 ### Added
