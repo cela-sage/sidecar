@@ -235,6 +235,10 @@ test("a finished task heads the list with the needs-you mark, and a lead with a 
   assert.equal(Org.statusOf(Org.treeOf({ ...input, busy: { old: working } }), "old"), "running");
   assert.equal(Org.treeOf(input).projects[0]?.mark, "needs");
 
+  const [raised] = Org.treeOf({ ...input, raised: ["calm"] }).projects;
+  assert.equal(raised?.tasks.find((one) => one.meta.slug === "calm")?.mark, "raised");
+  assert.equal(raised?.mark, "raised");
+
   const at = "2026-10-29T09:00:00Z";
   const marked: HistoryEntry = { at, who: "YOU", kind: "state", move: { was: "finished", now: "done" } };
   assert.deepEqual(Timeline.story([marked], "done"), { done: { at, who: "YOU" } });
@@ -284,7 +288,7 @@ test("the org tree puts each role where it works, sorts killed agents after the 
       status: "busy",
       agents: [{ name: "designer", color: "blue" }],
     }),
-    session({ key: "lane", name: "[Cela] IC sidecar-task-board lane" }),
+    session({ key: "lane", name: "[Cela] IC sidecar-task-board lane", agent: { name: "Aya", icon: 5 } }),
     session({ key: "loop", name: "[Cela] IC sidecar-task-board loop", life: "killed" }),
     session({ key: "gone", name: "[Cela] IC sidecar-task-board titles", life: "killed", archived: true }),
     session({ key: "own", name: "contracts guide", status: "busy" }),
@@ -312,10 +316,14 @@ test("the org tree puts each role where it works, sorts killed agents after the 
   assert.deepEqual(cela?.leads.map(row), ["DL sidecar plan waits", "SL sidecar-task-board design completed"]);
   const [board] = cela?.tasks ?? [];
   assert.equal(board?.mark, "needs");
-  assert.deepEqual(board?.leads.map(row), ["IC follower working", "IC lane needs", "IC loop killed"]);
+  assert.deepEqual(board?.leads.map(row), ["IC lane needs", "IC follower working", "IC loop killed"]);
+  assert.deepEqual(
+    board?.leads.map((one) => one.agent),
+    [{ name: "Aya", icon: 5 }, undefined, undefined],
+  );
   assert.deepEqual(
     board?.leads.map((one) => one.agents?.map((agent) => agent.name)),
-    [["designer"], undefined, undefined],
+    [undefined, ["designer"], undefined],
   );
   assert.deepEqual(
     cela?.archived.map((one) => `${one.meta.slug} ${one.mark}`),

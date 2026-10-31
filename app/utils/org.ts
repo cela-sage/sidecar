@@ -1,16 +1,12 @@
-import type { LiveSession, SessionAgent } from "~~/shared/types/session";
+import type { AgentFace, LiveSession, SessionAgent } from "~~/shared/types/session";
 import type { Project, Role, TaskState } from "~~/shared/types/task";
 import type { Busy } from "../../shared/utils/busy.ts";
 import { Titles, type RoleTitle } from "../../shared/utils/titles.ts";
 import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
 
 // Amber is a conversation outside a task waiting on you, red a task or its Individual Contributor waiting on you.
-export type Mark = "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "killed" | "archived";
-
-export interface AgentFace {
-  name: string;
-  icon: number;
-}
+export type Mark =
+  "raised" | "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "killed" | "archived";
 
 export interface OrgConversation {
   key: string;
@@ -56,6 +52,7 @@ export interface OrgInput {
   asking?: string[];
   busy?: Record<string, Busy>;
   unseen?: string[];
+  raised?: string[];
 }
 
 interface Placed {
@@ -72,6 +69,7 @@ interface Heard {
   asking: Set<string>;
   busy: Record<string, Busy>;
   unseen: Set<string>;
+  raised: Set<string>;
 }
 
 interface Placing extends Heard {
@@ -80,6 +78,7 @@ interface Placing extends Heard {
 }
 
 const RANK: Record<Mark, number> = {
+  raised: 8,
   needs: 7,
   waits: 6,
   working: 5,
@@ -142,7 +141,13 @@ const looseOf = (session: LiveSession, heard: Heard, name?: string): OrgConversa
     "needs input": "waits",
     completed: finishedOf(session, heard),
   };
-  return { key: session.key, title, name: name ?? title, mark: markOf(session, heard, marks) };
+  return {
+    key: session.key,
+    title,
+    name: name ?? title,
+    mark: markOf(session, heard, marks),
+    ...(session.agent ? { agent: session.agent } : {}),
+  };
 };
 
 const nameOf = ({ title }: Placed, slug?: string): string => {
@@ -166,6 +171,7 @@ const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Pla
     role: title.role,
     mark: markOf(session, heard, marks),
     ...(slug ? { slug } : {}),
+    ...(session.agent ? { agent: session.agent } : {}),
     ...(isLead && session.agents?.length ? { agents: session.agents } : {}),
   };
 };
@@ -189,7 +195,8 @@ const taskOf = (meta: TaskMeta, placed: Placed[], heard: Heard): OrgTask => {
   const alive = aliveOf(leads);
   // A lead with a turn open shows the task In progress whatever its state, and the state returns when the turn ends.
   const status = alive.some((one) => one.mark === "working") ? "running" : meta.task.state;
-  const mark = worst([TASK_MARK[status], ...alive.map((one) => one.mark)]) ?? "queued";
+  const raised: Mark[] = heard.raised.has(meta.slug) ? ["raised"] : [];
+  const mark = worst([TASK_MARK[status], ...alive.map((one) => one.mark), ...raised]) ?? "queued";
   return { meta, status, mark, leads };
 };
 
@@ -199,8 +206,8 @@ const projectsOf = (tasks: TaskMeta[], projects: Project[]): Project[] => {
   return [...projects, ...[...strays].map((key) => ({ key, name: key, token: key, folder: "" }))];
 };
 
-const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, unseen = [] }: OrgInput): OrgTree => {
-  const heard: Heard = { asking: new Set(asking), busy, unseen: new Set(unseen) };
+const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, unseen = [], raised = [] }: OrgInput): OrgTree => {
+  const heard: Heard = { asking: new Set(asking), busy, unseen: new Set(unseen), raised: new Set(raised) };
   const inView = sessions.some((session) => typeof session.inView === "boolean");
   const listed = sessions.filter((session) =>
     inView ? session.inView : !session.archived || session.life === "alive",

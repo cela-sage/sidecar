@@ -7,6 +7,7 @@ const busy = $busy();
 const life = $life();
 const questions = $questions();
 const seen = $seen();
+const raised = $raised();
 const dock = $dock();
 const runs = $runs();
 const prompt = $prompt();
@@ -112,6 +113,7 @@ events.on("conversation.changed", ({ data }) => {
 });
 events.on("conversation.unseen", ({ data }) => seen.heard(data));
 events.on("dock.changed", ({ data }) => dock.heard(data));
+events.on("channel.changed", ({ data }) => raised.heard(data));
 events.on("runs.changed", ({ data }) => void runs.load(data.project));
 events.on("question.changed", ({ data }) => questions.hear(data));
 events.on("commands.changed", ({ data }) => prompt.heard(data));
@@ -121,6 +123,7 @@ events.onReady(() => {
   void usage.reload();
   void busy.load();
   void seen.load();
+  void raised.load();
   void dock.load();
   void questions.load();
 });

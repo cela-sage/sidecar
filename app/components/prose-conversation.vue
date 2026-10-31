@@ -54,7 +54,13 @@ const menuFor = (event: MouseEvent): void => {
     <button class="open plain-button focusable" :aria-label="place.row.title" type="button" @click="open">
       <OrgMark :mark="place.row.mark" />
       <span v-if="place.row.role" class="role">{{ place.row.role }}</span>
-      <span class="name">{{ place.row.name }}</span>
+      <OrgAgentIcon
+        v-if="place.row.agent"
+        :icon="place.row.agent.icon"
+        :is-killed="place.row.mark === 'killed'"
+        :size="14"
+      />
+      <span class="name">{{ place.row.agent?.name ?? place.row.name }}</span>
       <span v-if="isHeld" class="held" role="img" aria-label="In your terminal" data-tip="Your terminal holds this one">
         <UiIcon :icon="Terminal" size="xs" />
       </span>

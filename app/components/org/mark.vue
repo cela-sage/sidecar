@@ -2,6 +2,7 @@
 import type { Mark } from "~/utils/org";
 
 export const MARK_LABEL: Record<Mark, string> = {
+  raised: "Raised to you",
   working: "Working",
   needs: "Needs you",
   waits: "Waits on your input",
@@ -20,7 +21,14 @@ const { mark } = defineProps<{ mark: Mark }>();
 
 <template>
   <span class="mark" role="img" :aria-label="MARK_LABEL[mark]" :data-mark="mark">
-    <svg v-if="mark === 'working'" class="spin spinner" viewBox="0 0 12 12" aria-hidden="true">
+    <svg v-if="mark === 'raised'" class="at" viewBox="0 0 12 12" aria-hidden="true">
+      <circle cx="6" cy="6" r="6" />
+      <g transform="translate(2.2 2.2) scale(0.317)">
+        <circle cx="12" cy="12" r="4" />
+        <path d="M16 8v5a3 3 0 0 0 6 0v-1a10 10 0 1 0-4 8" />
+      </g>
+    </svg>
+    <svg v-else-if="mark === 'working'" class="spin spinner" viewBox="0 0 12 12" aria-hidden="true">
       <circle class="track" cx="6" cy="6" r="4.5" />
       <path class="arc" d="M6 1.5a4.5 4.5 0 0 1 4.5 4.5" />
     </svg>
@@ -60,6 +68,17 @@ const { mark } = defineProps<{ mark: Mark }>();
 
 svg {
   @apply size-3 fill-none;
+}
+
+.at > circle {
+  @apply fill-error;
+}
+
+.at g {
+  @apply stroke-primary-content;
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .spin {

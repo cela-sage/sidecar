@@ -19,7 +19,7 @@ const menu = useTemplateRef<{ openFor: (event: MouseEvent, meta: TaskMeta) => vo
 
 const tree = useOrgTree();
 
-const FOR_YOU: Mark[] = ["needs", "waits"];
+const FOR_YOU: Mark[] = ["raised", "needs", "waits"];
 
 const holdsInView = (group: OrgProject): boolean =>
   group.leads.some(front) ||

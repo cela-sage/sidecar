@@ -1,6 +1,7 @@
 <script lang="ts" setup>
+import type { AgentFace } from "~~/shared/types/session";
 import type { Role } from "~~/shared/types/task";
-import type { AgentFace, Mark } from "~/utils/org";
+import type { Mark } from "~/utils/org";
 
 const {
   agent,
@@ -31,6 +32,7 @@ const emit = defineEmits<{ open: [] }>();
 
 const conversationMenu = $conversationMenu();
 const isLit = computed(() => !!conversation && conversationMenu.lit === conversation);
+const hint = computed(() => (agent ? `${agent.name} · ${name}${mark === "killed" ? " · killed" : ""}` : (tip ?? name)));
 </script>
 
 <template>
@@ -48,7 +50,7 @@ const isLit = computed(() => !!conversation && conversationMenu.lit === conversa
   >
     <OrgGuides :depth="depth" />
     <span v-if="isFront" class="bar" aria-hidden="true" />
-    <button class="open plain-button focusable" type="button" :data-tip="tip ?? name" @click="emit('open')">
+    <button class="open plain-button focusable" type="button" :data-tip="hint" @click="emit('open')">
       <OrgMark :mark="mark" />
       <span v-if="role" class="role">{{ role }}</span>
       <OrgAgentIcon v-if="agent" :icon="agent.icon" :is-killed="mark === 'killed'" :size="16" />
@@ -158,6 +160,10 @@ const isLit = computed(() => !!conversation && conversationMenu.lit === conversa
 .row[data-mark="killed"] .name,
 .row[data-mark="archived"] .name {
   @apply text-muted;
+}
+
+.row[data-mark="raised"] .name {
+  @apply text-error;
 }
 
 .id {
