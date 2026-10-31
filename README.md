@@ -169,9 +169,8 @@ left in the desktop app and, for the conversation in front, the run widget at it
 hidden, a 32px strip at the foot of the main panel names each tool and what it holds, Terminal with the project's
 shells and Run with its status, and a failed run shows its mark and the line that names the failure. Each tool is a
 button that opens the dock on it, the chevron or ⌥F12 opens it where you left it, and the door rides above the
-strip. The tree's header is Follow terminal as one compact
-control, the mode's short name with the full one and what it does in the tip, then New task, the Simple and Detailed
-chat switch and the theme toggle, and the tree resizes from its edge, remembered as `sc:tree`. There is no conversation header, since the tree's row
+strip. The bar's right end, after the run widget, holds New task, the Simple and Detailed chat switch and the
+theme toggle, so the tree starts right under the window's bar, and it resizes from its edge, remembered as `sc:tree`. There is no conversation header, since the tree's row
 already names it: the faces sit as tabs atop the main panel, Conversation first, then Artifacts, Review, Files and
 History, switched in place so Back never leaves the conversation, with a count beside Artifacts and, once Review
 has read it, Review. A face's list, the artifacts, the files to review, the turns or the file tree, docks on the
@@ -196,10 +195,12 @@ The tree is built from the conversations agent view lists, which the server read
 the role EA, DL, SL or IC and a task slug after the role for SL and IC only. The backlog of tasks on no project heads
 it, then each project with its Domain Lead and Solution Lead conversations and its tasks, each task with its
 Individual Contributors and, under each one, the specialists it hired. The assistant's conversations, titled with EA, live
-in the door rather than the tree. An Individual Contributor whose process ended folds under the task as done. A task in Done folds under its project, and it leaves the
-list when you remove it with its ✕ or a day after it went Done, kept in `~/.claude/sidecar/tasks-hidden.json`
-with its file and history untouched, and it comes back when it moves out of Done. A project starts folded
-unless something in it waits on you or it holds the open task or the conversation in front, and a fold you
+in the door rather than the tree. No conversation is ever done: an Individual Contributor is alive or killed, and a
+killed one stays under its task after the live ones with its name and icon gray, each group sorted by name. A task in
+Done is archived, and lists in an N archived fold at the end of its project with its Individual Contributors out of
+sight, whatever its age, until Restore brings it back. A conversation whose agent has a name shows its icon and that
+name in place of its subject, with `Name · subject` in the tip. A project starts folded
+unless something in it waits on you, a task is raised to you, or it holds the open task or the conversation in front, and a fold you
 open or close stays that way across conversations and reloads, kept in the browser as `sc:org-folds`. Your own
 conversations, whose titles have no role token, list under the project their `[token]` names, after its tasks,
 and only a title with no known project lists under No project at the bottom. Each project row shows its image
@@ -207,18 +208,18 @@ or icon, and each row carries its mark: a
 spinner while it works, red when a task or
 its Individual Contributor waits on you, amber when a conversation outside a task does, a clock while it waits on someone
 else, a small dot once its turn ended until you open it, then a check, and a stop square once its process is gone,
-which reads Killed and wins over every other mark until it resumes. A conversation works only while the turn bus says it has a turn open, through
+which reads Killed and wins over every other mark until it resumes, and a red @ with a red name on a task whose
+channel holds an `@boss` waiting on you, which wins over every mark, counts for its project's row too and goes back to
+the task's own mark once you answer. A conversation works only while the turn bus says it has a turn open, through
 `conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
 task in progress spins only while one of its Individual Contributors works. The dot clears when the conversation comes in front, by a click on its
 row or any other road, and a turn that ends while it is in front in a visible window never draws it. The sidecar
 keeps which turns nobody opened in `~/.claude/sidecar/seen.json` with each turn's end time, so a reload, the desktop
 app and Chrome agree. A question open or a wait keeps its red, amber or clock mark over the dot, and a project or a
 task shows the dot while one of its conversations does and nothing waits on you. A task with an Individual Contributor working under it reads In progress
-whatever its state, and its own status comes back when the turn ends, so a Done fold never lists a task someone still
-works on. A finished task sits under In progress with the red mark and heads its project's tasks, since it waits on
-your mark, and the Done fold lists done alone. What a fold of done tasks or done Individual Contributors holds sits one level under it.
-Attach on any row hands it to `sidecar terminal`, a task's Attach takes its lead while the lead's own row is
-folded away, and the row in front has an ink bar. Clicking a conversation brings it in front, and clicking a
+whatever its state, and its own status comes back when the turn ends, so the archived fold never lists a task someone
+still works on. A finished task sits under In progress with the red mark and heads its project's tasks, since it waits on
+your mark, and the archived fold lists done alone. A row has no Attach, and the row in front has an ink bar. Clicking a conversation brings it in front, and clicking a
 task opens it in the main panel in place of the conversation, on any screen, until you pick a conversation again.
 
 The task opens as its sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in
@@ -239,19 +240,26 @@ the project's folder, with the same message, and `agents` in `~/.claude/sidecar/
 for any role. New task, or N, drafts a row in the backlog,
 writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
 
-Right-click on a task row, in the backlog or under a project, opens its menu. Attach hands the task's lead to
-`sidecar terminal`, and is off while the task has none. Mark done is your mark, off on a task with no project or
-already Done. Rename turns the row into the New task field with the
-title in it, and Enter writes it through `PATCH /api/tasks/:slug {title}`, which rewrites the stamp title and the
-heading and keeps the file name, so every link by slug holds. Remove, like a backlog row's trash, goes through
-`DELETE /api/tasks/:slug` in any state: it stops every live conversation titled as one of the task's Individual Contributors,
+Right-click on a task row, in the backlog or under a project, opens its menu. Rename turns the row into the New task
+field with the title in it, and Enter writes it through `PATCH /api/tasks/:slug {title}`, which rewrites the stamp
+title and the heading and keeps the file name, so every link by slug holds. Under a project, closing a task takes two
+steps. Kill its N agents, in red and there only while some are alive, runs `POST /api/tasks/:slug/kill`, which stops
+the task's Individual Contributors alone and names them in its tip, and the toast's Undo, or ⌘Z, runs
+`POST /api/tasks/:slug/resume` with exactly the keys it killed, while a conversation that would not stop or start is
+named in a toast with its reason. Archive is off, with "Kill its agents first", while any is alive, and moves the
+task to Done through the lane, and the toast's Undo moves it back to the state it left. On an archived row Restore, in
+its menu and as a button on the row, moves it back to the state its history says it left, finished when the history
+never recorded it, with an Undo that archives it again, and its agents stay killed. A task's menu has no Mark done and
+no Remove. A backlog row's trash goes through
+`DELETE /api/tasks/:slug`: it stops every live conversation titled as one of the task's Individual Contributors,
 the way a conversation's own delete does, writes one history entry naming them, and moves the `.md` and its
 history into `~/.claude/sidecar/trash/`. Undo, or ⌘Z, moves those two back through
 `POST /api/tasks/:slug/restore`, and the toast says the stopped Individual Contributors stay stopped, since their transcripts
-remain but their processes are gone. A Done row's ✕ keeps its own path and only takes it off the list.
+remain but their processes are gone. `POST /api/tasks/:slug/hide` and `tasks-hidden.json` stay for the CLI, with no
+button and no effect on the tree.
 
 Right-click on a conversation row, or on a conversation chip, opens the same conversation menu under its title
-and key. Open brings it in front, Attach in your terminal hands it to the dock or `sidecar terminal`, Mention in
+and key. Open brings it in front, Mention in
 the prompt adds it to the chat's prompt as the door's `@<title> (<key>)`, Reveal in the tree opens its project,
 scrolls to its row and lights it, Copy id copies the key, Rename turns the menu into a field with the full title
 in it, and Enter writes it through `PATCH /api/sessions/<key>`, and Remove stops it through
@@ -273,7 +281,8 @@ message resumes it.
 
 A conversation named by its key alone in backticks, as the sidecar's rule asks, or as `@<key>` or the door's
 `@<title> (<key>)`, in the chat, an answer in the door, a comment thread or a side question, draws as its tree
-row inline: the project's avatar, the row's mark, role and short name, and Attach. Clicking the name brings it
+row inline: the project's avatar, the row's mark, role, icon and name, and a terminal mark while your terminal holds
+it. Clicking the name brings it
 in front, and hovering it shows a card with the full title, its current step and its key, project and task,
 while its row in the tree lights up. Every form resolves by key against every conversation the tree lists, so an
 ended one shows its check, while a key the tree does not list stays code or plain text, and a key inside a link
@@ -346,9 +355,8 @@ path and Copy filename. The chat reads such a file through `files/stat`, `files/
 it touched, sits under, or names in a message of its own, and writes through none of them. A markdown quote draws with a grey bar
 at its left, a lighter background and a text a size smaller. A conversation's title in backticks draws as that
 conversation's chip like its key does, when exactly one conversation in the tree has it. In a sentence the chip is the
-status mark, the role token and the name, capped in width and no taller than the line, so it stays one token of its
-paragraph. Hovering it shows a card with the title, what it is doing, its project and task, and Attach in your terminal,
-which the right-click menu offers too.
+status mark, the role token, the agent's icon and the name, capped in width and no taller than the line, so it stays one token of its
+paragraph. Hovering it shows a card with the title, what it is doing, and its project and task.
 
 An image you paste into Claude Code's own prompt draws in the chat where you sent it. Claude Code writes it as two
 user messages, your words with an `[Image #2]` marker and a second one that holds only
@@ -446,12 +454,12 @@ through the same function and prints `woke  <key>` before `delivered`.
 ### Following the terminal
 
 `sidecar terminal`, started once in the terminal you use for Claude Code, owns a pty there that opens on agent
-view, `claude agents`, and listens on `/api/attach/stream`. Attach on a tree row, on the task's rail or in the
-door posts `POST /api/attach {key}`; the follower closes agent view, or writes Ctrl+Z to the conversation it
+view, `claude agents`, and listens on `/api/attach/stream`. Attach on the task's rail posts
+`POST /api/attach {key}`; the follower closes agent view, or writes Ctrl+Z to the conversation it
 holds, which detaches it with the session still running, and runs `claude attach <key>` for the next. When an
 attached conversation ends or you detach it, agent view comes back, and quitting agent view stops the follower.
-The row the terminal holds shows its Attach pressed, while a switch you make inside Claude Code with the left
-arrow is not seen. With no follower running, the dot in the task rail's header says so and Attach copies the
+The rail's Attach on the one the terminal holds shows pressed, and a chip for it shows a terminal mark, while a
+switch you make inside Claude Code with the left arrow is not seen. With no follower running, the dot in the task rail's header says so and Attach copies the
 `claude attach` line instead. The stream opens with a `ready`
 event carrying what the sidecar thinks the terminal holds, so the follower corrects the sidecar when the two
 differ. A session draws at one size, so it has one holder: while the terminal dock is open Attach goes to the
@@ -694,7 +702,7 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `task.changed`     | `slug`, `state`         | the task lane, for every stamp change and every history entry                    | The open task reads itself again            |
 | `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
 | `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the open task             | Settles the escalation on the task          |
-| `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | Every Attach, pressed on the one it holds   |
+| `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | The rail's Attach and a chip's terminal mark |
 | `dock.changed`     | `tabs`                  | the server, when a dock tab opens, ends or its running program changes          | The dock's tabs and the shells still running, and each run's status and failing lines |
 | `runs.changed`     | `project`               | `sidecar run <project> add` and `remove`                                        | The run widget's menu reads the project again |
 | `conversation.changed` | `key`, `doing`, `asking`, `life` | the turn bus, when a conversation's turn opens or ends, a question opens or closes, or a kill or a wake changes its `life` | The tree's marks, working, waiting on you or killed |
@@ -789,8 +797,8 @@ memory only like `/btw`.
 
 Bare `/sidecar` is `sidecar open`: it starts the sidecar when it is down and points it at this conversation,
 brings a sidecar window already open to the front, and otherwise opens it as the surface `sidecar setup`
-chose. Typing in a session's prompt points the sidecar there too, at most once every two seconds, and never
-holds up a keystroke, and what that point does is the switching mode below. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
+chose. Typing in a session's prompt still points the sidecar there, at most once every two seconds, and never
+holds up a keystroke, and the page ignores that point, as the follow section below says. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
 is how the sidecar still lists a conversation after it has ended. A turn that ends on the main loop with an
 answer, and a prompt you type, go to `sidecar task --heard turn` and `--heard message` on stdin, which keeps them
 only for an Individual Contributor's conversation, in its task's history.
@@ -854,13 +862,10 @@ The sidecar keeps the latest target in memory and streams it to every open page 
 While a page listens it also reads Terminal's front tab title with osascript once a second and points the
 sidecar at the conversation that tab switches to, so a terminal tab switch counts as moving without typing.
 
-Whether a move by typing or by Terminal's tab switches the sidecar is the switching mode, picked from Follow
-terminal at the top of the tree and remembered per window. Ask to switch, the default, shows a card under it,
-Your terminal moved, with the conversation's mark, role, name, project and task, where Switch or ↵ moves there
-and Not now or esc stays, and the card waits until pressed, dismissed or no longer needed, asking once per move
-so typing on in that conversation doesn't bring a dismissed card back. Auto switch moves straight there, as the
-sidecar always did, and Manual switch never moves on its own. An explicit `/sidecar` or `sidecar open` always lands whatever the mode, and so
-does Listening, which has no conversation of its own to stay on.
+A move by typing or by Terminal's tab no longer switches the sidecar: the page follows only what Claude points it at,
+`source: "claude"`, so an explicit `/sidecar` or `sidecar open` always lands, and so does Listening, which has no
+conversation of its own to stay on. The switching mode, with Follow terminal at the top of the tree and its Your
+terminal moved card, is gone, and `sc:follow-mode` in the browser is no longer read.
 
 What the sidecar sends a session, notes and Review's buttons alike, opens on a `[[sidecar]]` line
 (`[[cc-sidecar]]` and `[[mode-relay v1]]` before it, still read) and reaches Claude Code as a peer message.

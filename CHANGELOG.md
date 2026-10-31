@@ -7,6 +7,44 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.69.0
+
+### Added
+
+- **A task's row menu closes it in two steps.** Kill its N agents, in red and only while some are alive, runs
+  `POST /api/tasks/:slug/kill` and names who in its tip, and the toast's Undo, or ⌘Z, runs `POST /api/tasks/:slug/resume`
+  with exactly the keys it killed. A conversation that would not stop or start is named in a toast with its reason.
+  Archive is off with "Kill its agents first" while any Individual Contributor is alive, and moves the task to Done
+  through the lane, with an Undo back to the state it left. An archived row has Restore, in its menu and as a button,
+  which returns it to the state its history says it left, finished when the history never recorded it.
+- **An agent shows its icon and name on its row and its chip,** from `LiveSession.agent`: the pack's 5×5 glyph in its
+  ink on a tile, 16px in the tree, with the name in place of the subject and `Name · subject` in the tip. A killed
+  one's icon is gray at half strength. The same icon component draws a hover card (name, role, works on, status,
+  joined) for the channel to use.
+- **A task whose channel has an `@boss` waiting on you shows a red @ and a red name,** read from `GET /api/channels`
+  and kept live by `channel.changed`. It wins over every other mark, counts for its project's row, opens a folded
+  project like a question does, and goes back to the task's own mark once you answer.
+
+### Changed
+
+- **No conversation is ever done.** An Individual Contributor is alive or killed, and a killed one stays under its task
+  after the live ones, its name and icon gray, each group sorted by name, in place of the "N done" fold. A task in Done
+  is archived: it lists in an "N archived" fold at the end of its project and stays there whatever its age, in place of
+  the fold that dropped it a day after Done.
+- **New task, the Simple and Detailed switch and the theme toggle sit at the right end of the window's bar,** so the
+  tree starts right under it.
+- **A conversation chip's terminal mark shows only while your terminal holds it.**
+
+### Removed
+
+- **Follow terminal.** The tree's header row, its three switching modes and the Your terminal moved card are gone, and
+  a move by typing or by Terminal's tab no longer switches the sidecar. A move Claude points at, `/sidecar` and
+  `sidecar open` still land. `sc:follow-mode` is no longer read.
+- **Attach on a tree row, on a task row for its lead, in the row and chip menus, on the chip's hover card and in the
+  door's header.** It stays on a task's rail, where the follower still takes it.
+- **Mark done and Remove on a task's menu, and the ✕ on a Done row.** A backlog row keeps its trash. The hide route and
+  `tasks-hidden.json` stay without a button and no longer shape the tree.
+
 ## 0.68.0
 
 ### Added
