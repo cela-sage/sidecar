@@ -28,20 +28,20 @@ useResizeObserver(lights, ([entry]) => {
   @apply hidden h-3 w-13 flex-none;
 }
 
-.shell[data-shell="true"]:not([data-fullscreen="true"]) .bar {
+.shell[data-lights="true"] .bar {
   @apply pl-4.5;
 }
 
-.shell[data-shell="true"]:not([data-fullscreen="true"]) .lights {
+.shell[data-lights="true"] .lights {
   @apply block;
 }
 
 /* Never :global() here: Vue's scoped compiler keeps only what is inside it, which made the whole shell the drag region. */
-.shell[data-shell="true"]:not([data-full="true"]) .bar {
+.shell[data-drags="true"] .bar {
   app-region: drag;
 }
 
-.shell[data-shell="true"] .bar > :not(.spacer, .lights) {
+.shell[data-drags="true"] .bar > :not(.spacer, .lights) {
   app-region: no-drag;
 }
 

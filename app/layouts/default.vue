@@ -16,11 +16,14 @@ const dockEl = useTemplateRef<HTMLElement>("dockEl");
 const boardEl = useTemplateRef<HTMLElement>("boardEl");
 const dockHeight = ref(0);
 const isDown = computed(() => !!sc.failure.value);
-const onShell = ref(false);
+const isShell = ref(false);
 const isFullScreen = ref(false);
+const frame = computed(() =>
+  windowFrame({ isFull: artifact.isFull, isFullScreen: isFullScreen.value, isShell: isShell.value }),
+);
 onMounted(() => {
   const shell = sidecarShell();
-  onShell.value = !!shell;
+  isShell.value = !!shell;
   if (!shell) return;
   isFullScreen.value = shell.isFullScreen ?? false;
   const off = shell.onFullScreen?.((full) => (isFullScreen.value = full));
@@ -69,9 +72,9 @@ useResizeObserver(boardEl, ([entry]) => {
   <div
     ref="shellEl"
     class="shell"
+    :data-drags="frame.drags"
     :data-full="artifact.isFull"
-    :data-fullscreen="isFullScreen"
-    :data-shell="onShell"
+    :data-lights="frame.hasLights"
     :style="dockHeight ? { '--dock-h': `${dockHeight}px` } : undefined"
   >
     <ChromeBar :inert="isDown">
