@@ -18,6 +18,16 @@ export interface Topics {
   "commands.changed": { key: string };
   "usage.changed": { key: string };
   "relay.sent": RelaySent;
+  "channel.changed": { slug: string; raised: number };
+  "channel.raised": ChannelRaised;
+}
+
+export interface ChannelRaised {
+  slug: string;
+  title: string;
+  post: string;
+  from: string;
+  text: string;
 }
 
 export interface RelaySent {

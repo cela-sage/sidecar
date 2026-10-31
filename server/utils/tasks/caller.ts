@@ -6,6 +6,7 @@ import { liveEntries, type RegistryEntry } from "../sessions/registry.ts";
 export interface Caller {
   who: Who;
   from?: string;
+  key?: string;
 }
 
 const newest = (a: RegistryEntry, b: RegistryEntry): number => (b.updatedAt || 0) - (a.updatedAt || 0);
@@ -33,7 +34,7 @@ const keyByTitle = (title: string): string | undefined => {
 const of = (id = process.env.CLAUDE_CODE_SESSION_ID): Caller => {
   const from = id ? titleOf(id) : undefined;
   const role = from ? Titles.parse(from)?.role : undefined;
-  return { who: role ?? "YOU", ...(from ? { from } : {}) };
+  return { who: role ?? "YOU", ...(from ? { from } : {}), ...(id ? { key: keyOf(id) } : {}) };
 };
 
 export const TaskCaller = { keyByTitle, of, titleByKey };

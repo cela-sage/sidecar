@@ -119,6 +119,15 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const [from, to, said, slug] = [text(data.from), text(data.to), text(data.text), text(data.slug)];
     return from && to && said ? { from, to, text: said, ...(slug ? { slug } : {}) } : undefined;
   },
+  "channel.changed": (data) => {
+    const slug = text(data.slug);
+    const { raised } = data;
+    return slug && typeof raised === "number" && Number.isInteger(raised) ? { slug, raised } : undefined;
+  },
+  "channel.raised": (data) => {
+    const [slug, post, from, said] = [text(data.slug), text(data.post), text(data.from), text(data.text)];
+    return slug && post && from && said ? { slug, title: text(data.title) || slug, post, from, text: said } : undefined;
+  },
 };
 
 export const TOPICS = Object.keys(PARSE) as Topic[];

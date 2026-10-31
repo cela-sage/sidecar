@@ -13,11 +13,12 @@ export type SendOptions = {
   text: string;
   slug?: string;
   from?: string;
+  isRelay?: boolean;
 };
 
 export type SendResult = { ok: true } | { ok: false };
 
-export type DeliverOptions = { key: string; text: string; slug?: string; from?: string; canWake?: boolean };
+export type DeliverOptions = Omit<SendOptions, "socketPath" | "token"> & { key: string; canWake?: boolean };
 
 // no-live-session means no process ran under the key and none could be woken.
 export type DeliverResult =
@@ -32,12 +33,12 @@ const woken = async (key: string): Promise<RegistryEntry | undefined> => {
 };
 
 // A passive ask, such as the command list or a stop, passes canWake: false so it never starts a process.
-export async function deliver({ key, text, slug, from, canWake = true }: DeliverOptions): Promise<DeliverResult> {
+export async function deliver({ key, canWake = true, ...sent }: DeliverOptions): Promise<DeliverResult> {
   const entry = entryOf(key) ?? (canWake ? await woken(key) : undefined);
   if (!entry) return { delivered: false, reason: "no-live-session" };
   const token = readTextSafe(keyFileOf(entry.pid))?.trim();
   if (!entry.messagingSocketPath || !token) return { delivered: false, reason: "refused-by-inbox" };
-  const result = await sendToInbox({ socketPath: entry.messagingSocketPath, token, text, slug, from });
+  const result = await sendToInbox({ socketPath: entry.messagingSocketPath, token, ...sent });
   return result.ok ? { delivered: true, session: keyOf(entry.id) } : { delivered: false, reason: "refused-by-inbox" };
 }
 
@@ -47,7 +48,14 @@ const recipientOf = (socketPath: string): string | undefined => {
 };
 
 // Nitro auto-imports every server util, so a bare `send` would shadow h3's own response helper.
-export function sendToInbox({ socketPath, token, text, slug, from = senderOf() }: SendOptions): Promise<SendResult> {
+export function sendToInbox({
+  socketPath,
+  token,
+  text,
+  slug,
+  from = senderOf(),
+  isRelay = true,
+}: SendOptions): Promise<SendResult> {
   return new Promise((resolve) => {
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;
@@ -67,7 +75,7 @@ export function sendToInbox({ socketPath, token, text, slug, from = senderOf() }
       const user = JSON.stringify({ type: "user", message: { role: "user", content: marked({ text, slug, from }) } });
       socket.write(`${auth}\n${user}\n`, (error) => {
         socket.end();
-        if (!error && from) recorded({ from, to: recipientOf(socketPath), text, slug });
+        if (!error && from && isRelay) recorded({ from, to: recipientOf(socketPath), text, slug });
         finish(!error);
       });
     });
