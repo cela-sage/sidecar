@@ -4,7 +4,7 @@ import { Refusal } from "../lib/sidecar/refusal.ts";
 import { TaskState } from "../shared/types/task.ts";
 import type { HistoryEntry } from "../shared/types/history.ts";
 import { HistoryLines } from "../shared/utils/history.ts";
-import { TaskCaller } from "../server/utils/tasks/caller.ts";
+import { TaskCaller, type Caller } from "../server/utils/tasks/caller.ts";
 import { TaskLane, type AskThread, type Decided } from "../server/utils/tasks/lane.ts";
 import { TaskNotice } from "../server/utils/tasks/notice.ts";
 import { ChannelVerbs } from "./channel.ts";
@@ -65,7 +65,7 @@ const OPTIONS = {
   new: { type: "boolean" },
 } as const;
 
-const caller = TaskCaller.of;
+const caller = (): Caller => TaskCaller.of(process.env.CLAUDE_CODE_SESSION_ID);
 
 const lineOf = (entry: HistoryEntry): string => {
   const { lead, text } = HistoryLines.of(entry);
@@ -90,8 +90,8 @@ const askLines = (thread: AskThread): string[] => {
   ];
 };
 
-const told = async (decided: Decided): Promise<string> =>
-  (await TaskLane.tell(decided))
+const told = async (decided: Decided, from?: string): Promise<string> =>
+  (await TaskLane.tell(decided, from))
     ? `told ${decided.ask.from}`
     : `${decided.ask.from ?? "the conversation that asked"} isn't running, so it reads this in the history`;
 
@@ -193,7 +193,7 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
     });
     console.log(
       decided
-        ? `settled as the Domain Lead's: ${decided.text}\n${file.slug} is ${file.task.state}, and ${await told(decided)}`
+        ? `settled as the Domain Lead's: ${decided.text}\n${file.slug} is ${file.task.state}, and ${await told(decided, caller().key)}`
         : `your verdict is on ${file.slug}, which still waits on Marco`,
     );
     return 0;

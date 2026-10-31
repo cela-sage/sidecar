@@ -15,7 +15,7 @@ export interface ChannelRun {
 type Line<K extends ChannelLine["kind"]> = Extract<ChannelLine, { kind: K }>;
 
 const authorOf = (): Author => {
-  const { who, key } = TaskCaller.of();
+  const { who, key } = TaskCaller.of(process.env.CLAUDE_CODE_SESSION_ID);
   return { by: who === "YOU" || !key ? "YOU" : key, who };
 };
 

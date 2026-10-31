@@ -352,12 +352,12 @@ const decide = ({ given, caller, answer, thread: n }: DecideInput): Decided => {
   return { file, question, ask, text };
 };
 
-const tell = async ({ file, question, ask, text }: Decided): Promise<boolean> => {
+const tell = async ({ file, question, ask, text }: Decided, from?: string): Promise<boolean> => {
   const key = ask.from ? TaskCaller.keyByTitle(ask.from) : undefined;
   if (!key) return false;
   const what = ask.kind === "hire" ? "the hire" : "your escalation";
   const by = ask.decision?.who === "DL" ? "The Domain Lead settled it" : "My decision";
-  const sent = await deliver({ key, text: `On ${what} in ${file.slug}, "${question}". ${by}: ${text}` });
+  const sent = await deliver({ key, text: `On ${what} in ${file.slug}, "${question}". ${by}: ${text}`, from });
   return sent.delivered;
 };
 

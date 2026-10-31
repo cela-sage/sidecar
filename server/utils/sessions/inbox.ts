@@ -2,7 +2,7 @@ import { createConnection } from "node:net";
 import { readTextSafe } from "../../../lib/files.ts";
 import { keyOf } from "./paths.ts";
 import { entryOf, keyFileOf, liveEntries, type RegistryEntry } from "./registry.ts";
-import { marked, recorded, senderOf } from "./relay.ts";
+import { marked, recorded } from "./relay.ts";
 import { wake } from "./wake.ts";
 
 const HANG_BUDGET_MS = 2000;
@@ -48,14 +48,7 @@ const recipientOf = (socketPath: string): string | undefined => {
 };
 
 // Nitro auto-imports every server util, so a bare `send` would shadow h3's own response helper.
-export function sendToInbox({
-  socketPath,
-  token,
-  text,
-  slug,
-  from = senderOf(),
-  isRelay = true,
-}: SendOptions): Promise<SendResult> {
+export function sendToInbox({ socketPath, token, text, slug, from, isRelay = true }: SendOptions): Promise<SendResult> {
   return new Promise((resolve) => {
     let settled = false;
     let timer: ReturnType<typeof setTimeout> | undefined;

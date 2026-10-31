@@ -1,5 +1,4 @@
 import * as Events from "../../../lib/sidecar/events.ts";
-import { isKey, keyOf } from "./paths.ts";
 
 export interface Envelope {
   text: string;
@@ -26,10 +25,6 @@ export function plain(text: string): string {
   const cut = stripped.lastIndexOf(PEER_NOTE);
   return (cut < 0 ? stripped : stripped.slice(0, cut)).trim();
 }
-
-// The server drops the variable at start, so only a process running inside a conversation sends as one.
-export const senderOf = (id = process.env.CLAUDE_CODE_SESSION_ID ?? ""): string | undefined =>
-  isKey(keyOf(id)) ? keyOf(id) : undefined;
 
 // A failed record never fails the send it describes, since the message already landed.
 export const recorded = ({ to, from, text, slug }: Envelope & { to?: string }): void => {

@@ -31,7 +31,7 @@ const keyByTitle = (title: string): string | undefined => {
 };
 
 // A conversation whose title carries no role token is Marco's own, so what it does lands as his.
-const of = (id = process.env.CLAUDE_CODE_SESSION_ID): Caller => {
+const of = (id?: string): Caller => {
   const from = id ? titleOf(id) : undefined;
   const role = from ? Titles.parse(from)?.role : undefined;
   return { who: role ?? "YOU", ...(from ? { from } : {}), ...(id ? { key: keyOf(id) } : {}) };

@@ -62,7 +62,6 @@ test("a send from a conversation is recorded as a relay to the one it reached, a
   const socketPath = join(home, "inbox.sock");
   const was = { ...process.env };
   process.env.CLAUDE_CONFIG_DIR = home;
-  delete process.env.CLAUDE_CODE_SESSION_ID;
   mkdirSync(join(home, "sessions"));
   const id = "cafe2222-1111-2222-3333-444444444444";
   writeFileSync(
