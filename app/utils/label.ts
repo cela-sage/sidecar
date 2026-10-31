@@ -55,6 +55,17 @@ export function plural(count: number, noun: string): string {
   return `${count} ${noun}${count === 1 ? "" : "s"}`;
 }
 
+export const clockOf = (stamp: string | undefined, now: Date = new Date()): string => {
+  const at = stamp ? new Date(stamp) : undefined;
+  if (!at || Number.isNaN(at.getTime())) return "";
+  const time = at.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hourCycle: "h23" });
+  if (at.toDateString() === now.toDateString()) return time;
+  return `${at.toLocaleDateString([], { day: "numeric", month: "short" })} · ${time}`;
+};
+
+export const andList = (names: string[]): string =>
+  names.length < 2 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} and ${names.at(-1)}`;
+
 /** Flattens first: a prompt's newlines would otherwise survive into a one-line label. */
 export function shorten(text: string, max: number): string {
   const flat = text.replace(/\s+/g, " ").trim();
