@@ -73,7 +73,7 @@ const speakerOf = (by: string, members: ChannelMember[], sessions: LiveSession[]
   return { by, ...(role ? { role } : {}), ...(name ? { name } : {}) };
 };
 
-// Marco's reply in a thread holding a raised @boss goes to its author, which wakes a killed one, as a decision does.
+// A mention wakes an alive agent whose process is down but never a killed one; Marco's @boss answer wakes either.
 const post = async ({ given, author, text, thread }: PostInput): Promise<ChannelPost> => {
   const { file, folded, sessions } = ChannelSync.sync(given);
   const root = thread ? rootOf(folded, thread) : undefined;
@@ -105,6 +105,7 @@ const post = async ({ given, author, text, thread }: PostInput): Promise<Channel
   ]);
   const speaker = Reach.speakerOf(speakerOf(author.by, members, sessions));
   const from = author.by === "YOU" ? undefined : author.by;
+  const lives = new Map(sessions.map((one) => [one.key, one.life]));
   const results = await Promise.all(
     [...notes].map(async ([key, kind]) => {
       const note = Reach.note({
@@ -121,7 +122,7 @@ const post = async ({ given, author, text, thread }: PostInput): Promise<Channel
         slug: file.slug,
         from,
         isRelay: false,
-        canWake: kind === "answer",
+        canWake: kind === "answer" || lives.get(key) === "alive",
       });
       return { key, delivered: sent.delivered };
     }),

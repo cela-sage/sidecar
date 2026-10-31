@@ -3,10 +3,10 @@ import { appendFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 const args = process.argv.slice(2);
-const { WAKE_HOME = "", WAKE_LOG = "", WAKE_PID = "", WAKE_SOCKET = "" } = process.env;
+const { WAKE_HOME = "", WAKE_LOG = "", WAKE_PID = "", WAKE_SOCKET = "", WAKE_AGENTS = "[]" } = process.env;
 
 if (args[0] === "agents") {
-  console.log("[]");
+  console.log(WAKE_AGENTS);
 } else {
   const claudeVars = Object.keys(process.env).filter((name) => name.startsWith("CLAUDE"));
   appendFileSync(WAKE_LOG, `${JSON.stringify({ args, cwd: process.cwd(), claudeVars })}\n`);

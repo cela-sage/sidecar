@@ -1,12 +1,14 @@
 import assert from "node:assert/strict";
-import { mkdirSync, mkdtempSync, realpathSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, writeFileSync } from "node:fs";
 import { createServer, type Server } from "node:net";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { after, before, test } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
+import { fileURLToPath } from "node:url";
 import * as Events from "../../../lib/sidecar/events.ts";
 import { Faces } from "../sessions/faces.ts";
+import { refreshJobs } from "../sessions/jobs.ts";
 import { Spawns } from "../sessions/spawns.ts";
 import { TaskLane } from "../tasks/lane.ts";
 import { Channels } from "./index.ts";
@@ -25,7 +27,16 @@ const ALIVE = {
   dd000005: "[MF] IC rebase mf-ui",
   dd000006: "[meta] EA triage",
 };
-const [DL, SL, LANE, DESK, NELL, EA] = ["dd000001", "dd000002", "dd000003", "dd000004", "dd000005", "dd000006"];
+const [DL, SL, LANE, DESK, NELL, EA, REVIEW] = [
+  "dd000001",
+  "dd000002",
+  "dd000003",
+  "dd000004",
+  "dd000005",
+  "dd000006",
+  "dd000007",
+];
+const FAKE = join(dirname(fileURLToPath(import.meta.url)), "..", "sessions", "__fixtures__", "resuming-claude.ts");
 
 const stamp = (state: string): void =>
   writeFileSync(
@@ -44,26 +55,44 @@ const got = async (key: string): Promise<string[]> => {
   return said.map((raw) => JSON.parse(raw.split("\n")[1] ?? "{}").message?.content ?? "");
 };
 
+const listen = async (key: string): Promise<string> => {
+  const socketPath = join(home, `${key}.sock`);
+  const server = createServer((socket) => socket.on("data", (chunk) => heard.get(key)?.push(String(chunk))));
+  await new Promise<void>((ready) => server.listen(socketPath, ready));
+  servers.push(server);
+  heard.set(key, []);
+  return socketPath;
+};
+
+const idOf = (key: string): string => `${key}-1111-2222-3333-444444444444`;
+
 before(async () => {
-  Object.assign(process.env, { CLAUDE_CONFIG_DIR: home, CLAUDE_BIN: join(home, "no-such-claude") });
-  delete process.env.CLAUDE_CODE_SESSION_ID;
+  const agents = [
+    { sessionId: idOf(DESK), id: DESK, state: "done", name: "[Cela] IC board desk", cwd: home },
+    {
+      ...{ sessionId: idOf(REVIEW), id: REVIEW, pid: process.pid, kind: "background", state: "working" },
+      ...{ name: "[Cela] IC board review", cwd: home, startedAt: Date.now() - 60_000 },
+    },
+  ];
+  Object.assign(process.env, {
+    CLAUDE_CONFIG_DIR: home,
+    CLAUDE_BIN: FAKE,
+    WAKE_HOME: home,
+    WAKE_LOG: join(home, "resumes.log"),
+    WAKE_PID: String(process.pid),
+    WAKE_SOCKET: await listen(REVIEW),
+    WAKE_AGENTS: JSON.stringify(agents),
+  });
   mkdirSync(join(home, "sessions"), { recursive: true });
   mkdirSync(join(home, "sidecar", "artifacts"), { recursive: true });
+  writeFileSync(join(home, "resumes.log"), "");
   stamp("running");
   writeFileSync(join(home, "sessions", `${process.pid}.token.key`), "t");
   for (const [n, [key, name]] of Object.entries(ALIVE).entries()) {
-    const socketPath = join(home, `${key}.sock`);
-    const server = createServer((socket) => socket.on("data", (chunk) => heard.get(key)?.push(String(chunk))));
-    await new Promise<void>((ready) => server.listen(socketPath, ready));
-    servers.push(server);
-    heard.set(key, []);
-    const sessionId = `${key}-1111-2222-3333-444444444444`;
-    const entry = { pid: process.pid, sessionId, name, cwd: home, messagingSocketPath: socketPath, updatedAt: n };
-    writeFileSync(join(home, "sessions", `${n}.json`), JSON.stringify(entry));
+    const entry = { pid: process.pid, sessionId: idOf(key), name, cwd: home, messagingSocketPath: await listen(key) };
+    writeFileSync(join(home, "sessions", `${n}.json`), JSON.stringify({ ...entry, updatedAt: n }));
   }
-  mkdirSync(join(home, "jobs", DESK), { recursive: true });
-  const desk = { sessionId: `${DESK}-1111-2222-3333-444444444444`, name: "[Cela] IC board desk", cwd: home };
-  writeFileSync(join(home, "jobs", DESK, "state.json"), JSON.stringify(desk));
+  await refreshJobs();
   Spawns.record({ key: SL, by: DL });
 });
 
@@ -79,25 +108,21 @@ test("the crew joins on its own, the killed one last, and a post with no @ notif
     [
       [DL, "DL", "alive"],
       [SL, "SL", "alive"],
+      [REVIEW, "IC", "alive"],
       [LANE, "IC", "alive"],
       [DESK, "IC", "killed"],
     ],
   );
   assert.deepEqual(
-    channel.lines.map((line) => (line.kind === "join" ? [line.key, line.by] : [line.kind])),
-    [
-      [DL, undefined],
-      [SL, DL],
-      [LANE, undefined],
-      [DESK, undefined],
-    ],
+    Object.fromEntries(channel.lines.map((line) => (line.kind === "join" ? [line.key, line.by] : [line.kind]))),
+    { [DL]: undefined, [SL]: DL, [REVIEW]: undefined, [LANE]: undefined, [DESK]: undefined },
   );
   const faces = Faces.all();
   assert.deepEqual(
     channel.members.map(({ agent }) => agent),
     channel.members.map(({ key }) => faces.get(key)),
   );
-  assert.equal(new Set(channel.members.map(({ agent }) => agent?.name)).size, 4);
+  assert.equal(new Set(channel.members.map(({ agent }) => agent?.name)).size, 5);
   assert.equal(faces.has(EA), false);
   ChannelStore.append("board", { kind: "join", key: DL, title: "[Cela] DL plan", role: "DL" });
   ChannelStore.append("board", { kind: "kill", keys: [DESK] });
@@ -108,7 +133,7 @@ test("the crew joins on its own, the killed one last, and a post with no @ notif
   assert.deepEqual(await Promise.all([DL, SL, NELL].map(got)), [[], [], []]);
 });
 
-test("@name interrupts that member alone, @all every member alive but the author, and a killed member is missed", async () => {
+test("@name interrupts that member alone, @all wakes every member alive but the author, and only a killed one is missed", async () => {
   const [ivo, juno] = [nameOf(SL), nameOf(LANE)];
   const one = await Channels.post({ given: "board", author: asIc, text: `@${ivo.toLowerCase()} take the row menu` });
   const [note] = await got(SL);
@@ -120,9 +145,15 @@ test("@name interrupts that member alone, @all every member alive but the author
   assert.deepEqual(await got(DL), []);
 
   const all = await Channels.post({ given: "board", author: asIc, text: "@all scope freeze" });
-  assert.deepEqual([all.reach.all, all.reach.notified.sort()], [true, [DL, SL]]);
+  assert.deepEqual([all.reach.all, all.reach.notified.sort(), all.reach.missed], [true, [DL, SL, REVIEW], []]);
+  assert.match((await got(REVIEW))[0] ?? "", /@all scope freeze/);
   const gone = await Channels.post({ given: "board", author: asIc, text: `@${DESK} are you there?` });
   assert.deepEqual([gone.reach.notified, gone.reach.missed], [[], [DESK]]);
+  const resumed = readFileSync(join(home, "resumes.log"), "utf8").trim().split("\n");
+  assert.deepEqual(
+    resumed.map((line) => JSON.parse(line).args),
+    [["--bg", "--resume", idOf(REVIEW)]],
+  );
   assert.equal(
     Events.read(0).events.some((event) => event.topic === "relay.sent"),
     false,
