@@ -1,0 +1,3 @@
+{"type":"user","isSidechain":true,"agentId":"aOne-1111","timestamp":"2026-01-01T10:00:00.000Z","message":{"role":"user","content":"Read the README."}}
+{"type":"assistant","isSidechain":true,"agentId":"aOne-1111","timestamp":"2026-01-01T10:00:05.000Z","message":{"role":"assistant","stop_reason":"end_turn","content":[{"type":"text","text":"Read it."}]}}
+{"type":"attachment","isSidechain":true,"agentId":"aOne-1111","timestamp":"2026-01-01T10:00:05.100Z","attachment":{"type":"hook_success"}}

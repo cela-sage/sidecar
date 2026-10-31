@@ -11,6 +11,7 @@ import { receiveReview, registerReview, startReview, stopTurn } from './review/h
 import { EMPTY_LEDGER } from './review/ledger'
 import { Usage } from './usage'
 import type { UsageReport } from './usage'
+import type { AgentTurn } from '../types'
 
 const reviewLedger = atom({ plugin: 'sidecar', key: 'review' } as const, EMPTY_LEDGER)
 // Held by the host rather than the module, since a reload between a delivery and its row resets module variables.
@@ -21,6 +22,7 @@ type Sidecar = {
   point: (id: string) => Promise<void>
   run: (args: string, id: string) => Promise<string>
   hear: (kind: 'turn' | 'message', text: string, id: string) => Promise<unknown>
+  turned: (turn: AgentTurn, id: string) => Promise<void>
 }
 
 // A burst of keys points once, and a keystroke never waits on the network.
@@ -68,6 +70,7 @@ export const register: Register = (on, options) => {
   const api = url.replace(/^(https?:\/\/)[^/:]+\.localhost\b/, '$1localhost')
   registerReview(on, {
     answered: async (id, answer) => sidecar?.hear('turn', answer, id),
+    turned: async (id, turn) => sidecar?.turned(turn, id),
   })
 
   on('session.start', async ($, e, next) => {
@@ -98,6 +101,15 @@ export const register: Register = (on, options) => {
             timeoutMs: 20_000,
           })
           .catch(() => undefined),
+      turned: async (turn, id) => {
+        await $.http
+          .fetch(`${api}/api/sessions/${id.slice(0, 8)}/agents`, {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(turn),
+          })
+          .catch(() => undefined)
+      },
     }
     door = Door.create(api, {
       id: () => $.session.id(),

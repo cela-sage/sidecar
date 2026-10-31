@@ -89,7 +89,7 @@ function record(line: string): Record<string, unknown> | undefined {
   }
 }
 
-function readRecords(path: string, from: Window, bytes: number): Record<string, unknown>[] {
+export function readRecords(path: string, from: Window, bytes: number): Record<string, unknown>[] {
   const window = readWindow(path, from, bytes);
   if (!window) return [];
   const out: Record<string, unknown>[] = [];

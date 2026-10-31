@@ -241,6 +241,36 @@ test('a compaction in flight is flagged, and the size it ended at gets back what
   expect(Usage.describe(usage, { compactedTo: 20_000 }).compaction).toBeUndefined()
 })
 
+test("a specialist's turn tells the sidecar it works, then idles or was killed, and the main loop's tells nothing", async ($, on) => {
+  const posted: unknown[] = []
+  const clock = mock.clock(on)
+  mock.env(on, { HOME: '/home' })
+  on('session.id', () => ({ value: 'abcdef0123456789' }))
+  on('session.start', ($, e) => ({ cwd: e.cwd }))
+  on('command.register', () => ({ value: { command: 'sidecar' } }))
+  on('turn.start', ($, e) => ({ turnId: e.turnId }))
+  on('turn.complete', ($, e) => ({ text: e.answer }))
+  on('http.fetch', (_, e) => {
+    if (new URL(e.url).pathname === '/api/sessions/abcdef01/agents') posted.push(JSON.parse(String(e.init?.body)))
+    return { value: { status: 200, ok: true, headers: {}, text: '' } }
+  })
+  const end = { answer: '', durationMs: 1, isAborted: false }
+
+  await $.session.start({ cwd: '/r', surface: null, isInteractive: false })
+  await $.turn.start({ text: '', turnId: 'main' })
+  await $.turn.start({ text: 'patch the window', turnId: 't1', agentId: 'awindow-hier-1' })
+  await $.turn.complete({ ...end, turnId: 't1', agentId: 'awindow-hier-1', reason: 'answer' })
+  await $.turn.complete({ ...end, turnId: 't2', agentId: 'atree-cast-2', reason: 'aborted', isAborted: true })
+  await $.turn.complete({ ...end, turnId: 'main', reason: 'answer' })
+  await clock.settle()
+
+  expect(posted).toEqual([
+    { id: 'awindow-hier-1', state: 'working' },
+    { id: 'awindow-hier-1', state: 'idle' },
+    { id: 'atree-cast-2', state: 'killed' },
+  ])
+})
+
 test('a delivery the session takes is told to the sidecar as it lands, and a control or a real peer is not', async ($, on) => {
   const posted: { url: string; body: unknown }[] = []
   on('session.receive', ($, e) => ({ text: e.text }))

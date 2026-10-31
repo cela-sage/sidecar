@@ -1,6 +1,6 @@
 import type { DockTab } from "./dock.ts";
 import type { Question } from "./question.ts";
-import type { Life } from "./session.ts";
+import type { Life, SessionAgentChange } from "./session.ts";
 import type { AskKind, TaskState, Who } from "./task.ts";
 
 export interface Topics {
@@ -13,6 +13,7 @@ export interface Topics {
   "runs.changed": { project: string };
   "conversation.changed": { key: string; doing: boolean; asking: boolean; life: Life };
   "conversation.unseen": ConversationUnseen;
+  "agent.changed": SessionAgentChange & { key: string };
   "question.changed": QuestionChanged;
   "message.landed": { key: string; text: string };
   "commands.changed": { key: string };

@@ -1,6 +1,9 @@
 import assert from "node:assert/strict";
+import { rmSync, utimesSync } from "node:fs";
+import { join } from "node:path";
 import { after, before, test } from "node:test";
-import { ALPHA_ID, BETA_ID, useFixtures } from "./__fixtures__/env.ts";
+import { ALPHA_ID, BETA_ID, FIXTURES_DIR, useFixtures } from "./__fixtures__/env.ts";
+import { Agents } from "./agents.ts";
 import { liveSessions } from "./index.ts";
 import type { LiveSession } from "../../../shared/types/session.ts";
 
@@ -88,15 +91,36 @@ test("artifacts arrive newest first, blank lines dropped, a re-stamped slug keep
   assert.deepEqual(find(all, "bbbbbbbb").artifacts, []);
 });
 
-test("agents come from the subagent metas, colourless members left out", () => {
+const SUBAGENTS = join(FIXTURES_DIR, "config/projects/-tmp-alpha", ALPHA_ID, "subagents");
+
+const touched = (file: string, agoMs: number): void => {
+  const at = new Date(Date.now() - agoMs);
+  utimesSync(join(SUBAGENTS, file), at, at);
+};
+
+test("agents come from the subagent metas, colourless members left out, each with its transcript's state", () => {
+  touched("agent-aTwo-2222.jsonl", 0);
   assert.deepEqual(find(liveSessions(), "aaaaaaaa").agents, [
-    { name: "One", color: "blue" },
-    { name: "Two", color: "green" },
+    { id: "aOne-1111", name: "One", color: "blue", state: "idle" },
+    { id: "aTwo-2222", name: "Two", color: "green", description: "Patch: two", state: "working" },
   ]);
 });
 
+test("a specialist's turn left open with no write for ten minutes is a loop that died, so it reads idle", () => {
+  touched("agent-aTwo-2222.jsonl", 11 * 60_000);
+  assert.equal(find(liveSessions(), "aaaaaaaa").agents?.[1]?.state, "idle");
+});
+
+test("what the mod heard outranks the transcript", () => {
+  Agents.hear("aaaaaaaa", { id: "aOne-1111", state: "killed" });
+  rmSync(join(FIXTURES_DIR, "config/sidecar/events.jsonl"), { force: true });
+  assert.equal(find(liveSessions(), "aaaaaaaa").agents?.[0]?.state, "killed");
+});
+
 test("a session with no subagents folder falls back to the team roster", () => {
-  assert.deepEqual(find(liveSessions(), "bbbbbbbb").agents, [{ name: "Three", color: "cyan" }]);
+  assert.deepEqual(find(liveSessions(), "bbbbbbbb").agents, [
+    { id: "Three@session-bbbbbbbb", name: "Three", color: "cyan", state: "idle" },
+  ]);
 });
 
 test("alive sessions sort ahead of the rest", () => {

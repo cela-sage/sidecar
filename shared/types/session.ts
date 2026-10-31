@@ -1,4 +1,16 @@
-export type SessionAgent = { name: string; color: string };
+export const SessionAgentState = ["working", "idle", "killed"] as const;
+export type SessionAgentState = (typeof SessionAgentState)[number];
+
+export interface SessionAgentChange {
+  id: string;
+  state: SessionAgentState;
+}
+
+export interface SessionAgent extends SessionAgentChange {
+  name: string;
+  color: string;
+  description?: string;
+}
 
 export interface AgentFace {
   name: string;

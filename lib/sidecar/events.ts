@@ -3,7 +3,7 @@ import { dirname, join } from "node:path";
 import { DockKind, type DockTab } from "../../shared/types/dock.ts";
 import { RunStatus } from "../../shared/types/runs.ts";
 import type { SidecarEvent, Topic, Topics } from "../../shared/types/events.ts";
-import { Life } from "../../shared/types/session.ts";
+import { Life, SessionAgentState } from "../../shared/types/session.ts";
 import { AskKind, Role, TaskState, type Who } from "../../shared/types/task.ts";
 import { Questions } from "../../shared/utils/question.ts";
 import { Sidecar } from "./paths.ts";
@@ -97,6 +97,11 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const { endedAt } = data;
     if (!key) return undefined;
     return typeof endedAt === "number" && Number.isFinite(endedAt) ? { key, endedAt } : { key };
+  },
+  "agent.changed": (data) => {
+    const [key, id] = [text(data.key), text(data.id)];
+    const state = oneOf(SessionAgentState, data.state);
+    return key && id && state ? { key, id, state } : undefined;
   },
   "question.changed": (data) => {
     const [key, ref] = [text(data.key), text(data.ref)];

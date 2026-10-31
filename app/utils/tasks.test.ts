@@ -291,7 +291,7 @@ test("the org tree puts each role where it works, sorts killed agents after the 
       key: "fol",
       name: "[Cela] IC sidecar-task-board follower",
       status: "busy",
-      agents: [{ name: "designer", color: "blue" }],
+      agents: [{ id: "adesigner-1", name: "designer", color: "blue", state: "idle" }],
     }),
     session({ key: "lane", name: "[Cela] IC sidecar-task-board lane", agent: { name: "Aya", icon: 5 } }),
     session({ key: "loop", name: "[Cela] IC sidecar-task-board loop", life: "killed" }),

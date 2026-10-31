@@ -1,7 +1,7 @@
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'
 
-import type { RunningTurn } from '../../types'
+import type { AgentTurn, RunningTurn } from '../../types'
 import { Seen } from '../seen'
 import { Actions } from './actions'
 import { Ledger } from './ledger'
@@ -16,6 +16,7 @@ type Around = { sessionId: Promise<string>; path: string }
 
 export type ReviewHooks = {
   answered: (sessionId: string, answer: string) => Promise<unknown>
+  turned: (sessionId: string, turn: AgentTurn) => Promise<unknown>
 }
 
 // A plugin hooks each event once, so the main loop's turn id reaches the sidecar's Stop through here, held by the host so a reload keeps it.
@@ -59,19 +60,25 @@ export const startReview = async (start: ReviewStart): Promise<void> => {
 }
 
 // One hooks module per plugin, so the sidecar's register.tsx hands its `on` over to these.
-export const registerReview = (on: Parameters<Register>[0], { answered }: ReviewHooks): void => {
+export const registerReview = (on: Parameters<Register>[0], { answered, turned }: ReviewHooks): void => {
   on('turn.start', async ($, e, next) => {
-    if (!e.agentId) await update($, runningTurn, () => ({ turnId: e.turnId }))
+    const { agentId } = e
     const sessionId = $.session.id()
+    if (!agentId) await update($, runningTurn, () => ({ turnId: e.turnId }))
+    else void quietly(sessionId.then(id => turned(id, { id: agentId, state: 'working' })))
     const at = await ready(sessionId)
     if (at) await quietly(Ledger.beginTurn(at))
     if (at) await quietly(sessionId.then(id => Seen.mark(at, id)))
     return next(e)
   })
 
+  // The agent list has dropped a finished subagent by its turn.complete, so the edge itself says how it ended.
   on('turn.complete', async ($, e, next) => {
-    if (!e.agentId) await update($, runningTurn, () => ({}))
+    const { agentId } = e
     const sessionId = $.session.id()
+    const state = e.reason === 'aborted' ? 'killed' : 'idle'
+    if (!agentId) await update($, runningTurn, () => ({}))
+    else void quietly(sessionId.then(id => turned(id, { id: agentId, state })))
     const at = await ready(sessionId)
     if (at) await quietly(Ledger.recheck(at))
     if (!e.agentId && e.reason === 'answer' && e.answer.trim()) void quietly(sessionId.then(id => answered(id, e.answer)))

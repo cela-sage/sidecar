@@ -29,6 +29,8 @@ export type ReviewAction =
 
 export type RunningTurn = { turnId?: string }
 
+export type AgentTurn = { id: string; state: 'working' | 'idle' | 'killed' }
+
 declare module 'claude-code' {
   interface PluginState {
     sidecar: {

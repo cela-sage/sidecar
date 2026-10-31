@@ -2,7 +2,7 @@ import { readdirSync } from "node:fs";
 import type { AgentFace, LiveSession } from "../../../shared/types/session.ts";
 import { sessionOrder } from "../../../shared/utils/sessions.ts";
 import { Titles } from "../../../shared/utils/titles.ts";
-import { agentsOf } from "./agents.ts";
+import { Agents } from "./agents.ts";
 import { artifactsOf, keysWithArtifacts } from "./artifact-lists.ts";
 import { sessionColor } from "./identity.ts";
 import { Faces } from "./faces.ts";
@@ -52,7 +52,7 @@ function build(key: string, { entry, job, ref, view, agent }: Sources): LiveSess
     life: Lives.of({ entry, job }),
     color: sessionColor(key),
     artifacts: artifactsOf(key),
-    agents: ref ? agentsOf(ref) : undefined,
+    agents: ref ? Agents.of(ref) : undefined,
     status: job?.status || entry?.status,
     gitBranch: identity.gitBranch,
     lastActive: Math.round(Math.max(entry?.updatedAt || 0, ref?.mtimeMs || 0, job?.startedAt || 0)) || undefined,
