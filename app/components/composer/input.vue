@@ -3,6 +3,8 @@ import { Paperclip } from "@lucide/vue";
 import type { Component } from "vue";
 import type { SessionCommand } from "~~/shared/types/command";
 import type { AttachedFile } from "~~/shared/types/files";
+import type { Tone, ToneRange } from "~/utils/channel-cast";
+import type { ChannelPick } from "~/utils/channel-picker";
 import type { Typed } from "~/utils/mentions";
 import type { OrgConversation } from "~/utils/org";
 
@@ -12,6 +14,11 @@ export interface ComposerPieceItem {
   label: string;
   preview?: string;
   tip?: string;
+}
+
+export interface ComposerRoster {
+  offer: (query: string) => ChannelPick[];
+  tones: (text: string) => ToneRange[];
 }
 
 const text = defineModel<string>({ required: true });
@@ -25,6 +32,7 @@ const {
   opens = "up",
   pieces = [],
   placeholder,
+  roster,
 } = defineProps<{
   attached?: AttachedFile[];
   candidates?: OrgConversation[];
@@ -35,12 +43,13 @@ const {
   opens?: "up" | "down";
   pieces?: ComposerPieceItem[];
   placeholder: string;
+  roster?: ComposerRoster;
 }>();
 const emit = defineEmits<{ escape: []; files: [files: File[]]; fill: []; remove: [id: string]; send: [] }>();
 
 const PICKS_MAX = 30;
 
-type Segment = { text: string; kind: "text" | "mention" | "file" };
+type Segment = { text: string; kind: "text" | "mention" | "file"; tone?: Tone };
 
 const box = useTemplateRef<HTMLTextAreaElement>("box");
 const mirror = useTemplateRef<HTMLElement>("mirror");
@@ -84,30 +93,45 @@ const {
 
 const picking = computed(() => {
   const hit = isDismissed.value ? undefined : Mentions.typing({ text: text.value, caret: caret.value });
-  return hit && candidates.length && !commandRows.value.length && !attached.some((one) => one.name === hit.query)
+  const canPick = !!roster || !!candidates.length;
+  return hit && canPick && !commandRows.value.length && !attached.some((one) => one.name === hit.query)
     ? hit
     : undefined;
 });
 const people = computed(() => {
-  if (!picking.value) return [];
+  if (!picking.value || roster) return [];
   const needle = picking.value.query.toLowerCase();
   return candidates.filter((row) => row.title.toLowerCase().includes(needle)).slice(0, PICKS_MAX);
 });
+const picks = computed(() => (picking.value && roster ? roster.offer(picking.value.query) : []));
+const choices = computed(() => (roster ? picks.value.length : people.value.length));
 
 const pick = (row: OrgConversation): void => edit((from) => Mentions.insert(from, row));
 
+const choose = (row: ChannelPick): void => edit((from) => Mentions.put(from, row.handle));
+
+const pickAt = (at: number): void => {
+  const channel = picks.value[at];
+  const person = people.value[at];
+  if (channel) choose(channel);
+  else if (person) pick(person);
+};
+
 // The textarea draws no colour of its own, so this copy under it is what shows a mention or a file as one piece.
 const segments = computed(() => {
+  const mentions = roster
+    ? roster.tones(text.value).map((one) => ({ ...one, kind: "mention" as const }))
+    : Mentions.of(text.value).map((one) => ({ ...one, kind: "mention" as const, tone: undefined }));
   const marks = [
-    ...Mentions.of(text.value).map((one) => ({ ...one, kind: "mention" as const })),
-    ...Attachments.of(text.value, attached).map((one) => ({ ...one, kind: "file" as const })),
+    ...mentions,
+    ...Attachments.of(text.value, attached).map((one) => ({ ...one, kind: "file" as const, tone: undefined })),
   ].sort((a, b) => a.start - b.start);
   const out: Segment[] = [];
   let at = 0;
   for (const one of marks) {
     if (one.start < at) continue;
     if (one.start > at) out.push({ text: text.value.slice(at, one.start), kind: "text" });
-    out.push({ text: text.value.slice(one.start, one.end), kind: one.kind });
+    out.push({ text: text.value.slice(one.start, one.end), kind: one.kind, ...(one.tone ? { tone: one.tone } : {}) });
     at = one.end;
   }
   if (at < text.value.length) out.push({ text: text.value.slice(at), kind: "text" });
@@ -133,9 +157,8 @@ const STEPS: Partial<Record<string, number>> = { ArrowDown: 1, ArrowUp: -1 };
 
 const onPeopleKey = (event: KeyboardEvent): boolean => {
   const step = STEPS[event.key];
-  const row = people.value[cursor.value];
-  if (step) cursor.value = Math.min(Math.max(cursor.value + step, 0), Math.max(people.value.length - 1, 0));
-  else if ((event.key === "Enter" || event.key === "Tab") && row) pick(row);
+  if (step) cursor.value = Math.min(Math.max(cursor.value + step, 0), Math.max(choices.value - 1, 0));
+  else if ((event.key === "Enter" || event.key === "Tab") && cursor.value < choices.value) pickAt(cursor.value);
   else if (event.key === "Escape") isDismissed.value = true;
   else return false;
   event.preventDefault();
@@ -177,6 +200,15 @@ defineExpose({ edit, focus });
       @pick="complete"
       @point="commandCursor = $event"
     />
+    <ComposerRoster
+      v-else-if="picking && roster"
+      class="menu"
+      :cursor="cursor"
+      :data-opens="opens"
+      :rows="picks"
+      @pick="choose"
+      @point="cursor = $event"
+    />
     <ComposerMentions
       v-else-if="picking"
       class="menu"
@@ -200,7 +232,7 @@ defineExpose({ edit, focus });
     <div class="area" :data-tall="isTall">
       <div ref="mirror" class="mirror" aria-hidden="true">
         <template v-for="(one, at) in segments" :key="at"
-          ><mark v-if="one.kind === 'mention'" class="mention">{{ one.text }}</mark
+          ><mark v-if="one.kind === 'mention'" class="mention" :data-tone="one.tone">{{ one.text }}</mark
           ><mark v-else-if="one.kind === 'file'" class="file"
             ><span class="at">@<Paperclip class="clip" /></span>{{ one.text.slice(1) }}</mark
           ><template v-else>{{ one.text }}</template></template
@@ -263,6 +295,14 @@ defineExpose({ edit, focus });
 
 .mention {
   @apply rounded-sm bg-primary-soft box-decoration-clone text-primary-deep;
+}
+
+.mention[data-tone="boss"] {
+  @apply bg-error-soft text-error;
+}
+
+.mention[data-tone="out"] {
+  @apply bg-sunken text-fg;
 }
 
 .file {
