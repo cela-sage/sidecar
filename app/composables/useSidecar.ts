@@ -1,6 +1,6 @@
 import type { ComputedRef, Ref, WritableComputedRef } from "vue";
 import type { ArtifactDetail, ArtifactMeta } from "~~/shared/types/artifact";
-import type { LiveSession } from "~~/shared/types/session";
+import type { LiveSession, SessionAgent } from "~~/shared/types/session";
 
 /** `?:` cannot express absence inside a generic, so every absent-by-default ref goes through here. */
 export type Maybe<T> = Ref<T | undefined>;
@@ -111,6 +111,14 @@ export function loadSidecar(): void {
     void $fetch<ArtifactMeta[]>("/api/artifacts")
       .then((catalogue) => (sc.catalogue.value = catalogue))
       .catch(() => {});
+  });
+  // A specialist spawned since the last poll is not listed yet, and the next poll brings it in with its state.
+  events.on("agent.changed", ({ data }) => {
+    const settled = (agent: SessionAgent): SessionAgent =>
+      agent.id === data.id ? { ...agent, state: data.state } : agent;
+    sc.sessions.value = sc.sessions.value.map((s) =>
+      s.key === data.key ? { ...s, agents: s.agents?.map(settled) } : s,
+    );
   });
   // A restart can be over before the next poll, so a dropped stream checks at once.
   events.onLost(() => void poll());

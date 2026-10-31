@@ -18,6 +18,7 @@ export interface OrgConversation {
   slug?: string;
   agent?: AgentFace;
   agents?: SessionAgent[];
+  doing?: string;
 }
 
 export interface OrgTask {
@@ -119,14 +120,31 @@ const ownedOf = (sessions: LiveSession[]): Owned[] =>
     return title && !title.role ? [{ session, title }] : [];
   });
 
+const isWorking = ({ state }: SessionAgent): boolean => state === "working";
+
 // Only the turn bus knows a turn is open, so a polled "working" says nothing and reads as idle.
 const stateOf = (session: LiveSession, { asking, busy }: Heard): AgentState => {
   const bus = busy[session.key];
   if (bus?.asking || asking.has(session.name ?? "")) return "needs input";
   if (bus?.doing) return "working";
-  const polled = Tasks.agentStateOf(session);
-  return polled === "working" ? "idle" : polled;
+  if (Tasks.agentStateOf(session) === "needs input") return "needs input";
+  return session.agents?.some(isWorking) ? "working" : "idle";
 };
+
+// One working mark stands for the row's own turn, its specialists or both, so the tip says which.
+const doingOf = (session: LiveSession, { busy }: Heard): string | undefined => {
+  const agents = session.agents ?? [];
+  const working = agents.filter(isWorking).length;
+  const parts = [
+    ...(busy[session.key]?.doing ? ["its own turn"] : []),
+    ...(working ? [`${working} of ${agents.length} specialists`] : []),
+  ];
+  return agents.length && parts.length && session.life === "alive" ? `Working: ${parts.join(" and ")}` : undefined;
+};
+
+// A specialist runs inside its lead's process, so a lead that is gone took every one of them with it.
+const agentsOf = ({ agents = [], life }: LiveSession): SessionAgent[] =>
+  life === "killed" ? agents.map((one) => ({ ...one, state: "killed" })) : agents;
 
 const finishedOf = (session: LiveSession, { unseen }: Heard): Mark =>
   unseen.has(session.key) ? "unseen" : "idle";
@@ -142,12 +160,14 @@ const looseOf = (session: LiveSession, heard: Heard, name?: string): OrgConversa
     "needs input": "waits",
     idle: finishedOf(session, heard),
   };
+  const doing = doingOf(session, heard);
   return {
     key: session.key,
     title,
     name: name ?? title,
     mark: markOf(session, heard, marks),
     ...(session.agent ? { agent: session.agent } : {}),
+    ...(doing ? { doing } : {}),
   };
 };
 
@@ -165,6 +185,7 @@ const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Pla
     "needs input": isLead ? "needs" : "waits",
     idle: waiting && isLead ? "third" : finishedOf(session, heard),
   };
+  const doing = doingOf(session, heard);
   return {
     key: session.key,
     title: session.name ?? "",
@@ -173,7 +194,8 @@ const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Pla
     mark: markOf(session, heard, marks),
     ...(slug ? { slug } : {}),
     ...(session.agent ? { agent: session.agent } : {}),
-    ...(isLead && session.agents?.length ? { agents: session.agents } : {}),
+    ...(isLead && session.agents?.length ? { agents: agentsOf(session) } : {}),
+    ...(doing ? { doing } : {}),
   };
 };
 

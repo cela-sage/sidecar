@@ -7,6 +7,7 @@ const {
   agent,
   conversation,
   depth = 0,
+  doing,
   id,
   isFront = false,
   isSelected = false,
@@ -19,6 +20,7 @@ const {
   agent?: AgentFace;
   conversation?: string;
   depth?: number;
+  doing?: string;
   id?: string;
   isFront?: boolean;
   isSelected?: boolean;
@@ -32,7 +34,10 @@ const emit = defineEmits<{ open: [] }>();
 
 const conversationMenu = $conversationMenu();
 const isLit = computed(() => !!conversation && conversationMenu.lit === conversation);
-const hint = computed(() => (agent ? `${agent.name} · ${name}${mark === "killed" ? " · killed" : ""}` : (tip ?? name)));
+const hint = computed(() => {
+  const who = agent ? `${agent.name} · ${name}${mark === "killed" ? " · killed" : ""}` : (tip ?? name);
+  return doing ? `${who} · ${doing}` : who;
+});
 </script>
 
 <template>

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import type { HistoryEntry } from "../../shared/types/history.ts";
-import type { LiveSession } from "../../shared/types/session.ts";
+import type { LiveSession, SessionAgent, SessionAgentState } from "../../shared/types/session.ts";
 import { TaskState } from "../../shared/types/task.ts";
 import { Workstreams } from "../../shared/utils/workstream.ts";
 import { Org, type OrgConversation } from "./org.ts";
@@ -169,6 +169,50 @@ test("a running task whose Individual Contributors are idle does not spin, and o
   assert.equal(markOf(Org.treeOf(input)), "idle");
   assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: false } } })), "working");
   assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: true } } })), "needs");
+});
+
+test("a lead reads working while any specialist works, its tip says which, and a gone lead's specialists read killed", () => {
+  const agent = (name: string, state: SessionAgentState): SessionAgent => ({
+    id: `a${name}`,
+    name,
+    color: "blue",
+    state,
+  });
+  const fanned = [agent("hier", "working"), agent("cast", "idle"), agent("files", "idle")];
+  const tree = Org.treeOf({
+    projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
+    sessions: [
+      session({ key: "fans", name: "[Cela] IC board fans", agents: fanned }),
+      session({ key: "own", name: "[Cela] IC board own", agents: [agent("cast", "idle")] }),
+      session({ key: "asks", name: "[Cela] IC board asks", status: "waiting", agents: fanned }),
+      session({ key: "gone", name: "[Cela] IC board gone", life: "killed", agents: fanned }),
+    ],
+    busy: { own: { doing: true, asking: false } },
+    tasks: [
+      {
+        slug: "board",
+        title: "Board",
+        kind: "page",
+        format: "md",
+        path: "/tmp/board.md",
+        task: { state: "running", project: "cela" },
+      },
+    ],
+  });
+  const leads = tree.projects[0]?.tasks[0]?.leads ?? [];
+  assert.deepEqual(
+    leads.map((one) => `${one.name} ${one.mark} ${one.doing ?? "-"}`),
+    [
+      "asks needs Working: 1 of 3 specialists",
+      "fans working Working: 1 of 3 specialists",
+      "own working Working: its own turn",
+      "gone killed -",
+    ],
+  );
+  assert.deepEqual(
+    leads.at(-1)?.agents?.map((one) => one.state),
+    ["killed", "killed", "killed"],
+  );
 });
 
 test("a finished turn nobody opened draws a dot in place of the check, and a question, a wait or a turn open outrank it", () => {
