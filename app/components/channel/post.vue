@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-import { Bell, Check } from "@lucide/vue";
+import { Bell, Check, CornerDownRight } from "@lucide/vue";
 import type { PostItem } from "~/utils/channel-view";
 
 const { isFocused = false, isPane = false, item } = defineProps<{
@@ -23,6 +23,16 @@ const replies = computed(() => (item.thread?.count === 1 ? "1 reply" : `${item.t
         <span v-if="item.speaker.role" class="role">{{ item.speaker.role }}</span>
         <time class="at" :datetime="item.at">{{ clockOf(item.at) }}</time>
       </div>
+      <button
+        v-if="item.replyTo && !isPane"
+        class="reply-to plain-button focusable"
+        data-tip="Open the thread"
+        type="button"
+        @click="emit('thread', item.replyTo.id)"
+      >
+        <UiIcon :icon="CornerDownRight" size="xs" /><span class="reply-to-lead">replied to a thread:</span
+        ><span class="reply-to-text">{{ item.replyTo.text }}</span>
+      </button>
       <p class="text">
         <template v-for="(one, at) in item.segments" :key="at"
           ><span v-if="one.tone" class="mention" :data-tip="one.tip" :data-tone="one.tone">{{ one.text }}</span
@@ -30,6 +40,7 @@ const replies = computed(() => (item.thread?.count === 1 ? "1 reply" : `${item.t
         >
       </p>
       <p v-if="item.reach" class="reach"><UiIcon :icon="Bell" size="xs" />{{ item.reach }}</p>
+      <p v-if="item.isBroadcast && isPane" class="reach"><UiIcon :icon="CornerDownRight" size="xs" />Also sent to the channel</p>
       <div v-for="one in item.outside" :key="one.key" class="token">
         <span class="token-title">{{ one.name }} gets one read, and picks what to spend it on</span>
         <div class="choices">
@@ -133,6 +144,24 @@ const replies = computed(() => (item.thread?.count === 1 ? "1 reply" : `${item.t
 
 .text {
   @apply m-0 typo-body leading-relaxed text-pretty whitespace-pre-wrap text-fg;
+}
+
+.reply-to {
+  @apply flex min-w-0 items-center gap-1.5 self-start border-0 bg-transparent p-0 text-left typo-caption text-muted;
+}
+
+.reply-to-lead {
+  @apply flex-none;
+}
+
+.reply-to-text {
+  @apply min-w-0 truncate text-primary-deep;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .reply-to:hover .reply-to-text {
+    @apply underline underline-offset-2;
+  }
 }
 
 .mention {

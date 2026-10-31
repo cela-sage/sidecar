@@ -1,6 +1,6 @@
 import type { Channel, ChannelPost, SystemLine } from "~~/shared/types/channel";
 import { ChannelCast, type Cast, type Segment, type Speaker } from "./channel-cast.ts";
-import { andList } from "./label.ts";
+import { andList, shorten } from "./label.ts";
 import type { TaskMeta } from "./tasks.ts";
 
 export type ChannelTab = "messages" | "dms" | "document";
@@ -31,6 +31,8 @@ export interface PostItem {
   reach?: string;
   outside: OutsideCard[];
   thread?: ThreadSummary;
+  replyTo?: { id: string; text: string };
+  isBroadcast: boolean;
 }
 
 export interface SystemItem {
@@ -78,6 +80,11 @@ const { namesOf, segmentsOf, speaker, you } = ChannelCast;
 
 const everyLine = (channel: Channel): { at: string }[] => [...channel.lines, ...Object.values(channel.threads).flat()];
 
+const REPLY_TO_MAX = 80;
+
+const headOf = (channel: Channel, id: string): ChannelPost | undefined =>
+  channel.lines.find((one): one is ChannelPost => one.kind === "post" && one.id === id && !one.thread);
+
 const raiseOf = (post: ChannelPost, raised: Set<string>): Raise => {
   if (raised.has(post.id)) return "waiting";
   return post.reach.boss && post.answered ? "answered" : "none";
@@ -102,9 +109,10 @@ const summaryOf = (replies: ChannelPost[], { cast, raised }: Context): ThreadSum
 
 const postOf = (post: ChannelPost, context: Context, picked: string[] = []): PostItem => {
   const { channel, cast, raised } = context;
-  const replies = channel.threads[post.id] ?? [];
+  const replies = post.thread ? [] : (channel.threads[post.id] ?? []);
   const reach = reachOf(post, cast, picked);
   const lines = everyLine(channel).filter((one) => one.at <= post.at).length;
+  const head = post.thread && post.broadcast ? headOf(channel, post.thread) : undefined;
   return {
     kind: "post",
     id: post.id,
@@ -118,9 +126,11 @@ const postOf = (post: ChannelPost, context: Context, picked: string[] = []): Pos
       lines,
       ...(one.read ? { read: one.read } : {}),
     })),
+    isBroadcast: !!post.broadcast,
     ...(post.answered ? { answered: post.answered } : {}),
     ...(reach ? { reach } : {}),
     ...(replies.length ? { thread: summaryOf(replies, context) } : {}),
+    ...(head ? { replyTo: { id: head.id, text: shorten(head.text, REPLY_TO_MAX) } } : {}),
   };
 };
 
@@ -182,7 +192,7 @@ const streamOf = (channel: Channel, cast: Cast, since?: string): ChannelItem[] =
 
 const paneOf = (channel: Channel, cast: Cast, root: string): ChannelItem[] => {
   const context = contextOf(channel, cast);
-  const head = channel.lines.find((one): one is ChannelPost => one.kind === "post" && one.id === root);
+  const head = headOf(channel, root);
   if (!head) return [];
   const replies = channel.threads[root] ?? [];
   const asked = [head, ...replies].filter((one) => one.reach.boss && !!one.answered);
@@ -209,7 +219,7 @@ const paneOf = (channel: Channel, cast: Cast, root: string): ChannelItem[] => {
 };
 
 const rootOf = (channel: Channel, id: string): string | undefined => {
-  if (channel.lines.some((one) => one.kind === "post" && one.id === id)) return id;
+  if (headOf(channel, id)) return id;
   return Object.entries(channel.threads).find(([, replies]) => replies.some((one) => one.id === id))?.[0];
 };
 

@@ -15,7 +15,10 @@ export interface PostInput {
   slug: string;
   text: string;
   thread?: string;
+  broadcast?: boolean;
 }
+
+export type Saying = Omit<PostInput, "slug">;
 
 export const $channel = defineStore(() => {
   const sc = useSidecar();
@@ -51,10 +54,10 @@ export const $channel = defineStore(() => {
 
   const read = (slug: string): Promise<Channel> => $fetch<Channel>(`/api/tasks/${encodeURIComponent(slug)}/channel`);
 
-  const send = ({ slug, text, thread: root }: PostInput): Promise<ChannelPost> =>
+  const send = ({ slug, text, thread: root, broadcast = false }: PostInput): Promise<ChannelPost> =>
     $fetch<ChannelPost>(`/api/tasks/${encodeURIComponent(slug)}/channel`, {
       method: "POST",
-      body: { text, ...(root ? { thread: root } : {}) },
+      body: { text, ...(root ? { thread: root } : {}), ...(root && broadcast ? { broadcast } : {}) },
     });
 
   const markSeen = (): void => {
@@ -92,11 +95,11 @@ export const $channel = defineStore(() => {
     else task.show({ slug: to.slug });
   };
 
-  const post = async (text: string, root?: string): Promise<boolean> => {
+  const post = async (saying: Saying): Promise<boolean> => {
     const slug = task.slug;
-    if (!slug || isSending.value || !text.trim()) return false;
+    if (!slug || isSending.value || !saying.text.trim()) return false;
     isSending.value = true;
-    const sent = await send({ slug, text, ...(root ? { thread: root } : {}) }).then(
+    const sent = await send({ slug, ...saying }).then(
       () => true,
       (error: unknown) => {
         chrome.toast(failReason(error) ?? "Could not post in the channel", "destructive");

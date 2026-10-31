@@ -88,22 +88,24 @@ test("a raise waits on you until you answer in its thread, and an archived chann
   );
 });
 
-test("the stream marks what is new since you last looked, never your own posts, and sums a thread up", () => {
+test("the stream marks what is new since you last looked, never your own posts, sums a thread up and shows a reply sent to it", () => {
   const first = post("p1", "aaaaaaa3", "row menu order is in");
+  const loud = post("p7", "aaaaaaa1", "merging it now", { thread: "p1", broadcast: true });
   const channel = channelOf({
-    lines: [first, post("p4", "YOU", "thanks"), post("p6", "aaaaaaa2", "lane reuses the rows")],
-    threads: { p1: [post("p2", "YOU", "ok"), post("p3", "aaaaaaa1", "checked"), post("p5", "YOU", "merge it")] },
+    lines: [first, post("p4", "YOU", "thanks"), post("p6", "aaaaaaa2", "lane reuses the rows"), loud],
+    threads: { p1: [post("p2", "YOU", "ok"), post("p3", "aaaaaaa1", "checked"), post("p5", "YOU", "merge it"), loud] },
   });
   const stream = ChannelView.streamOf(channel, ChannelCast.castOf(channel, []), at(3));
   assert.deepEqual(
     stream.map((one) => one.kind),
-    ["post", "post", "divider", "post"],
+    ["post", "post", "divider", "post", "post"],
   );
   const thread = posts(stream)[0]?.thread;
-  assert.deepEqual([thread?.count, thread?.last, thread?.who.map((one) => one.name)], [3, at(5), ["You", "Ivo"]]);
-  assert.equal(ChannelView.rootOf(channel, "p3"), "p1");
+  assert.deepEqual([thread?.count, thread?.last, thread?.who.map((one) => one.name)], [4, at(7), ["You", "Ivo"]]);
+  assert.deepEqual(posts(stream).at(-1)?.replyTo, { id: "p1", text: "row menu order is in" });
+  assert.deepEqual([ChannelView.rootOf(channel, "p3"), ChannelView.rootOf(channel, "p7")], ["p1", "p1"]);
   assert.equal(ChannelView.rootOf(channel, "p9"), undefined);
-  assert.equal(ChannelView.latestOf(channel), at(6));
+  assert.equal(ChannelView.latestOf(channel), at(7));
 });
 
 test("a mention reads as who it reaches: a member by name, an outside agent by key, @all and @boss by tone", () => {

@@ -6,6 +6,7 @@ const { placeholder, thread } = defineProps<{ placeholder: string; thread?: stri
 
 const channel = $channel();
 const text = ref("");
+const isBroadcast = ref(false);
 const input = useTemplateRef<{ edit: (change: (from: Typed) => Typed) => void; focus: () => void }>("input");
 
 const hint = computed(() => ChannelPicker.reachOf(text.value, channel.cast));
@@ -19,7 +20,10 @@ const mention = (): void =>
 
 const send = async (): Promise<void> => {
   if (isEmpty.value || channel.isSending) return;
-  if (await channel.post(text.value, thread)) text.value = "";
+  const saying = { text: text.value, ...(thread ? { thread, broadcast: isBroadcast.value } : {}) };
+  if (!(await channel.post(saying))) return;
+  text.value = "";
+  isBroadcast.value = false;
 };
 
 defineExpose({ focus: () => input.value?.focus() });
@@ -44,6 +48,14 @@ defineExpose({ focus: () => input.value?.focus() });
         size="xs"
         @click="mention"
       />
+      <label
+        v-if="thread"
+        class="broadcast"
+        data-tip="The reply shows in the channel too, marked as a reply to this thread. It notifies once"
+      >
+        <input v-model="isBroadcast" class="check" type="checkbox" />
+        Also send to #{{ channel.room?.slug }}
+      </label>
       <span class="spacer" />
       <span
         v-if="!thread"
@@ -84,6 +96,14 @@ defineExpose({ focus: () => input.value?.focus() });
 
 .spacer {
   @apply flex-1;
+}
+
+.broadcast {
+  @apply inline-flex min-w-0 cursor-pointer items-center gap-1.75 truncate typo-caption text-muted;
+}
+
+.check {
+  @apply m-0 size-3.25 flex-none cursor-pointer accent-fg;
 }
 
 .hint {
