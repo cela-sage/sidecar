@@ -8,20 +8,22 @@ interface Notice {
   title: string;
   text: string;
   tag: string;
+  open: () => void;
 }
 
 export const useTaskNotices = (): void => {
-  const task = $task();
+  const channel = $channel();
+  const boss = $bossNotice();
   const isLeading = ref(false);
 
-  const notify = ({ slug, subtitle, title, text, tag }: Notice): void => {
+  const notify = ({ slug, subtitle, title, text, tag, open }: Notice): void => {
     if (!isLeading.value) return;
     if ("Notification" in window && Notification.permission === "granted") {
       const notice = new Notification(`${subtitle} · ${title}`, { body: text, tag });
       notice.onclick = () => {
         window.focus();
         notice.close();
-        task.show({ slug });
+        open();
       };
       return;
     }
@@ -37,10 +39,21 @@ export const useTaskNotices = (): void => {
       title: data.title,
       text: data.question,
       tag: data.thread,
+      open: () => channel.land({ slug: data.slug, tab: "document" }),
     });
 
-  const raised = ({ data }: SidecarEvent<"channel.raised">): void =>
-    notify({ slug: data.slug, subtitle: "@boss", title: data.title, text: data.text, tag: data.post });
+  // A window in front shows the raise as its own notice, with Reply, so the system one is only for an app in the back.
+  const raised = ({ data }: SidecarEvent<"channel.raised">): void => {
+    if (document.hasFocus()) return;
+    notify({
+      slug: data.slug,
+      subtitle: "@boss",
+      title: data.title,
+      text: data.text,
+      tag: data.post,
+      open: () => boss.open(data),
+    });
+  };
 
   onMounted(() => {
     if (!navigator.locks) isLeading.value = true;

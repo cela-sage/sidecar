@@ -9,6 +9,7 @@ const questions = $questions();
 const seen = $seen();
 const raised = $raised();
 const channel = $channel();
+const boss = $bossNotice();
 const dock = $dock();
 const runs = $runs();
 const prompt = $prompt();
@@ -116,6 +117,8 @@ events.on("conversation.unseen", ({ data }) => seen.heard(data));
 events.on("dock.changed", ({ data }) => dock.heard(data));
 events.on("channel.changed", ({ data }) => raised.heard(data));
 events.on("channel.changed", ({ data }) => channel.heard(data));
+events.on("channel.changed", ({ data }) => void boss.settle(data));
+events.on("channel.raised", (event) => void boss.hear(event));
 events.on("runs.changed", ({ data }) => void runs.load(data.project));
 events.on("question.changed", ({ data }) => questions.hear(data));
 events.on("commands.changed", ({ data }) => prompt.heard(data));
@@ -155,4 +158,5 @@ onMounted(() => {
   <ChromeCommentMode />
   <ChromeVeil />
   <ChromeToaster />
+  <ChannelNotice />
 </template>
