@@ -11,14 +11,38 @@ export interface Author {
   who: Who;
 }
 
+export interface Named {
+  key: string;
+  name?: string;
+}
+
+export interface Roster {
+  members: Named[];
+  everyone: Named[];
+}
+
 export interface AimInput {
   slug: string;
   author: Author;
   text: string;
   members: ChannelMember[];
+  everyone: Named[];
   root?: ChannelPost;
   archived: boolean;
   isConversation: (key: string) => boolean;
+}
+
+export interface Speaker {
+  by: string;
+  role?: Role;
+  name?: string;
+}
+
+export interface Mentioned {
+  keys: string[];
+  all: boolean;
+  boss: boolean;
+  ambiguous: string[];
 }
 
 export type NoteKind = "member" | "outside" | "answer";
@@ -32,29 +56,50 @@ export interface NoteInput {
   thread: string;
 }
 
-const MENTION = /(?<![\w@./-])@([\w-]+)/g;
+const MENTION = /(?<![\p{L}\p{N}_@./-])@([\p{L}\p{N}_-]+)/gu;
 
-// Names plug in here: until the agents have them, a mention is a conversation's 8-hex key.
-const resolve = (word: string): string | undefined => (isKey(word.toLowerCase()) ? word.toLowerCase() : undefined);
+// The one place a mention becomes conversations: a key, else a member's name, else a name outside the channel.
+const resolve = (word: string, { members, everyone }: Roster): string[] => {
+  const lower = word.toLowerCase();
+  if (isKey(lower)) return [lower];
+  const named = (list: Named[]): string[] =>
+    list.filter((one) => one.name?.toLowerCase() === lower).map((one) => one.key);
+  const inside = named(members);
+  return inside.length ? inside : [...new Set(named(everyone))];
+};
 
-const mentioned = (text: string): { keys: string[]; all: boolean; boss: boolean } => {
+const mentioned = (text: string, roster: Roster): Mentioned => {
   const words = [...text.matchAll(MENTION)].map((hit) => hit[1] ?? "");
-  const keys = words.flatMap((word) => resolve(word) ?? []);
-  return { keys: [...new Set(keys)], all: words.includes("all"), boss: words.includes("boss") };
+  const named = words
+    .filter((word) => word !== "all" && word !== "boss")
+    .map((word) => ({
+      word,
+      keys: resolve(word, roster),
+    }));
+  return {
+    keys: [...new Set(named.flatMap(({ keys }) => (keys.length === 1 ? keys : [])))],
+    all: words.includes("all"),
+    boss: words.includes("boss"),
+    ambiguous: named.filter(({ keys }) => keys.length > 1).map(({ word }) => word),
+  };
 };
 
 const listed = (keys: string[]): string => keys.map((key) => `\`${key}\``).join(", ");
 
 const isPrivileged = ({ who }: Author): boolean => who === "YOU" || who === "EA";
 
-const aim = ({ slug, author, text, members, root, archived, isConversation }: AimInput): PostMentions => {
+const aim = (input: AimInput): PostMentions => {
+  const { slug, author, text, members, everyone, root, archived, isConversation } = input;
   if (archived) throw new Refusal(`#${slug} is archived, so its channel is read only`, 2);
   if (!text.trim()) throw new Refusal('post needs the message in quotes: post "<text>"', 2);
   const inside = new Set(members.map((one) => one.key));
   const isAsked = !!root?.reach.outside.some((one) => one.key === author.by);
   if (!isPrivileged(author) && !inside.has(author.by) && !isAsked)
     throw new Refusal(`you are not in #${slug}, so you cannot post there`, 2);
-  const { keys, all, boss } = mentioned(text);
+  const roster = { members: members.map(({ key, agent }) => ({ key, name: agent?.name })), everyone };
+  const { keys, all, boss, ambiguous } = mentioned(text, roster);
+  if (ambiguous.length)
+    throw new Refusal(`@${ambiguous.join(", @")} names more than one conversation outside #${slug}, so @ its key`, 2);
   const others = keys.filter((key) => key !== author.by);
   const outside = others.filter((key) => !inside.has(key));
   if (outside.length && !isPrivileged(author))
@@ -70,10 +115,11 @@ const aim = ({ slug, author, text, members, root, archived, isConversation }: Ai
   };
 };
 
-const speakerOf = (by: string, role?: Role): string => {
+const speakerOf = ({ by, role, name }: Speaker): string => {
   if (by === "YOU") return "Marco";
   if (role === "EA") return "the Assistant";
-  return role ? `\`${by}\` (${role})` : `\`${by}\``;
+  const who = name ? `${name} \`${by}\`` : `\`${by}\``;
+  return role ? `${who} (${role})` : who;
 };
 
 const cli = (): string => join(Sidecar.root(), "bin", "sidecar");

@@ -1,8 +1,10 @@
 import * as Events from "../../../lib/sidecar/events.ts";
 import type { Refused } from "../../../shared/types/channel.ts";
 import type { Life, LiveSession } from "../../../shared/types/session.ts";
+import { Titles } from "../../../shared/utils/titles.ts";
 import { Workstreams } from "../../../shared/utils/workstream.ts";
 import { Projects } from "../projects.ts";
+import { Faces } from "../sessions/faces.ts";
 import { liveSessions } from "../sessions/index.ts";
 import { Spawns } from "../sessions/spawns.ts";
 import { TaskCaller } from "../tasks/caller.ts";
@@ -89,10 +91,18 @@ const sync = (given: string): Synced => {
   const folded = refold(file.slug);
   const lines = missing({ file, folded, sessions });
   if (!lines.length) return { file, folded, sessions };
-  for (const one of lines) ChannelStore.append(file.slug, one);
+  for (const one of lines) {
+    if (one.kind === "join") Faces.draw({ key: one.key, project: Titles.parse(one.title)?.token ?? "" });
+    ChannelStore.append(file.slug, one);
+  }
+  const faces = Faces.all();
+  const named = sessions.map((one) => {
+    const agent = one.agent ?? faces.get(one.key);
+    return agent ? { ...one, agent } : one;
+  });
   const caught = refold(file.slug);
   changed(file.slug, caught);
-  return { file, folded: caught, sessions };
+  return { file, folded: caught, sessions: named };
 };
 
 const settled = async (

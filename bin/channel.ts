@@ -1,6 +1,8 @@
 import type { ChannelLine, ChannelMember, ChannelPost } from "../shared/types/channel.ts";
+import type { AgentFace } from "../shared/types/session.ts";
 import { Channels } from "../server/utils/channels/index.ts";
 import type { Author } from "../server/utils/channels/reach.ts";
+import { Faces } from "../server/utils/sessions/faces.ts";
 import { TaskCaller } from "../server/utils/tasks/caller.ts";
 import { TaskNotice } from "../server/utils/tasks/notice.ts";
 import { clock } from "./clock.ts";
@@ -19,13 +21,15 @@ const authorOf = (): Author => {
   return { by: who === "YOU" || !key ? "YOU" : key, who };
 };
 
-const keys = (list: string[]): string => list.map((key) => `\`${key}\``).join(", ");
-
 const reached = ({ id, reach }: ChannelPost, slug: string): string => {
+  const faces = Faces.all();
+  const names = (list: string[]): string => list.map((key) => faces.get(key)?.name ?? `\`${key}\``).join(", ");
   const said = [
-    ...(reach.notified.length ? [`notified ${keys(reach.notified)}`] : []),
-    ...(reach.missed.length ? [`could not reach ${keys(reach.missed)}, which is not running`] : []),
-    ...(reach.outside.length ? [`${keys(reach.outside.map((one) => one.key))} outside the channel gets one read`] : []),
+    ...(reach.notified.length ? [`notified ${names(reach.notified)}`] : []),
+    ...(reach.missed.length ? [`could not reach ${names(reach.missed)}, which is killed`] : []),
+    ...(reach.outside.length
+      ? [`${names(reach.outside.map((one) => one.key))} outside the channel gets one read`]
+      : []),
     ...(reach.boss ? ["raised it to Marco, who answers in its thread"] : []),
   ];
   return `posted ${id} in #${slug}, ${said.length ? said.join("; ") : "and it notified no one, since it has no @"}`;
@@ -63,11 +67,12 @@ const lineOf = <K extends ChannelLine["kind"]>(kind: K, line: Line<K>, who: (key
   `  ${clock(line.at).padEnd(13)} ${LINES[kind](line, who)}`;
 
 const whoOf =
-  (members: ChannelMember[]) =>
+  (members: ChannelMember[], faces: Map<string, AgentFace>) =>
   (key: string): string => {
     if (key === "YOU") return "Marco";
     const role = members.find((one) => one.key === key)?.role;
-    return role === "EA" ? `the Assistant ${key}` : `${key}${role ? ` ${role}` : ""}`;
+    if (role === "EA") return "the Assistant";
+    return [faces.get(key)?.name ?? key, role].filter(Boolean).join(" ");
   };
 
 const channel = async ({ slug, values }: ChannelRun): Promise<number> => {
@@ -81,8 +86,10 @@ const channel = async ({ slug, values }: ChannelRun): Promise<number> => {
     console.log(JSON.stringify(taken, null, 2));
     return 0;
   }
-  const who = whoOf(taken.members);
-  const crew = taken.members.map((one) => `${one.key} ${one.role}${one.life === "killed" ? " (killed)" : ""}`);
+  const who = whoOf(taken.members, Faces.all());
+  const crew = taken.members.map(
+    ({ key, role, life, agent }) => `${agent?.name ?? key} ${role} ${key}${life === "killed" ? " (killed)" : ""}`,
+  );
   console.log(
     [
       `#${taken.slug}  ${taken.title}${taken.archived ? "  archived, read only" : ""}`,

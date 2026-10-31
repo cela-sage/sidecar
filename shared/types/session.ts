@@ -1,5 +1,10 @@
 export type SessionAgent = { name: string; color: string };
 
+export interface AgentFace {
+  name: string;
+  icon: number;
+}
+
 export type SessionStatus = "busy" | "idle" | "waiting";
 
 export const Life = ["alive", "killed"] as const;
@@ -39,6 +44,7 @@ export interface LiveSession {
   startedAt?: number;
   // Set only when `claude agents` answered, so its absence means the agent view is unknown, not empty.
   inView?: boolean;
+  agent?: AgentFace;
 }
 
 export interface Retitled {

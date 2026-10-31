@@ -1,4 +1,4 @@
-import type { Life, SessionStatus } from "./session.ts";
+import type { AgentFace, Life, SessionStatus } from "./session.ts";
 import type { Role } from "./task.ts";
 
 export interface ChannelMember {
@@ -7,6 +7,7 @@ export interface ChannelMember {
   title: string;
   life: Life;
   status?: SessionStatus;
+  agent?: AgentFace;
   joined: string;
 }
 

@@ -1,9 +1,10 @@
 import { readdirSync } from "node:fs";
-import type { LiveSession } from "../../../shared/types/session.ts";
+import type { AgentFace, LiveSession } from "../../../shared/types/session.ts";
 import { sessionOrder } from "../../../shared/utils/sessions.ts";
 import { agentsOf } from "./agents.ts";
 import { artifactsOf, keysWithArtifacts } from "./artifact-lists.ts";
 import { sessionColor } from "./identity.ts";
+import { Faces } from "./faces.ts";
 import { agentView, jobs, type JobEntry } from "./jobs.ts";
 import { Lives } from "./life.ts";
 import { conversationsHome, isKey, keyOf } from "./paths.ts";
@@ -32,9 +33,10 @@ interface Sources {
   job?: JobEntry;
   ref?: TranscriptRef;
   view?: Set<string>;
+  agent?: AgentFace;
 }
 
-function build(key: string, { entry, job, ref, view }: Sources): LiveSession | undefined {
+function build(key: string, { entry, job, ref, view, agent }: Sources): LiveSession | undefined {
   const id = job?.id || entry?.id || ref?.id;
   // Neither a job, a live process nor a transcript means nothing on disk can say what this session was.
   if (!id) return undefined;
@@ -58,6 +60,7 @@ function build(key: string, { entry, job, ref, view }: Sources): LiveSession | u
     archived: job ? undefined : true,
     startedAt: job?.startedAt,
     ...(view ? { inView: view.has(key) } : {}),
+    ...(agent ? { agent } : {}),
   };
 }
 
@@ -72,12 +75,14 @@ export function liveSessions({ scope = "all", key }: SessionsQuery = {}): LiveSe
   const running = new Map(jobs().map((job) => [job.key, job]));
   const view = agentView();
   const transcripts = transcriptIndex();
+  const faces = Faces.all();
   const keys = new Set<string>([...running.keys(), ...entries.keys()]);
   if (key) keys.add(key);
   if (scope === "all") for (const one of [...keysWithArtifacts(), ...seenKeys()]) keys.add(one);
   const out: LiveSession[] = [];
   for (const one of keys) {
-    const session = build(one, { entry: entries.get(one), job: running.get(one), ref: transcripts.get(one), view });
+    const sources = { entry: entries.get(one), job: running.get(one), ref: transcripts.get(one), view };
+    const session = build(one, { ...sources, agent: faces.get(one) });
     if (session) out.push(session);
   }
   return out.sort(sessionOrder);

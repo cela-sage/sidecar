@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import * as Events from "../../../lib/sidecar/events.ts";
+import { Faces } from "../sessions/faces.ts";
 import { Spawns } from "../sessions/spawns.ts";
 import { TaskLane } from "../tasks/lane.ts";
 import { Channels } from "./index.ts";
@@ -33,6 +34,7 @@ const stamp = (state: string): void =>
   );
 
 const asIc = { by: LANE, who: "IC" as const };
+const nameOf = (key: string): string => Faces.all().get(key)?.name ?? "";
 const asYou = { by: "YOU", who: "YOU" as const };
 
 const got = async (key: string): Promise<string[]> => {
@@ -90,6 +92,13 @@ test("the crew joins on its own, the killed one last, and a post with no @ notif
       [DESK, undefined],
     ],
   );
+  const faces = Faces.all();
+  assert.deepEqual(
+    channel.members.map(({ agent }) => agent),
+    channel.members.map(({ key }) => faces.get(key)),
+  );
+  assert.equal(new Set(channel.members.map(({ agent }) => agent?.name)).size, 4);
+  assert.equal(faces.has(EA), false);
   ChannelStore.append("board", { kind: "join", key: DL, title: "[Cela] DL plan", role: "DL" });
   ChannelStore.append("board", { kind: "kill", keys: [DESK] });
   assert.equal(Channels.read("board").lines.length, channel.lines.length);
@@ -99,12 +108,13 @@ test("the crew joins on its own, the killed one last, and a post with no @ notif
   assert.deepEqual(await Promise.all([DL, SL, NELL].map(got)), [[], [], []]);
 });
 
-test("@key interrupts that member alone, @all every member alive but the author, and a killed member is missed", async () => {
-  const one = await Channels.post({ given: "board", author: asIc, text: `@${SL} take the row menu` });
+test("@name interrupts that member alone, @all every member alive but the author, and a killed member is missed", async () => {
+  const [ivo, juno] = [nameOf(SL), nameOf(LANE)];
+  const one = await Channels.post({ given: "board", author: asIc, text: `@${ivo.toLowerCase()} take the row menu` });
   const [note] = await got(SL);
   assert.match(
     note ?? "",
-    new RegExp(`^\\[\\[sidecar slug=board from=${LANE}\\]\\]\\n\`${LANE}\` \\(IC\\) in #board: @${SL}`),
+    new RegExp(`^\\[\\[sidecar slug=board from=${LANE}\\]\\]\\n${juno} \`${LANE}\` \\(IC\\) in #board: @${ivo}`, "i"),
   );
   assert.match(note ?? "", new RegExp(`task board post "<reply>" --thread ${one.id}`));
   assert.deepEqual(await got(DL), []);
@@ -165,6 +175,19 @@ test("an agent can @ only members, and Marco's @ of an outsider gives it one rea
 
   const assistant = await Channels.post({ given: "board", author: { by: EA, who: "EA" }, text: `@${NELL} thanks` });
   assert.deepEqual(assistant.reach.outside, [{ key: NELL }]);
+});
+
+test("two agents in one project never share a name, and a drawn pair reads back the same after a reload", () => {
+  const keys = Array.from({ length: 220 }, (_, i) => `ee${String(i).padStart(6, "0")}`);
+  const drawn = keys.map((key) => Faces.draw({ key, project: "Cela" }));
+  const cela = [...Faces.all()].filter(([key]) => key.startsWith("ee") || [DL, SL, LANE, DESK].includes(key));
+  assert.equal(new Set(cela.map(([, face]) => face.name.toLowerCase())).size, cela.length);
+  assert.ok(drawn.every(({ icon }) => Number.isInteger(icon) && icon >= 0 && icon < 64));
+  assert.deepEqual(
+    keys.map((key) => Faces.all().get(key)),
+    drawn,
+  );
+  assert.deepEqual(Faces.draw({ key: keys[0] ?? "", project: "MF" }), drawn[0]);
 });
 
 test("an archived channel is read only, and it says who archived it", async () => {

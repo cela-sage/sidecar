@@ -44,6 +44,7 @@ const of = (folded: Folded, sessions: LiveSession[]): ChannelMember[] => {
         title: session?.name ?? title,
         life: session?.life ?? "killed",
         ...(session?.status ? { status: session.status } : {}),
+        ...(session?.agent ? { agent: session.agent } : {}),
         joined: at,
       };
     })

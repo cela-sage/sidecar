@@ -2,7 +2,6 @@ import * as Events from "../../../lib/sidecar/events.ts";
 import { Refusal } from "../../../lib/sidecar/refusal.ts";
 import type { Channel, ChannelLine, ChannelMember, ChannelPost, DirectMessage } from "../../../shared/types/channel.ts";
 import type { LiveSession } from "../../../shared/types/session.ts";
-import type { Role } from "../../../shared/types/task.ts";
 import { Titles } from "../../../shared/utils/titles.ts";
 import { Workstreams } from "../../../shared/utils/workstream.ts";
 import { deliver } from "../sessions/inbox.ts";
@@ -10,7 +9,7 @@ import { TaskFiles } from "../tasks/file.ts";
 import { Crew } from "./crew.ts";
 import { ChannelFold, type Folded } from "./fold.ts";
 import { Members } from "./members.ts";
-import { Reach, type Author, type NoteKind } from "./reach.ts";
+import { Reach, type Author, type NoteKind, type Speaker } from "./reach.ts";
 import { ChannelStore } from "./store.ts";
 import { ChannelSync, type Synced } from "./sync.ts";
 
@@ -66,9 +65,12 @@ const raisedIn = (folded: Folded, thread: string): string[] => [
   ),
 ];
 
-const roleOf = (key: string, members: ChannelMember[], sessions: LiveSession[]): Role | undefined => {
-  const name = sessions.find((one) => one.key === key)?.name;
-  return members.find((one) => one.key === key)?.role ?? (name ? Titles.parse(name)?.role : undefined);
+const speakerOf = (by: string, members: ChannelMember[], sessions: LiveSession[]): Speaker => {
+  const member = members.find((one) => one.key === by);
+  const session = sessions.find((one) => one.key === by);
+  const role = member?.role ?? (session?.name ? Titles.parse(session.name)?.role : undefined);
+  const name = (member?.agent ?? session?.agent)?.name;
+  return { by, ...(role ? { role } : {}), ...(name ? { name } : {}) };
 };
 
 // Marco's reply in a thread holding a raised @boss goes to its author, which wakes a killed one, as a decision does.
@@ -82,6 +84,7 @@ const post = async ({ given, author, text, thread }: PostInput): Promise<Channel
     author,
     text,
     members,
+    everyone: sessions.flatMap(({ key, agent }) => (agent ? [{ key, name: agent.name }] : [])),
     root,
     archived: folded.archived,
     isConversation: (key) => known.has(key),
@@ -100,7 +103,7 @@ const post = async ({ given, author, text, thread }: PostInput): Promise<Channel
     ...mentions.outside.map((key): [string, NoteKind] => [key, "outside"]),
     ...answered.map((key): [string, NoteKind] => [key, "answer"]),
   ]);
-  const speaker = Reach.speakerOf(author.by, roleOf(author.by, members, sessions));
+  const speaker = Reach.speakerOf(speakerOf(author.by, members, sessions));
   const from = author.by === "YOU" ? undefined : author.by;
   const results = await Promise.all(
     [...notes].map(async ([key, kind]) => {
