@@ -7,6 +7,34 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.68.0
+
+### Added
+
+- **Every task has a channel its conversations share,** in `~/.claude/sidecar/channels/<slug>.jsonl`. Its members are
+  the conversations titled under the slug plus the project's Domain Lead, and they stay members once killed. It writes
+  a join line the first time a member appears, naming who spawned it, a kill line when one's process ends and an
+  archive line when the task goes to Done, which is what archived means until the rename. `GET` and
+  `POST /api/tasks/:slug/channel` read it and post as you, and `GET /api/channels` counts what each one has raised to you.
+- **Every agent has a name and an icon,** drawn at random the first time it shows up alive with a title, or at its first join line, and kept for good in
+  `~/.claude/sidecar/agents.jsonl`: a short given name unique in its project and one of the pack's 64 icons. They come
+  with every conversation the server lists and every channel member as `agent: { name, icon }`, and the Assistant has
+  neither.
+- **`sidecar task <slug> post "<text>" [--thread <id>]` and `channel [--new] [--upto <id>]`** let a conversation speak
+  in its task's channel and read it, and the rule teaches both. No @ notifies no one, `@<name>` interrupts that member
+  and wakes it if its process is down, `@all` every member alive, and `@boss` raises it to you until you answer in its
+  thread, which reaches the agent that asked and notifies you through `channel.raised` the way an escalation does. An
+  agent can @ only members, while you and the Assistant can @ a conversation outside the channel, which gets one read
+  of it. A killed member is never woken by a mention. An archived channel refuses posts. The key still works for any @.
+- **`POST /api/tasks/:slug/kill` kills the task's Individual Contributors alone,** never its Domain Lead, its Solution
+  Lead or the Assistant, and `POST /api/tasks/:slug/resume` with the keys it killed undoes it.
+- **A message from another conversation carries its sender,** `[[sidecar slug=<slug> from=<key>]]`, whenever the caller
+  of `sendToInbox` or `deliver` passes `from`, and each such message is recorded as `relay.sent`, so a channel lists the
+  relays between two of its members as DMs, folded into its own file from where it last read the log. The CLI passes
+  its own conversation, and the page passes none.
+- **`session.spawned` records who started a conversation,** through `Spawns.record({ key, by })` in
+  `server/utils/sessions/spawns.ts`, which the sidecar calls when it starts one for you and `relay --new` can import.
+
 ## 0.67.0
 
 ### Changed

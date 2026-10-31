@@ -22,7 +22,7 @@ bin/sidecar setup
 
 ## What Claude is told
 
-While the plugin is installed, the mod adds one section to every system prompt, from `rules/sidecar.md`: the sidecar is installed, pages and documents written for you to read go into `~/.claude/sidecar/artifacts/` as `<slug>.html` or `<slug>.md`, the chat reply says only what Claude did while any explanation goes there as a `.md`, a message opening on a `[[sidecar]]` line is you writing from the sidecar, a page's open threads are read with `sidecar comments <slug>` before it changes, another conversation is named by its key alone in backticks, a conversation working on a part of a task is titled under that task's slug so the tree groups it there, and one titled outside its task is retitled from any session through `PATCH /api/sessions/<key>` with `{"title"}`, a code block that quotes a file names the file and its lines after the fence's language, as in `ts [src/menu.ts:3-9]`, and an image, video or audio file is named by its path in backticks. Uninstalling the plugin takes the section away, and nothing is written into anyone's `CLAUDE.md` or rules.
+While the plugin is installed, the mod adds one section to every system prompt, from `rules/sidecar.md`: the sidecar is installed, pages and documents written for you to read go into `~/.claude/sidecar/artifacts/` as `<slug>.html` or `<slug>.md`, the chat reply says only what Claude did while any explanation goes there as a `.md`, a message opening on a `[[sidecar]]` line is you writing from the sidecar, a page's open threads are read with `sidecar comments <slug>` before it changes, a task's channel is read with `sidecar task <slug> channel --new` and spoken in with `post`, where an @ reaches a member, every member or you, another conversation is named by its key alone in backticks, a conversation working on a part of a task is titled under that task's slug so the tree groups it there, and one titled outside its task is retitled from any session through `PATCH /api/sessions/<key>` with `{"title"}`, a code block that quotes a file names the file and its lines after the fence's language, as in `ts [src/menu.ts:3-9]`, and an image, video or audio file is named by its path in backticks. Uninstalling the plugin takes the section away, and nothing is written into anyone's `CLAUDE.md` or rules.
 
 ## The CLI
 
@@ -572,6 +572,57 @@ Escalate and hire notify you. When a sidecar page is open, the one holding the `
 raises a notification whose click opens the task in the main panel; with no page open, or without notification permission,
 it is `osascript display notification`, whose click can only open Script Editor, since macOS ties it to that app.
 
+### The channel
+
+Each task, the workstream, has a channel its conversations share, kept in `~/.claude/sidecar/channels/<slug>.jsonl`
+beside the history, one line per post or system line. Nobody types its members in: they are the conversations whose
+title puts them under the slug, the Solution Lead and the Individual Contributors, plus the project's Domain Lead, and
+whoever joined stays a member once killed or retitled, sorted after the ones alive. The channel catches up each time
+it is read or posted to, so a member it has not seen before gets a join line, a member whose process ended gets a kill
+line, one that comes back gets a line saying so, and the task moving to Done, which is what archived means for now, or
+back out of it gets an archive or a restore line naming who moved it. A join line names who spawned the agent, read
+from `session.spawned`, which the sidecar records when it starts a conversation for you and anything else records by
+importing `Spawns` from `server/utils/sessions/spawns.ts` and calling `Spawns.record({ key, by })`.
+
+The first time a conversation shows up alive with a title, or its first join line, draws its name and its icon, at
+random and once: a short given name no other
+agent of its project holds, and an icon from the 64 of the pack. Both are kept in `~/.claude/sidecar/agents.jsonl`
+keyed by the conversation's key, so they hold across reloads and restarts, and the server puts them on every
+conversation it lists and on every channel member as `agent: { name, icon }`. The Assistant gets neither and keeps
+the mascot.
+
+```sh
+sidecar task <slug> post "Row menu order: Open, Mention, Reveal. @Pip this one's yours"
+sidecar task <slug> post "Folding them with the tree's own row" --thread 9f8e7d6c   # an answer in that post's thread
+sidecar task <slug> channel --new                  # what is new since your last read; --json for the whole of it
+sidecar task <slug> channel --upto 9f8e7d6c        # outside the channel: the one read a mention gave you
+```
+
+A post with no @ notifies no one. `@<name>` delivers it into that member's inbox, which interrupts its turn and wakes
+one alive whose process is down, `@all` does the same for every member alive but the one posting, and `@boss` raises
+it to you: the post counts as waiting
+on you, the workstream with it, until you answer in its thread, and your answer is delivered to the agent that asked,
+waking it if it was killed, the way a decision reaches the conversation that escalated. A raise notifies you the way
+an escalation does, through `channel.raised`. An agent can @ only the channel's members and is refused otherwise,
+while you and the Assistant can @ any conversation, and one outside the channel gets the message with the command for
+its one read, the channel up to that message, and may answer in that thread alone. A mention never wakes a killed
+member, so the post's reach lists it as missed. What a member receives says who said it in which channel and gives
+the exact command to answer in its thread. A mention resolves through one function, case-insensitively: a member's
+name first, then a name only one conversation outside the channel holds, and the eight-hex key always works, while a
+name more than one outside conversation holds is refused with a request for the key.
+A channel's DMs are the relays between two of its members, which `sendToInbox` records as `relay.sent` whenever its
+caller passes the sending conversation as `from`, and a channel's own deliveries are its posts, not DMs. The channel
+folds them into its own file as it catches up, reading `events.jsonl` only from the offset it stopped at last time,
+kept in `channels/<slug>.offset`, so a read costs what is new and the DMs outlive the log. An archived channel refuses
+posts.
+
+`GET /api/tasks/:slug/channel` answers the members with their role, title, life, status and agent, the lines, the threads,
+the DMs, whether it is archived and which posts are raised, and `POST` with `{ text, thread? }` posts as you.
+`POST /api/tasks/:slug/kill` kills the workstream's Individual Contributors that are alive, never its Domain Lead,
+its Solution Lead or the Assistant, and answers `{ killed, refused }`; `POST /api/tasks/:slug/resume` with
+`{ keys }` resumes exactly those, which is the kill's Undo. `GET /api/channels` counts the raised posts per channel,
+and `channel.changed` carries the new count with every change.
+
 ### The history
 
 Each task keeps `~/.claude/sidecar/history/<slug>.jsonl`, one entry a line, from four feeds: every turn an Individual
@@ -651,6 +702,10 @@ published while the sidecar is down still arrives once it starts. The topics and
 | `question.changed` | `key`, `ref`, `questions` | the server, when the mod opens an AskUserQuestion or a permission prompt and again, without `questions`, when it settles | The door and the chat draw the question and its options |
 | `message.landed`   | `key`, `text`           | the server, when the mod tells it that a session took a sidecar message         | The chat shows the message as landed        |
 | `usage.changed`    | `key`                   | the server, when the usage the mod posts differs from the last it held          | The plan block and the context meter read again |
+| `relay.sent`       | `from`, `to`, `text`, `slug` | `sendToInbox`, for every message whose caller names the conversation sending it | A channel lists the ones between two of its members as DMs |
+| `channel.changed`  | `slug`, `raised`        | the channel, for every post, reach and system line                               | The channel reads itself again, and the tree counts its raised posts |
+| `channel.raised`   | `slug`, `title`, `post`, `from`, `text` | a post with `@boss`                                          | Notifies you the way an escalation does     |
+| `session.spawned`  | `key`, `by`             | `Spawns.record`, when the sidecar or `relay --new` starts a conversation         | The channel's join line names the spawner   |
 
 A producer in this repo calls `publish({ topic, data })` from `lib/sidecar/events.ts`, and anything
 else runs `sidecar publish artifact.created '{"slug":"…","path":"…"}'`. A component consumes with
@@ -809,6 +864,10 @@ does Listening, which has no conversation of its own to stay on.
 
 What the sidecar sends a session, notes and Review's buttons alike, opens on a `[[sidecar]]` line
 (`[[cc-sidecar]]` and `[[mode-relay v1]]` before it, still read) and reaches Claude Code as a peer message.
+The line carries `slug=<slug>` when the message is about a task and `from=<key>` when another conversation sent it.
+The sender is an explicit `from` on `sendToInbox` and `deliver`: the CLI passes its own conversation, read from
+`CLAUDE_CODE_SESSION_ID` at its edge, the server passes an agent's key for an agent's post, and what you send from the
+page carries none.
 Claude Code frames a peer message, with the "Another Claude session sent a message:" line above it and the
 "This came from another Claude session" paragraph below, only when it stores the row, after
 `session.receive` has run. So the mod's `session.receive` drops the marker and its `session.append` takes
