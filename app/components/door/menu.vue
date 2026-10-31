@@ -17,7 +17,7 @@ const markOf = (session: LiveSession): Mark => {
   const bus = busy.keys[session.key];
   if (bus?.asking) return "waits";
   if (bus?.doing) return "working";
-  return seen.keys[session.key] ? "unseen" : "completed";
+  return seen.keys[session.key] ? "unseen" : "idle";
 };
 
 const nameAfterRole = (title: string): string => {

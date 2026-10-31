@@ -11,12 +11,12 @@ const {
   slug,
 } = defineProps<{ asking?: ReviewThread[]; conversation?: string; sessions: LiveSession[]; slug: string }>();
 
-const LOOK: Record<AgentState, TaskLook> = { working: "running", "needs input": "needs", completed: "archived" };
+const LOOK: Record<AgentState, TaskLook> = { working: "running", "needs input": "needs", idle: "archived" };
 
 const terminal = $terminal();
 const picked = ref<string>();
 
-// The lead that escalated has ended its turn, so claude agents calls it completed while it waits on Marco.
+// The lead that escalated has ended its turn, so claude agents reads it as idle while it waits on Marco.
 const rows = computed(() =>
   sessions.map((session) => {
     const name = nameOf(session);

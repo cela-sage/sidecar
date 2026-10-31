@@ -9,7 +9,7 @@ export const MARK_LABEL: Record<Mark, string> = {
   third: "Waits on someone else",
   queued: "Not started",
   unseen: "Finished, not opened yet",
-  completed: "Completed",
+  idle: "Idle",
   killed: "Killed",
   archived: "Archived",
 };

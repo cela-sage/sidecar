@@ -21,7 +21,7 @@ const card = computed((): AgentCardInfo | undefined => {
   return {
     name: speaker.name,
     work: speaker.work,
-    mark: speaker.isKilled ? "killed" : (row?.mark ?? "completed"),
+    mark: speaker.isKilled ? "killed" : (row?.mark ?? "idle"),
     ...(speaker.role ? { role: speaker.role } : {}),
     ...(project ? { project } : {}),
   };

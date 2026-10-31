@@ -10,7 +10,7 @@ import type { TaskStory } from "./timeline";
 export type TaskLook = "running" | "waiting" | "needs" | "archived";
 export type StepKind = TaskLook | "past" | "future" | "decided";
 export type StepJoint = "none" | "solid" | "primary" | "dashed";
-export type AgentState = "working" | "needs input" | "completed";
+export type AgentState = "working" | "needs input" | "idle";
 
 export type TaskMeta = ArtifactMeta & { task: ArtifactTask };
 
@@ -59,7 +59,7 @@ const PRESSING: TaskState[] = [
   "unassigned",
   "archived",
 ];
-const AGENT_ORDER: AgentState[] = ["needs input", "working", "completed"];
+const AGENT_ORDER: AgentState[] = ["needs input", "working", "idle"];
 
 const stateBeforeArchive = (entries: HistoryEntry[]): TaskState => {
   for (const entry of entries.toReversed()) {
@@ -119,9 +119,9 @@ const agentStateOf = (session: LiveSession): AgentState => {
   const lane = session.lane?.name;
   if (lane === "review" || lane === "blocked") return "needs input";
   if (lane === "working") return "working";
-  if (lane === "done") return "completed";
+  if (lane === "done") return "idle";
   if (session.status === "busy") return "working";
-  return session.status === "waiting" ? "needs input" : "completed";
+  return session.status === "waiting" ? "needs input" : "idle";
 };
 
 const order = (a: TaskMeta, b: TaskMeta): number =>

@@ -7,7 +7,7 @@ import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
 
 // Amber is a conversation outside a task waiting on you, red a task or its Individual Contributor waiting on you.
 export type Mark =
-  "raised" | "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "killed" | "archived";
+  "raised" | "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "idle" | "killed" | "archived";
 
 export interface OrgConversation {
   key: string;
@@ -86,7 +86,7 @@ const RANK: Record<Mark, number> = {
   unseen: 4,
   third: 3,
   queued: 2,
-  completed: 1,
+  idle: 1,
   killed: 0,
   archived: 0,
 };
@@ -94,7 +94,7 @@ const TASK_MARK: Record<TaskState, Mark> = {
   unassigned: "queued",
   assigned: "queued",
   assessed: "queued",
-  running: "completed",
+  running: "idle",
   blocked: "needs",
   waiting: "third",
   finished: "needs",
@@ -119,17 +119,17 @@ const ownedOf = (sessions: LiveSession[]): Owned[] =>
     return title && !title.role ? [{ session, title }] : [];
   });
 
-// Only the turn bus knows a turn is open, so a polled "working" says nothing and reads as completed.
+// Only the turn bus knows a turn is open, so a polled "working" says nothing and reads as idle.
 const stateOf = (session: LiveSession, { asking, busy }: Heard): AgentState => {
   const bus = busy[session.key];
   if (bus?.asking || asking.has(session.name ?? "")) return "needs input";
   if (bus?.doing) return "working";
   const polled = Tasks.agentStateOf(session);
-  return polled === "working" ? "completed" : polled;
+  return polled === "working" ? "idle" : polled;
 };
 
 const finishedOf = (session: LiveSession, { unseen }: Heard): Mark =>
-  unseen.has(session.key) ? "unseen" : "completed";
+  unseen.has(session.key) ? "unseen" : "idle";
 
 // A process that is gone has no turn to be working or waiting, whatever the bus last heard.
 const markOf = (session: LiveSession, heard: Heard, marks: Record<AgentState, Mark>): Mark =>
@@ -140,7 +140,7 @@ const looseOf = (session: LiveSession, heard: Heard, name?: string): OrgConversa
   const marks: Record<AgentState, Mark> = {
     working: "working",
     "needs input": "waits",
-    completed: finishedOf(session, heard),
+    idle: finishedOf(session, heard),
   };
   return {
     key: session.key,
@@ -163,7 +163,7 @@ const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Pla
   const marks: Record<AgentState, Mark> = {
     working: "working",
     "needs input": isLead ? "needs" : "waits",
-    completed: waiting && isLead ? "third" : finishedOf(session, heard),
+    idle: waiting && isLead ? "third" : finishedOf(session, heard),
   };
   return {
     key: session.key,

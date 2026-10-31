@@ -12,7 +12,7 @@ const canUndo = computed(() => !receipt.isUndone && receipt.was === "unassigned"
 
 <template>
   <div class="receipt">
-    <OrgMark :mark="receipt.isUndone ? 'queued' : 'completed'" />
+    <OrgMark :mark="receipt.isUndone ? 'queued' : 'idle'" />
     <span class="what">
       <span class="line">
         <span v-if="line.where" class="project">

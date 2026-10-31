@@ -166,7 +166,7 @@ test("a running task whose Individual Contributors are idle does not spin, and o
     tasks: [running],
   };
   const markOf = (tree: ReturnType<typeof Org.treeOf>): string | undefined => tree.projects[0]?.tasks[0]?.mark;
-  assert.equal(markOf(Org.treeOf(input)), "completed");
+  assert.equal(markOf(Org.treeOf(input)), "idle");
   assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: false } } })), "working");
   assert.equal(markOf(Org.treeOf({ ...input, busy: { lead: { doing: true, asking: true } } })), "needs");
 });
@@ -198,7 +198,7 @@ test("a finished turn nobody opened draws a dot in place of the check, and a que
     ["unseen", "unseen", "third"],
   );
   assert.equal(Org.treeOf(input).projects[0]?.tasks.find((one) => one.meta.slug === "board")?.mark, "unseen");
-  assert.equal(markOf("lead", { unseen: [] }), "completed");
+  assert.equal(markOf("lead", { unseen: [] }), "idle");
   assert.equal(markOf("lead", { busy: { lead: { doing: true, asking: false } } }), "working");
   assert.equal(markOf("lead", { busy: { lead: { doing: true, asking: true } } }), "needs");
   assert.equal(markOf("loose", { busy: { loose: { doing: true, asking: true } } }), "waits");
@@ -228,11 +228,11 @@ test("a finished task heads the list with the needs-you mark, and a lead with a 
       cela?.archived.map((one) => one.meta.slug) ?? [],
     ];
   };
-  assert.deepEqual(shown({}), [["board:finished:needs", "calm:running:completed"], ["old"]]);
+  assert.deepEqual(shown({}), [["board:finished:needs", "calm:running:idle"], ["old"]]);
 
   const working = { doing: true, asking: false };
   assert.deepEqual(shown({ board: working, old: working }), [
-    ["board:running:working", "calm:running:completed", "old:running:working"],
+    ["board:running:working", "calm:running:idle", "old:running:working"],
     [],
   ]);
   assert.equal(Org.statusOf(Org.treeOf({ ...input, busy: { old: working } }), "old"), "running");
@@ -318,7 +318,7 @@ test("the org tree puts each role where it works, sorts killed agents after the 
     ["settings-hook"],
   );
   const [cela, metaProject] = tree.projects;
-  assert.deepEqual(cela?.leads.map(row), ["DL sidecar plan waits", "SL sidecar-task-board design completed"]);
+  assert.deepEqual(cela?.leads.map(row), ["DL sidecar plan waits", "SL sidecar-task-board design idle"]);
   const [board] = cela?.tasks ?? [];
   assert.equal(board?.mark, "needs");
   assert.deepEqual(board?.leads.map(row), ["IC lane needs", "IC follower working", "IC loop killed"]);
@@ -344,7 +344,7 @@ test("the org tree puts each role where it works, sorts killed agents after the 
   assert.equal(tree.open, 2);
   assert.deepEqual(
     tree.unplaced.map((one) => `${one.role ?? "-"} ${one.name} ${one.mark}`),
-    ["- contracts guide working", "- [Ops] rollout review completed"],
+    ["- contracts guide working", "- [Ops] rollout review idle"],
   );
   assert.equal(tree.conversations, 9);
 
@@ -378,7 +378,7 @@ test("a title two conversations share names neither of them", () => {
 test("a conversation reads the claude agents state off its lane, and off its status without one", () => {
   assert.equal(Tasks.agentStateOf(session({ lane: { name: "blocked" } })), "needs input");
   assert.equal(Tasks.agentStateOf(session({ lane: { name: "working" } })), "working");
-  assert.equal(Tasks.agentStateOf(session({ lane: { name: "done" }, status: "busy" })), "completed");
+  assert.equal(Tasks.agentStateOf(session({ lane: { name: "done" }, status: "busy" })), "idle");
   assert.equal(Tasks.agentStateOf(session({ status: "busy" })), "working");
-  assert.equal(Tasks.agentStateOf(session({ status: "idle" })), "completed");
+  assert.equal(Tasks.agentStateOf(session({ status: "idle" })), "idle");
 });
