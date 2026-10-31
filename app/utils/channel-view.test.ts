@@ -108,10 +108,10 @@ test("the stream marks what is new since you last looked, never your own posts, 
   assert.equal(ChannelView.latestOf(channel), at(7));
 });
 
-test("a mention reads as who it reaches: a member by name, an outside agent by key, @all and @boss by tone", () => {
+test("a mention reads as who it reaches: a member by name, an outside agent by key, @all and @boss by tone, code as text", () => {
   const channel = channelOf();
   const cast = ChannelCast.castOf(channel, [outsider("bbbbbbb1", "Nell", "MF")]);
-  const segments = ChannelCast.segmentsOf("@juno and @bbbbbbb1 see @all, @boss and @nobody", cast);
+  const segments = ChannelCast.segmentsOf("@juno and @bbbbbbb1 see @all, @boss and @nobody, not `@Ivo`", cast);
   assert.deepEqual(
     segments.map((one) => [one.text, one.tone ?? ""]),
     [
@@ -122,7 +122,7 @@ test("a mention reads as who it reaches: a member by name, an outside agent by k
       ["@all", "all"],
       [", ", ""],
       ["@boss", "boss"],
-      [" and @nobody", ""],
+      [" and @nobody, not `@Ivo`", ""],
     ],
   );
 });
