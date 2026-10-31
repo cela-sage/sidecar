@@ -6,11 +6,13 @@ import { SidecarConfig } from "../../../lib/sidecar/config.ts";
 import { configRoot } from "../../../lib/sidecar/paths.ts";
 import type { Role } from "../../../shared/types/task.ts";
 import { claudeBinary, sessionEnv } from "./jobs.ts";
+import { Spawns } from "./spawns.ts";
 
 export interface Launch {
   agent: string;
   cwd: string;
   prompt: string;
+  by: string;
   name?: string;
 }
 
@@ -33,14 +35,16 @@ const fileOf = (role: Role): string | undefined => {
   return existsSync(path) ? path : undefined;
 };
 
-const launch = async ({ agent, cwd, prompt, name }: Launch): Promise<Launched> => {
+const launch = async ({ agent, cwd, prompt, by, name }: Launch): Promise<Launched> => {
   const args = ["--bg", "--agent", agent, ...(name ? ["--name", name] : []), prompt];
   const ran = await run(claudeBinary(), args, { cwd, env: sessionEnv(), timeout: START_MS }).catch(
     (error: Error & { stderr?: string }) => ({ failed: (error.stderr || error.message).trim() }),
   );
   if ("failed" in ran) return ran;
   const [key] = ran.stdout.replace(/\x1b\[[0-9;]*m/g, "").match(/\b[0-9a-f]{8}\b/) ?? [];
-  return key ? { key } : {};
+  if (!key) return {};
+  Spawns.record({ key, by });
+  return { key };
 };
 
 export const Roles = { agentOf, fileOf, launch };

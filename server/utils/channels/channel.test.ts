@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { after, before, test } from "node:test";
 import { setTimeout as sleep } from "node:timers/promises";
 import * as Events from "../../../lib/sidecar/events.ts";
+import { Spawns } from "../sessions/spawns.ts";
 import { TaskLane } from "../tasks/lane.ts";
 import { Channels } from "./index.ts";
 import { ChannelStore } from "./store.ts";
@@ -61,6 +62,7 @@ before(async () => {
   mkdirSync(join(home, "jobs", DESK), { recursive: true });
   const desk = { sessionId: `${DESK}-1111-2222-3333-444444444444`, name: "[Cela] IC board desk", cwd: home };
   writeFileSync(join(home, "jobs", DESK, "state.json"), JSON.stringify(desk));
+  Spawns.record({ key: SL, by: DL });
 });
 
 after(() => {
@@ -80,8 +82,13 @@ test("the crew joins on its own, the killed one last, and a post with no @ notif
     ],
   );
   assert.deepEqual(
-    channel.lines.map((line) => (line.kind === "join" ? line.key : line.kind)),
-    [DL, SL, LANE, DESK],
+    channel.lines.map((line) => (line.kind === "join" ? [line.key, line.by] : [line.kind])),
+    [
+      [DL, undefined],
+      [SL, DL],
+      [LANE, undefined],
+      [DESK, undefined],
+    ],
   );
   ChannelStore.append("board", { kind: "join", key: DL, title: "[Cela] DL plan", role: "DL" });
   ChannelStore.append("board", { kind: "kill", keys: [DESK] });

@@ -4,6 +4,7 @@ import type { Life, LiveSession } from "../../../shared/types/session.ts";
 import { Workstreams } from "../../../shared/utils/workstream.ts";
 import { Projects } from "../projects.ts";
 import { liveSessions } from "../sessions/index.ts";
+import { Spawns } from "../sessions/spawns.ts";
 import { TaskCaller } from "../tasks/caller.ts";
 import { TaskFiles, type TaskFile } from "../tasks/file.ts";
 import { TaskHistory } from "../tasks/history.ts";
@@ -39,19 +40,26 @@ const moverOf = (slug: string): string | undefined => {
 const joinsOf = ({ file, folded, sessions }: Synced): NewEntry[] => {
   const since = Date.parse(folded.lines.at(-1)?.at ?? "") || 0;
   const token = Projects.find(file.task.project)?.token;
-  return Members.derive({ sessions, slug: file.slug, token })
-    .filter(({ session }) => !folded.joined.has(session.key))
+  const fresh = Members.derive({ sessions, slug: file.slug, token }).filter(
+    ({ session }) => !folded.joined.has(session.key),
+  );
+  const spawners = fresh.length ? Spawns.spawners() : new Map<string, string>();
+  return fresh
     .sort(
       (a, b) => (a.session.startedAt ?? 0) - (b.session.startedAt ?? 0) || Members.rank(a.role) - Members.rank(b.role),
     )
-    .map(({ session, role }) => ({
-      kind: "join" as const,
-      key: session.key,
-      title: session.name ?? session.key,
-      role,
-      ...(session.life === "killed" ? { killed: true as const } : {}),
-      ...(session.startedAt && session.startedAt > since ? { at: new Date(session.startedAt).toISOString() } : {}),
-    }));
+    .map(({ session, role }) => {
+      const by = spawners.get(session.key);
+      return {
+        kind: "join" as const,
+        key: session.key,
+        title: session.name ?? session.key,
+        role,
+        ...(by ? { by } : {}),
+        ...(session.life === "killed" ? { killed: true as const } : {}),
+        ...(session.startedAt && session.startedAt > since ? { at: new Date(session.startedAt).toISOString() } : {}),
+      };
+    });
 };
 
 const missing = (synced: Synced): NewEntry[] => {

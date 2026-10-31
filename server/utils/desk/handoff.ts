@@ -77,7 +77,7 @@ const schedule = ({ file, project }: HandoffInput): Handed => {
   }
   const name = `[${project.token}] DL ${project.name}`;
   later(file.slug, async () => {
-    const ran = await Roles.launch({ agent: Roles.agentOf("DL"), cwd: project.folder, prompt: text, name });
+    const ran = await Roles.launch({ agent: Roles.agentOf("DL"), cwd: project.folder, prompt: text, by: "YOU", name });
     if ("failed" in ran) return console.error(`sidecar: no Domain Lead started for ${file.slug}: ${ran.failed}`);
     TaskLane.heard({ caller: { who: "YOU", from: name }, kind: "message", text, slug: file.slug });
   });

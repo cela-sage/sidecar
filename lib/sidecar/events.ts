@@ -128,6 +128,10 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const [slug, post, from, said] = [text(data.slug), text(data.post), text(data.from), text(data.text)];
     return slug && post && from && said ? { slug, title: text(data.title) || slug, post, from, text: said } : undefined;
   },
+  "session.spawned": (data) => {
+    const [key, by] = [text(data.key), text(data.by)];
+    return /^[0-9a-f]{8}$/.test(key) && by ? { key, by } : undefined;
+  },
 };
 
 export const TOPICS = Object.keys(PARSE) as Topic[];

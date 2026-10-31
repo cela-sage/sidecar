@@ -25,7 +25,7 @@ const start = async ({ text, slug }: StartInput): Promise<Started> => {
   const { agent = Roles.agentOf("EA"), project } = settings();
   const home = Projects.find(project);
   const prompt = slug ? `While reading the task ${slug}:\n\n${text}` : text;
-  const ran = await Roles.launch({ agent, cwd: home?.folder ?? homedir(), prompt });
+  const ran = await Roles.launch({ agent, cwd: home?.folder ?? homedir(), prompt, by: "YOU" });
   if ("failed" in ran) return { started: false, reason: ran.failed };
   if (slug)
     TaskLane.heard({ caller: { who: "YOU", from: `[${home?.token ?? project}] EA` }, kind: "message", text, slug });

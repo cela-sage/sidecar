@@ -20,6 +20,7 @@ export interface Topics {
   "relay.sent": RelaySent;
   "channel.changed": { slug: string; raised: number };
   "channel.raised": ChannelRaised;
+  "session.spawned": { key: string; by: string };
 }
 
 export interface ChannelRaised {
