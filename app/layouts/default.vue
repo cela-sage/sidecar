@@ -147,6 +147,11 @@ useResizeObserver(boardEl, ([entry]) => {
   @apply hidden;
 }
 
+/* Placed by track, since the floating tree leaves the grid and auto-placement would slide both into its column. */
+.resizer {
+  @apply col-start-2;
+}
+
 /* Over the window's rows the handle still resizes, where a drag region would move the window instead. */
 .shell[data-drags="true"] .resizer {
   app-region: no-drag;
@@ -154,7 +159,7 @@ useResizeObserver(boardEl, ([entry]) => {
 
 /* The notes and the door float over the panes, so a pane's last row pads by --float-clear to stay clickable above them. */
 .column {
-  @apply relative flex min-h-0 min-w-0 flex-col bg-raised;
+  @apply relative col-start-3 flex min-h-0 min-w-0 flex-col bg-raised;
   --float-clear: calc(max(var(--dock-h, 0px), var(--island-row-h)) + var(--gutter));
 }
 
