@@ -5,12 +5,13 @@ import type { Typed } from "~/utils/mentions";
 const { placeholder, thread } = defineProps<{ placeholder: string; thread?: string }>();
 
 const channel = $channel();
+const { attach, clear, files, isPending, pieces, remove } = useAttached();
 const text = ref("");
 const isBroadcast = ref(false);
 const input = useTemplateRef<{ edit: (change: (from: Typed) => Typed) => void; focus: () => void }>("input");
 
 const hint = computed(() => ChannelPicker.reachOf(text.value, channel.cast));
-const isEmpty = computed(() => !text.value.trim());
+const isEmpty = computed(() => !text.value.trim() && !files.value.length);
 
 const mention = (): void =>
   input.value?.edit(({ text: was, caret }) => {
@@ -19,11 +20,16 @@ const mention = (): void =>
   });
 
 const send = async (): Promise<void> => {
-  if (isEmpty.value || channel.isSending) return;
-  const saying = { text: text.value, ...(thread ? { thread, broadcast: isBroadcast.value } : {}) };
+  if (isEmpty.value || isPending.value || channel.isSending) return;
+  const said = AttachedFiles.append(
+    text.value,
+    files.value.map((one) => one.path),
+  );
+  const saying = { text: said, ...(thread ? { thread, broadcast: isBroadcast.value } : {}) };
   if (!(await channel.post(saying))) return;
   text.value = "";
   isBroadcast.value = false;
+  clear();
 };
 
 defineExpose({ focus: () => input.value?.focus() });
@@ -35,8 +41,11 @@ defineExpose({ focus: () => input.value?.focus() });
       ref="input"
       v-model="text"
       :label="placeholder"
+      :pieces="pieces"
       :placeholder="placeholder"
       :roster="channel.roster"
+      @files="attach"
+      @remove="remove"
       @send="send"
     />
     <div class="bar">
@@ -48,6 +57,7 @@ defineExpose({ focus: () => input.value?.focus() });
         size="xs"
         @click="mention"
       />
+      <ComposerAttach @files="attach" />
       <label
         v-if="thread"
         class="broadcast"
@@ -67,7 +77,7 @@ defineExpose({ focus: () => input.value?.focus() });
         class="send plain-button focusable"
         :aria-label="thread ? 'Reply' : 'Send'"
         :data-tip="thread ? 'Reply · {enter}' : 'Send · {enter}'"
-        :disabled="isEmpty || channel.isSending"
+        :disabled="isEmpty || isPending || channel.isSending"
         type="button"
         @click="send"
       >
