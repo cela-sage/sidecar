@@ -3,7 +3,7 @@ export interface ChatMedia {
   path: string;
   kind: "image" | "video" | "audio";
   src: string;
-  size: number;
+  size?: number;
 }
 </script>
 
@@ -23,7 +23,9 @@ const time = ref(0);
 const isPlaying = ref(false);
 const bars = ref<number[]>([]);
 
-const meta = computed(() => `${FileKind.extensionOf(media.path).toUpperCase()} · ${sizeLabel(media.size)}`);
+const meta = computed(() =>
+  [FileKind.extensionOf(media.path).toUpperCase(), media.size && sizeLabel(media.size)].filter(Boolean).join(" · "),
+);
 const progress = computed(() => (duration.value ? time.value / duration.value : 0));
 const played = computed(() => Math.round(progress.value * bars.value.length));
 

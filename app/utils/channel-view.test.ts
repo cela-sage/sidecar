@@ -3,6 +3,7 @@ import { test } from "node:test";
 import type { Channel, ChannelMember, ChannelPost } from "../../shared/types/channel.ts";
 import type { LiveSession } from "../../shared/types/session.ts";
 import type { Role } from "../../shared/types/task.ts";
+import { AttachedFiles } from "../../shared/utils/attached-files.ts";
 import { ChannelCast } from "./channel-cast.ts";
 import { ChannelPicker } from "./channel-picker.ts";
 import { ChannelView, type ChannelItem, type PostItem } from "./channel-view.ts";
@@ -108,6 +109,23 @@ test("the stream marks what is new since you last looked, never your own posts, 
   assert.equal(ChannelView.latestOf(channel), at(7));
 });
 
+test("a saved image leaves a post's text for a picture, and a reply to a picture alone names its file", () => {
+  const shot = AttachedFiles.line("/Users/me/.claude/sidecar/uploads/door/shot.png");
+  const chart = AttachedFiles.line("/tmp/chart.png");
+  const alone = post("p1", "YOU", shot);
+  const said = post("p2", "YOU", `@juno see this\n\n${shot}\n${chart}`);
+  const loud = post("p3", "aaaaaaa2", "seen", { thread: "p1", broadcast: true });
+  const channel = channelOf({ lines: [alone, said, loud], threads: { p1: [loud] } });
+  const [first, second, third] = posts(ChannelView.streamOf(channel, ChannelCast.castOf(channel, [])));
+  assert.deepEqual(first?.pictures, ["/Users/me/.claude/sidecar/uploads/door/shot.png"]);
+  assert.deepEqual(first?.segments, []);
+  assert.deepEqual(
+    [second?.segments.map((one) => one.text), second?.pictures.length],
+    [["@juno", ` see this\n\n${chart}`], 1],
+  );
+  assert.deepEqual(third?.replyTo, { id: "p1", text: "shot.png" });
+});
+
 test("a mention reads as who it reaches: a member by name, an outside agent by key, @all and @boss by tone, code as text", () => {
   const channel = channelOf();
   const cast = ChannelCast.castOf(channel, [outsider("bbbbbbb1", "Nell", "MF")]);
@@ -129,7 +147,9 @@ test("a mention reads as who it reaches: a member by name, an outside agent by k
 
 test("the picker offers alive members by name with what they do, then @all, then outside agents, keying a shared name", () => {
   const channel = channelOf({
-    lines: [post("p1", "aaaaaaa2", "@boss which one?", { reach: { boss: true, notified: [], missed: [], outside: [] } })],
+    lines: [
+      post("p1", "aaaaaaa2", "@boss which one?", { reach: { boss: true, notified: [], missed: [], outside: [] } }),
+    ],
     raised: ["p1"],
   });
   const cast = ChannelCast.castOf(channel, [outsider("bbbbbbb1", "Nell", "MF"), outsider("bbbbbbb2", "Pip", "MF")]);

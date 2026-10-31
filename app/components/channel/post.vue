@@ -33,12 +33,13 @@ const replies = computed(() => (item.thread?.count === 1 ? "1 reply" : `${item.t
         <UiIcon :icon="CornerDownRight" size="xs" /><span class="reply-to-lead">replied to a thread:</span
         ><span class="reply-to-text">{{ item.replyTo.text }}</span>
       </button>
-      <p class="text">
+      <p v-if="item.segments.length" class="text">
         <template v-for="(one, at) in item.segments" :key="at"
           ><span v-if="one.tone" class="mention" :data-tip="one.tip" :data-tone="one.tone">{{ one.text }}</span
           ><template v-else>{{ one.text }}</template></template
         >
       </p>
+      <ProseMediaSet v-if="item.pictures.length" class="pictures" :paths="item.pictures.join('\n')" />
       <p v-if="item.reach" class="reach"><UiIcon :icon="Bell" size="xs" />{{ item.reach }}</p>
       <p v-if="item.isBroadcast && isPane" class="reach"><UiIcon :icon="CornerDownRight" size="xs" />Also sent to the channel</p>
       <div v-for="one in item.outside" :key="one.key" class="token">
@@ -144,6 +145,10 @@ const replies = computed(() => (item.thread?.count === 1 ? "1 reply" : `${item.t
 
 .text {
   @apply m-0 typo-body leading-relaxed text-pretty whitespace-pre-wrap text-fg;
+}
+
+.pictures {
+  @apply w-full max-w-90;
 }
 
 .reply-to {

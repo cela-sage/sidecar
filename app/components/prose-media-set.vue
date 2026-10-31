@@ -10,12 +10,15 @@ const conversation = computed(() => own ?? provided);
 const cwd = computed(() => sc.sessions.value.find((one) => one.key === conversation.value)?.cwd);
 const sizes = ref(new Map<string, number>());
 
+// With no conversation to vouch for a path, a saved upload is served by the uploads route and has no size.
 const named = computed(() =>
   paths.split("\n").flatMap((path) => {
     const kind = FileKind.of(path);
+    if (kind !== "image" && kind !== "video" && kind !== "audio") return [];
+    const saved = conversation.value ? undefined : UploadedFiles.srcOf(path);
+    if (saved) return [{ path, kind, absolute: path, src: saved }];
     const absolute = path.startsWith("/") ? path : cwd.value && `${cwd.value}/${path.replace(/^\.\//, "")}`;
     if (!conversation.value || !absolute || path.startsWith("~")) return [];
-    if (kind !== "image" && kind !== "video" && kind !== "audio") return [];
     return [{ path, kind, absolute, src: Preview.srcOf({ conversation: conversation.value, path: absolute }) }];
   }),
 );
@@ -23,7 +26,8 @@ const named = computed(() =>
 const items = computed(() =>
   named.value.flatMap((one): ChatMedia[] => {
     const size = sizes.value.get(one.absolute);
-    return size ? [{ path: one.path, kind: one.kind, src: one.src, size }] : [];
+    const media = { path: one.path, kind: one.kind, src: one.src, ...(size ? { size } : {}) };
+    return size || !conversation.value ? [media] : [];
   }),
 );
 const pictures = computed(() => items.value.filter((one) => one.kind !== "audio"));

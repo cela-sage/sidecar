@@ -1,4 +1,6 @@
 import type { Channel, ChannelPost, SystemLine } from "~~/shared/types/channel";
+import { AttachedFiles } from "../../shared/utils/attached-files.ts";
+import { UploadedFiles } from "../../shared/utils/uploaded-files.ts";
 import { ChannelCast, type Cast, type Segment, type Speaker } from "./channel-cast.ts";
 import { andList, shorten } from "./label.ts";
 import type { TaskMeta } from "./tasks.ts";
@@ -26,6 +28,7 @@ export interface PostItem {
   at: string;
   speaker: Speaker;
   segments: Segment[];
+  pictures: string[];
   raise: Raise;
   answered?: string;
   reach?: string;
@@ -85,6 +88,14 @@ const REPLY_TO_MAX = 80;
 const headOf = (channel: Channel, id: string): ChannelPost | undefined =>
   channel.lines.find((one): one is ChannelPost => one.kind === "post" && one.id === id && !one.thread);
 
+const shownOf = (text: string): { text: string; paths: string[] } =>
+  AttachedFiles.imagesOf(text, (path) => !!UploadedFiles.srcOf(path));
+
+const aboutOf = (post: ChannelPost): string => {
+  const { text, paths } = shownOf(post.text);
+  return text || (paths[0]?.split("/").at(-1) ?? "");
+};
+
 const raiseOf = (post: ChannelPost, raised: Set<string>): Raise => {
   if (raised.has(post.id)) return "waiting";
   return post.reach.boss && post.answered ? "answered" : "none";
@@ -113,12 +124,14 @@ const postOf = (post: ChannelPost, context: Context, picked: string[] = []): Pos
   const reach = reachOf(post, cast, picked);
   const lines = everyLine(channel).filter((one) => one.at <= post.at).length;
   const head = post.thread && post.broadcast ? headOf(channel, post.thread) : undefined;
+  const { text, paths } = shownOf(post.text);
   return {
     kind: "post",
     id: post.id,
     at: post.at,
     speaker: speaker(cast, post.by),
-    segments: segmentsOf(post.text, cast),
+    segments: segmentsOf(text, cast),
+    pictures: paths,
     raise: raiseOf(post, raised),
     outside: post.reach.outside.map((one) => ({
       key: one.key,
@@ -130,7 +143,7 @@ const postOf = (post: ChannelPost, context: Context, picked: string[] = []): Pos
     ...(post.answered ? { answered: post.answered } : {}),
     ...(reach ? { reach } : {}),
     ...(replies.length ? { thread: summaryOf(replies, context) } : {}),
-    ...(head ? { replyTo: { id: head.id, text: shorten(head.text, REPLY_TO_MAX) } } : {}),
+    ...(head ? { replyTo: { id: head.id, text: shorten(aboutOf(head), REPLY_TO_MAX) } } : {}),
   };
 };
 
