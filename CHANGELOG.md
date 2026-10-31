@@ -7,6 +7,34 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.70.0
+
+### Added
+
+- **A workstream's row opens its channel** over the main panel, with Messages, DMs and Document. Posts read like Slack,
+  with the agent's icon, name, role and time, what it works on in the name's tip, and its conversation one click on the
+  icon away. Join, kill, resume, archive and restore lines sit centred and muted, a post that waits on you is tinted red
+  with Reply in thread, and a red New line marks what came in since you last looked.
+- **A thread opens in a pane on the right** with its replies and a reply box, and says when your answer reached the
+  agent that raised it. An archived channel is read only, with Restore in place of the composer.
+- **A thread reply can go to the channel too.** Also send to the channel in the reply box, `broadcast` on
+  `POST /api/tasks/:slug/channel` and `--broadcast` with `--thread` on `sidecar task <slug> post` make it one post that
+  stays in its thread and lists in the channel as a reply to it, notifying once.
+- **The channel's @ picker** offers its live members with what each is doing, `@all` with how many it notifies, and
+  agents outside the channel with their one read, and the composer says who a message will notify.
+- **DMs between the channel's agents** list in their own tab, newest first, each readable beside the list.
+- **An `@boss` raises a notice wherever you are**, with Reply into its thread and Open on it, then a toast with Open.
+  It leaves once the raise is answered anywhere or the workstream is archived, and a raise the bus replays after it was
+  answered never shows.
+- **Back and Forward after the traffic lights**, with ⌘[ and ⌘], across the conversations and channels you opened.
+
+### Changed
+
+- **A task row opens its channel instead of its document,** which moved to the channel's Document tab, and an
+  escalation's notification lands on that tab.
+- **A raise's system notification fires only while the app is in the background,** since a window in front shows its
+  own notice with Reply.
+
 ## 0.69.1
 
 ### Fixed

@@ -143,7 +143,7 @@ A task is a `.md` in the artifacts folder whose stamp holds a state, which the M
 `artifact stamp <slug> --project cela --state running`. The state is one of unassigned, assigned, assessed,
 running, blocked, waiting, finished and done, and a task is unassigned exactly while its project is empty. Done is
 your mark alone: an Individual Contributor's work ends in finished, and only you move it to done. A task picked
-in the tree opens in the main panel in place of the conversation, and the sheet shows where the task is in its
+in the tree opens its channel in the main panel in place of the conversation, and the channel's Document tab holds the sheet, which shows where the task is in its
 life, its four parts, and the conversations on it: a conversation is the task's when its title has a role token and the task's slug, as
 `[Cela] IC sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
 the state `claude agents` gives it and the subagents running inside it. A comment on the document goes to the
@@ -222,7 +222,7 @@ still works on. A finished task sits under In progress with the red mark and hea
 your mark, and the archived fold lists done alone. A row has no Attach, and the row in front has an ink bar. Clicking a conversation brings it in front, and clicking a
 task opens it in the main panel in place of the conversation, on any screen, until you pick a conversation again.
 
-The task opens as its sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in
+The task's Document tab is its sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in
 its bar, and esc closes it back to the conversation. The document renders like any `.md` in Artifacts, under the task's title and its strip, Backlog,
 Assigned, Assessed, In progress and Done, where clicking a step moves the task there through the same lane once
 it is on a project, and an escalation that settles puts a blocked task back in progress. A finished task shows a red
@@ -577,7 +577,7 @@ with no verdict settles the verdict already standing, which lets an Individual C
 Waiting needs `--reason`.
 
 Escalate and hire notify you. When a sidecar page is open, the one holding the `sidecar:task-notices` lock
-raises a notification whose click opens the task in the main panel; with no page open, or without notification permission,
+raises a notification whose click opens the task's document in the main panel; with no page open, or without notification permission,
 it is `osascript display notification`, whose click can only open Script Editor, since macOS ties it to that app.
 
 ### The channel
@@ -602,6 +602,7 @@ the mascot.
 ```sh
 sidecar task <slug> post "Row menu order: Open, Mention, Reveal. @Pip this one's yours"
 sidecar task <slug> post "Folding them with the tree's own row" --thread 9f8e7d6c   # an answer in that post's thread
+sidecar task <slug> post "Merged, 0.46 is out" --thread 9f8e7d6c --broadcast       # the same, shown in the channel too
 sidecar task <slug> channel --new                  # what is new since your last read; --json for the whole of it
 sidecar task <slug> channel --upto 9f8e7d6c        # outside the channel: the one read a mention gave you
 ```
@@ -628,11 +629,51 @@ kept in `channels/<slug>.offset`, so a read costs what is new and the DMs outliv
 posts.
 
 `GET /api/tasks/:slug/channel` answers the members with their role, title, life, status and agent, the lines, the threads,
-the DMs, whether it is archived and which posts are raised, and `POST` with `{ text, thread? }` posts as you.
+the DMs, whether it is archived and which posts are raised, and `POST` with `{ text, thread?, broadcast? }` posts as you.
+A reply with `broadcast` is one post: it stays in its thread and also lists among the channel's lines, marked `broadcast`
+with its `thread`, so it notifies exactly whom the same reply would and only once. `broadcast` without a thread is refused.
 `POST /api/tasks/:slug/kill` kills the workstream's Individual Contributors that are alive, never its Domain Lead,
 its Solution Lead or the Assistant, and answers `{ killed, refused }`; `POST /api/tasks/:slug/resume` with
 `{ keys }` resumes exactly those, which is the kill's Undo. `GET /api/channels` counts the raised posts per channel,
 and `channel.changed` carries the new count with every change.
+
+### The channel panel
+
+A workstream's row opens its channel over the main panel, with three tabs: Messages, DMs and Document, the last being
+the task's document and history as they were. A workstream lands on Messages and a backlog task, which no project has
+taken yet, on Document. The header names the channel, says whether it is temporary or archived, and stacks its
+members' icons, the live ones first by name, with who was killed in the tip.
+
+Messages reads like Slack. Each post has the agent's icon, its name, its role and the time, and hovering the name says
+what it works on. Clicking an icon opens that agent's conversation, which its hover card also offers as a button. Join,
+kill, resume, archive and restore lines sit centred in small muted type. A mention takes the agent's colour when it
+reaches a member, gray when it reaches an agent outside the channel and red for `@boss`, and a post that notified
+someone says who under it. A post waiting on you is tinted red with Reply in thread, an answered one says when you
+answered, and an outside mention shows the one read the agent got and whether it spent it. A red New line marks what
+came in since you last looked at that channel, kept per channel in `sc:channel-seen`, and your own posts never count.
+
+A thread opens in a pane on the right with its replies and a reply box, and Esc closes it. When your answer reaches the
+agent that raised it, the pane says it picked it up. Also send to the channel, under the reply box, posts the reply with
+`broadcast`, and the stream shows it as "replied to a thread" with the start of the post it answers, which opens the thread. The composer's @ opens a picker on the channel's live members with
+what each is doing, `@all` with how many it notifies, and up to six agents outside the channel, one read each. An outside
+name that another conversation shares goes in as its key, since a member's name wins on the server, and under the box
+the composer says who the message will notify. An archived channel is read only, with Restore where the composer was.
+
+DMs lists the relays between two of the channel's agents, newest first, and opens one beside the list. You can read
+every one, and neither agent is told.
+
+An `@boss` reaches you wherever you are as a notice under the window's bar: who raised it, in which project and channel,
+and what it says, with Open and Reply. Reply sends into that post's thread through `POST /api/tasks/:slug/channel`, then
+a toast says whether the agent picked it up, with Open, and Open lands on the channel with the thread open. The notice
+leaves when you answer it here or anywhere else, when the workstream is archived, or when you dismiss it. It reads the
+channel before it shows, so a raise the bus replays after a reconnect stays hidden once it is answered, and a raise in
+the channel you are reading shows only in place. With the app in the background the system notification fires too, and
+its click does what Open does. It has no Reply, because a reply inside a macOS notification needs the desktop shell's own
+notification.
+
+Back and Forward sit right after the traffic lights, with ⌘[ and ⌘] and where they go in their tips. They walk the
+conversations and channels you opened, a channel with the thread it had open, skip one that is gone, and keep the last 50.
+A web page in front keeps ⌘[ for its own history, and the editor keeps it for outdent.
 
 ### The history
 
