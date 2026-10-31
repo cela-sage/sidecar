@@ -4,6 +4,9 @@ const LINE = /^Attached: (\/.+)$/;
 
 const line = (path: string): string => `Attached: ${path}`;
 
+const append = (text: string, paths: string[]): string =>
+  [text.trim(), ...(paths.length ? [paths.map(line).join("\n")] : [])].filter(Boolean).join("\n\n");
+
 // The sidecar appends its files as the last lines of a message, so only that trailing run is read back, never a quote.
 const imagesOf = (text: string): { text: string; paths: string[] } => {
   const lines = text.trimEnd().split("\n");
@@ -19,4 +22,4 @@ const imagesOf = (text: string): { text: string; paths: string[] } => {
   return { text: kept.join("\n").trimEnd(), paths };
 };
 
-export const AttachedFiles = { imagesOf, line };
+export const AttachedFiles = { append, imagesOf, line };

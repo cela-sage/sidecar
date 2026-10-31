@@ -1,6 +1,5 @@
 import type { SessionCommand } from "~~/shared/types/command";
 import type { Topics } from "~~/shared/types/events";
-import type { AttachedFile } from "~~/shared/types/files";
 import type { Delivery } from "~/stores/notes";
 import type { Attachment } from "~/utils/attachments";
 import type { CommandCall } from "~~/shared/utils/slash-command";
@@ -67,13 +66,10 @@ const post = (key: string, path: string, body?: Record<string, string>): Promise
   );
 
 const compose = ({ text, files, blocks }: Draft): string =>
-  [
-    text.trim(),
-    ...blocks.map((one) => `${one.label}:\n\n\`\`\`\n${one.text}\n\`\`\``),
-    ...(files.length ? [files.map((one) => AttachedFiles.line(one.path)).join("\n")] : []),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+  AttachedFiles.append(
+    [text.trim(), ...blocks.map((one) => `${one.label}:\n\n\`\`\`\n${one.text}\n\`\`\``)].filter(Boolean).join("\n\n"),
+    files.map((one) => one.path),
+  );
 
 export const $prompt = defineStore(() => {
   const sc = useSidecar();
@@ -128,15 +124,11 @@ export const $prompt = defineStore(() => {
   };
 
   const upload = async (file: File): Promise<void> => {
-    const got = await $fetch<AttachedFile>(`/api/uploads?name=${encodeURIComponent(file.name)}`, {
-      body: file,
-      headers: { "content-type": file.type || "application/octet-stream" },
-      method: "POST",
-    }).catch((error: unknown) => {
+    const got = await Attachments.upload(file).catch((error: unknown) => {
       chrome.toast(failReason(error) ?? `${file.name} did not attach`, "destructive");
       return undefined;
     });
-    if (got) front()?.files.push({ ...got, preview: Attachments.previewOf(file) });
+    if (got) front()?.files.push(got);
   };
 
   const unattach = (id: string): void => {

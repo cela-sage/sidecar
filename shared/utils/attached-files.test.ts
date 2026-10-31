@@ -14,6 +14,15 @@ test("the trailing Attached lines of an image leave the text, the others stay in
   assert.deepEqual(AttachedFiles.imagesOf(AttachedFiles.line(SHOT)), { text: "", paths: [SHOT] });
 });
 
+test("files go after the words behind a blank line, and a message of files alone is only their lines", () => {
+  assert.equal(
+    AttachedFiles.append("  why?  ", [SHOT, LOG]),
+    `why?\n\n${AttachedFiles.line(SHOT)}\n${AttachedFiles.line(LOG)}`,
+  );
+  assert.equal(AttachedFiles.append("", [SHOT]), AttachedFiles.line(SHOT));
+  assert.equal(AttachedFiles.append(" why? ", []), "why?");
+});
+
 test("an Attached line quoted mid-message is words, and a relative path is not a file the sidecar saved", () => {
   const quoted = `the line ${AttachedFiles.line(SHOT)} is added\nby the prompt`;
   assert.deepEqual(AttachedFiles.imagesOf(quoted), { text: quoted, paths: [] });

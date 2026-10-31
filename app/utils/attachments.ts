@@ -51,4 +51,13 @@ const release = (files: Attachment[]): void => {
   for (const { preview } of files) if (preview) URL.revokeObjectURL(preview);
 };
 
-export const Attachments = { drop, insert, message, of, previewOf, release };
+const upload = async (file: File): Promise<Attachment> => {
+  const saved = await $fetch<AttachedFile>(`/api/uploads?name=${encodeURIComponent(file.name)}`, {
+    body: file,
+    headers: { "content-type": file.type || "application/octet-stream" },
+    method: "POST",
+  });
+  return { ...saved, preview: previewOf(file) };
+};
+
+export const Attachments = { drop, insert, message, of, previewOf, release, upload };

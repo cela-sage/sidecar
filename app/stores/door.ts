@@ -159,15 +159,11 @@ export const $door = defineStore(() => {
   };
 
   const attach = async (file: File): Promise<AttachedFile | undefined> => {
-    const got = await $fetch<AttachedFile>(`/api/uploads?name=${encodeURIComponent(file.name)}`, {
-      body: file,
-      headers: { "content-type": file.type || "application/octet-stream" },
-      method: "POST",
-    }).catch((error: unknown) => {
+    const got = await Attachments.upload(file).catch((error: unknown) => {
       chrome.toast(failReason(error) ?? `${file.name} did not attach`, "destructive");
       return undefined;
     });
-    if (got) attached.value = [...attached.value, { ...got, preview: Attachments.previewOf(file) }];
+    if (got) attached.value = [...attached.value, got];
     return got;
   };
 
