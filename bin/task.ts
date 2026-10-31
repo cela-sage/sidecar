@@ -7,6 +7,7 @@ import { HistoryLines } from "../shared/utils/history.ts";
 import { TaskCaller } from "../server/utils/tasks/caller.ts";
 import { TaskLane, type AskThread, type Decided } from "../server/utils/tasks/lane.ts";
 import { TaskNotice } from "../server/utils/tasks/notice.ts";
+import { clock } from "./clock.ts";
 
 export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slug> [verb]
   new "<title>"              write an unassigned task with the four parts as headings, and print its slug
@@ -55,14 +56,6 @@ const OPTIONS = {
 } as const;
 
 const caller = TaskCaller.of;
-
-const clock = (at: string): string => {
-  const when = new Date(at);
-  const time = when.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-  return when.toDateString() === new Date().toDateString()
-    ? time
-    : `${when.toLocaleDateString([], { day: "numeric", month: "short" })} ${time}`;
-};
 
 const lineOf = (entry: HistoryEntry): string => {
   const { lead, text } = HistoryLines.of(entry);
