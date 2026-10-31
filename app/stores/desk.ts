@@ -1,6 +1,7 @@
+import type { Killed, Refused, Resumed } from "~~/shared/types/channel";
 import type { DeskAsk, DeskTriage, LeadJoined, TaskAssigned, TaskRemoved } from "~~/shared/types/desk";
-import type { Retitled } from "~~/shared/types/session";
 import type { HistoryEntry } from "~~/shared/types/history";
+import type { Retitled } from "~~/shared/types/session";
 import type { Project, TaskState } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
 import type { OrgConversation } from "~/utils/org";
@@ -136,17 +137,17 @@ export const $desk = defineStore(() => {
       failed: `Could not move ${row.name} to ${project.name}`,
     });
 
-  const attempt = (run: Promise<unknown>, failed: string): Promise<boolean> =>
-    run.then(
-      () => true,
-      (error: unknown) => {
-        chrome.toast(failReason(error) ?? failed, "destructive");
-        return false;
-      },
-    );
+  const failing =
+    (what: string) =>
+    (error: unknown): undefined => {
+      chrome.toast(failReason(error) ?? what, "destructive");
+    };
 
-  const shelve = (meta: TaskMeta, state: TaskState, failed: string): Promise<boolean> =>
-    attempt(task.move(meta.slug, state), failed);
+  const attempt = async (run: Promise<unknown>, what: string): Promise<boolean> =>
+    (await run.then(() => true, failing(what))) ?? false;
+
+  const shelve = (meta: TaskMeta, state: TaskState, what: string): Promise<boolean> =>
+    attempt(task.move(meta.slug, state), what);
 
   const archive = async (meta: TaskMeta): Promise<void> => {
     const was = meta.task.state;
@@ -166,19 +167,33 @@ export const $desk = defineStore(() => {
     );
   };
 
-  const killWorkstream = async (slug: string): Promise<void> => {
-    throw new Error(`needs part 1: ${slug}`);
-  };
+  const killWorkstream = (slug: string): Promise<Killed> =>
+    $fetch<Killed>(`/api/tasks/${encodeURIComponent(slug)}/kill`, { method: "POST" });
 
-  const unkillWorkstream = async (slug: string): Promise<void> => {
-    throw new Error(`needs part 1: ${slug}`);
-  };
+  const unkillWorkstream = (slug: string, keys: string[]): Promise<Resumed> =>
+    $fetch<Resumed>(`/api/tasks/${encodeURIComponent(slug)}/resume`, { method: "POST", body: { keys } });
 
-  const kill = async (meta: TaskMeta, agents: number): Promise<void> => {
-    if (!(await attempt(killWorkstream(meta.slug), `Could not kill ${titleOf(meta)}'s agents`))) return;
+  const refusedLine = (refused: Refused[]): string =>
+    new Intl.ListFormat("en").format(
+      refused.map(({ key, reason }) => {
+        const session = sc.sessions.value.find((one) => one.key === key);
+        return `${session?.agent?.name ?? (session ? nameOf(session) : key)} (${reason})`;
+      }),
+    );
+
+  const kill = async (meta: TaskMeta): Promise<void> => {
+    const done = await killWorkstream(meta.slug).catch(failing(`Could not kill ${titleOf(meta)}'s agents`));
+    if (!done) return;
+    if (done.refused.length) chrome.toast(`Could not stop ${refusedLine(done.refused)}`, "destructive");
+    if (!done.killed.length) return;
     offer(
-      `${plural(agents, "agent")} on ${titleOf(meta)} killed. The Domain Lead, the Solution Lead and your Assistant stay.`,
-      () => attempt(unkillWorkstream(meta.slug), `Could not bring ${titleOf(meta)}'s agents back`),
+      `${plural(done.killed.length, "agent")} on ${titleOf(meta)} killed. The Domain Lead, the Solution Lead and your Assistant stay.`,
+      async () => {
+        const back = await unkillWorkstream(meta.slug, done.killed).catch(
+          failing(`Could not bring ${titleOf(meta)}'s agents back`),
+        );
+        if (back?.refused.length) chrome.toast(`Could not resume ${refusedLine(back.refused)}`, "destructive");
+      },
     );
   };
 

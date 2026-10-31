@@ -48,7 +48,7 @@ defineExpose({ openFor });
             :data-tip="killTip"
             :icon="Square"
             tone="destructive"
-            @click="act(close, (meta) => desk.kill(meta, alive.length))"
+            @click="act(close, (meta) => desk.kill(meta))"
             >Kill its {{ plural(alive.length, "agent") }}</UiMenuItem
           >
           <span
