@@ -49,6 +49,6 @@ useResizeObserver(lights, ([entry]) => {
 }
 
 .spacer {
-  @apply min-w-4 flex-1;
+  @apply flex-1;
 }
 </style>

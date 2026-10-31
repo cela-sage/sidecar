@@ -9,8 +9,9 @@ const task = $task();
 const layout = $layout();
 
 const TREE_W = 320;
+const TREE_MIN = 256;
 const tree = useLocalStorage("sc:tree", TREE_W);
-const side = computed(() => Math.min(tree.value, layout.sideCap ?? tree.value));
+const side = computed(() => Math.max(TREE_MIN, Math.min(tree.value, layout.sideCap ?? tree.value)));
 const shellEl = useTemplateRef<HTMLElement>("shellEl");
 const dockEl = useTemplateRef<HTMLElement>("dockEl");
 const boardEl = useTemplateRef<HTMLElement>("boardEl");
@@ -84,17 +85,18 @@ useResizeObserver(boardEl, ([entry]) => {
       :data-listed="artifact.isFull && artifact.isListed"
       :inert="isDown"
     >
-      <ChromeWindowRow class="window" />
+      <ChromeWindowRow class="window">
+        <ChromeTools />
+      </ChromeWindowRow>
       <OrgTree />
       <UsagePlan />
     </aside>
 
-    <PaneResizer v-model="tree" :initial="TREE_W" label="Resize the tree" :max="480" />
+    <PaneResizer v-model="tree" :initial="TREE_W" label="Resize the tree" :max="480" :min="TREE_MIN" />
 
     <div class="column">
       <ChromeBar :inert="isDown">
         <slot name="bar" />
-        <ChromeTools />
       </ChromeBar>
 
       <div class="body">
