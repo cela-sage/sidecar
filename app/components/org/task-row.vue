@@ -1,4 +1,5 @@
 <script lang="ts" setup>
+import type { SessionAgent } from "~~/shared/types/session";
 import type { OrgConversation, OrgTask } from "~/utils/org";
 import { tintOf as agentTint } from "~/utils/tint";
 
@@ -19,6 +20,9 @@ const conversationMenu = $conversationMenu();
 const rows = computed(() => (Workstreams.isArchived(one.status) ? [] : one.leads));
 
 const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.sessionKey.value;
+
+const hireTip = ({ name, description, state }: SessionAgent): string =>
+  [name, description, state === "killed" ? "killed" : undefined].filter(Boolean).join(" · ");
 </script>
 
 <template>
@@ -65,6 +69,7 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
       :agent="row.agent"
       :conversation="row.key"
       :depth="depth + 1"
+      :doing="row.doing"
       :is-front="front(row)"
       :mark="row.mark"
       :name="row.name"
@@ -91,9 +96,12 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
         v-for="agent in row.agents"
         :key="agent.name"
         class="hire mono-meta"
-        :data-tip="`A specialist ${row.name} hired`"
-        ><span class="square" :data-tint="agentTint(agent.color, agent.name)" />{{ agent.name }}</span
+        :data-state="agent.state"
+        :data-tip="hireTip(agent)"
       >
+        <OrgMark :mark="agent.state" />
+        <span class="square" :data-tint="agentTint(agent.color, agent.name)" />{{ agent.name }}
+      </span>
     </div>
   </template>
 </template>
@@ -129,5 +137,13 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
 
 .square {
   @apply size-1.75 flex-none rounded-xs bg-tint;
+}
+
+.hire[data-state="killed"] {
+  @apply text-subtle;
+}
+
+.hire[data-state="killed"] .square {
+  @apply bg-subtle;
 }
 </style>
