@@ -4,17 +4,12 @@ import { MARK_LABEL } from "~/components/org/mark.vue";
 
 const { conversation } = defineProps<{ conversation: string }>();
 
-const DWELL_MS = 350;
-const GRACE_MS = 120;
 const CARD_W = 300;
 
 const sc = useSidecar();
 const terminal = $terminal();
 const conversationMenu = $conversationMenu();
 const tree = useOrgTree();
-const chip = useTemplateRef<HTMLElement>("chip");
-const at = ref<{ left: number; top: number }>();
-let timer: ReturnType<typeof setTimeout> | undefined;
 
 const place = computed(() => Org.placeOf(tree.value, conversation));
 const session = computed(() => sc.sessions.value.find((one) => one.key === conversation));
@@ -39,44 +34,23 @@ const open = (): void => {
   void navigateTo(`/c/${conversation}`, { replace: true });
 };
 
-const peek = (): void => {
-  const box = chip.value?.getBoundingClientRect();
-  if (!box) return;
-  at.value = { left: Math.max(8, Math.min(box.left - 6, window.innerWidth - CARD_W - 8)), top: box.bottom + 4 };
-  conversationMenu.peeking = conversation;
-};
-
-const close = (): void => {
-  clearTimeout(timer);
-  at.value = undefined;
-  if (conversationMenu.peeking === conversation) conversationMenu.peeking = undefined;
-};
-
-const enter = (): void => {
-  clearTimeout(timer);
-  if (at.value || !window.matchMedia("(hover: hover) and (pointer: fine)").matches) return;
-  timer = setTimeout(peek, DWELL_MS);
-};
-
-const hold = (): void => clearTimeout(timer);
-
-// The card holds a button, so the pointer gets a beat to cross from the chip onto it.
-const leave = (): void => {
-  clearTimeout(timer);
-  timer = setTimeout(close, GRACE_MS);
-};
+const { at, close, enter, hold, leave } = useHoverCard({
+  place: (box) => ({ left: Math.max(8, Math.min(box.left - 6, window.innerWidth - CARD_W - 8)), top: box.bottom + 4 }),
+  onShow: () => (conversationMenu.peeking = conversation),
+  onHide: () => {
+    if (conversationMenu.peeking === conversation) conversationMenu.peeking = undefined;
+  },
+});
 
 const menuFor = (event: MouseEvent): void => {
   const row = place.value?.row;
   close();
   if (row) conversationMenu.openFor(event, { key: row.key, title: row.title });
 };
-
-onScopeDispose(close);
 </script>
 
 <template>
-  <span v-if="place" ref="chip" class="chip" @contextmenu.prevent="menuFor" @mouseenter="enter" @mouseleave="leave">
+  <span v-if="place" class="chip" @contextmenu.prevent="menuFor" @mouseenter="enter" @mouseleave="leave">
     <button class="open plain-button focusable" :aria-label="place.row.title" type="button" @click="open">
       <OrgMark :mark="place.row.mark" />
       <span v-if="place.row.role" class="role">{{ place.row.role }}</span>
