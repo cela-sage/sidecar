@@ -59,6 +59,8 @@ const PRESSING: TaskState[] = [
 ];
 const AGENT_ORDER: AgentState[] = ["needs input", "working", "completed"];
 
+const isArchived = (state: TaskState): boolean => state === "done";
+
 const isTask = (meta: ArtifactMeta): meta is TaskMeta => !!meta.task;
 const capital = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
 
@@ -129,6 +131,7 @@ const railOf = (sessions: LiveSession[], slug: string): LiveSession[] =>
 export const Tasks = {
   agentOrder,
   agentStateOf,
+  isArchived,
   of,
   order,
   railOf,

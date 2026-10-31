@@ -84,7 +84,7 @@ test("the history folds runs, puts the divider under what the Domain Lead read, 
   assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past In progress:running Done:future");
 });
 
-test("the tree drops a Done task you removed or that went Done a day ago, and lists only what agent view lists", () => {
+test("the tree keeps every archived workstream however old or removed, and lists only what agent view lists", () => {
   const done = (slug: string, task: Partial<TaskMeta["task"]>): TaskMeta => ({
     slug,
     title: slug,
@@ -93,9 +93,7 @@ test("the tree drops a Done task you removed or that went Done a day ago, and li
     path: `/tmp/${slug}.md`,
     task: { state: "done", project: "cela", ...task },
   });
-  const now = Date.parse("2026-10-28T12:00:00Z");
   const tree = Org.treeOf({
-    now,
     projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
     sessions: [
       session({ key: "seen", name: "[Cela] sidecar zoom", inView: true }),
@@ -110,8 +108,8 @@ test("the tree drops a Done task you removed or that went Done a day ago, and li
   });
   const [cela] = tree.projects;
   assert.deepEqual(
-    cela?.done.map((one) => one.meta.slug),
-    ["today", "untimed"],
+    cela?.archived.map((one) => one.meta.slug),
+    ["removed", "today", "untimed", "yesterday"],
   );
   assert.deepEqual(
     cela?.conversations.map((one) => one.key),
@@ -224,7 +222,7 @@ test("a finished task heads the list with the needs-you mark, and a lead with a 
     const [cela] = Org.treeOf({ ...input, busy }).projects;
     return [
       cela?.tasks.map((one) => `${one.meta.slug}:${one.status}:${one.mark}`) ?? [],
-      cela?.done.map((one) => one.meta.slug) ?? [],
+      cela?.archived.map((one) => one.meta.slug) ?? [],
     ];
   };
   assert.deepEqual(shown({}), [["board:finished:needs", "calm:running:completed"], ["old"]]);
@@ -242,7 +240,7 @@ test("a finished task heads the list with the needs-you mark, and a lead with a 
   assert.deepEqual(Timeline.story([marked], "done"), { done: { at, who: "YOU" } });
 });
 
-test("the org tree puts each role where it works, folds what is done and files your own conversations by their prefix", () => {
+test("the org tree puts each role where it works, sorts killed agents after the alive by name, archives what is done and files your own conversations by their prefix", () => {
   const meta = (slug: string, state: TaskMeta["task"]["state"], project?: string, lead?: string): TaskMeta => ({
     slug,
     title: slug,
@@ -293,16 +291,16 @@ test("the org tree puts each role where it works, folds what is done and files y
   assert.deepEqual(cela?.leads.map(row), ["DL sidecar plan waits", "SL sidecar-task-board design completed"]);
   const [board] = cela?.tasks ?? [];
   assert.equal(board?.mark, "needs");
-  assert.deepEqual(board?.leads.map(row), ["IC lane needs", "IC follower working"]);
+  assert.deepEqual(board?.leads.map(row), ["IC follower working", "IC lane needs", "IC loop killed"]);
   assert.deepEqual(
     board?.leads.map((one) => one.agents?.map((agent) => agent.name)),
-    [undefined, ["designer"]],
+    [["designer"], undefined, undefined],
   );
-  assert.deepEqual(board?.done.map(row), ["IC loop killed"]);
   assert.deepEqual(
-    cela?.done.map((one) => one.meta.slug),
-    ["session-title-rule"],
+    cela?.archived.map((one) => `${one.meta.slug} ${one.mark}`),
+    ["session-title-rule archived"],
   );
+  assert.deepEqual(Org.mentionable(tree, "dl").map((one) => one.key).sort(), ["fol", "lane", "sl", "zoom"]);
   assert.deepEqual(
     cela?.conversations.map((one) => `${one.name} ${one.mark}`),
     ["sidecar macOS zoom waits"],
@@ -317,11 +315,18 @@ test("the org tree puts each role where it works, folds what is done and files y
   assert.equal(tree.conversations, 9);
 
   assert.deepEqual(
-    ["fol", "sl", "ea", "ops", "nope"].map((key) => {
+    ["fol", "sl", "ea", "ops", "nope", "loop"].map((key) => {
       const place = Org.placeOf(tree, key);
       return place ? `${place.row.name} ${place.group?.project.key ?? "-"}` : "none";
     }),
-    ["follower cela", "sidecar-task-board design cela", "daily triage -", "[Ops] rollout review -", "none"],
+    [
+      "follower cela",
+      "sidecar-task-board design cela",
+      "daily triage -",
+      "[Ops] rollout review -",
+      "none",
+      "loop cela",
+    ],
   );
   assert.equal(Org.titles(tree).get("[Cela] IC sidecar-task-board follower"), "fol");
   assert.equal(Org.titles(tree).get("[meta] EA daily triage"), "ea");

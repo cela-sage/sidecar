@@ -1,5 +1,4 @@
 <script lang="ts" setup>
-import { X } from "@lucide/vue";
 import type { OrgConversation, OrgTask } from "~/utils/org";
 import { tintOf as agentTint } from "~/utils/tint";
 
@@ -16,17 +15,8 @@ const sc = useSidecar();
 const task = $task();
 const desk = $desk();
 const conversationMenu = $conversationMenu();
-const folds = useOrgFolds();
 
-const lines = computed(() =>
-  folds.linesOf({
-    open: one.leads,
-    done: one.done,
-    fold: `done:${one.meta.slug}`,
-    depth: depth + 1,
-    keyOf: (row) => row.key,
-  }),
-);
+const rows = computed(() => (Tasks.isArchived(one.status) ? [] : one.leads));
 
 const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.sessionKey.value;
 </script>
@@ -59,53 +49,41 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
     @open="task.show({ slug: one.meta.slug })"
   >
     <span v-if="isHot" class="drop mono-meta">as its Individual Contributor</span>
-    <template v-if="one.status === 'done'" #after>
-      <UiIconButton
-        :icon="X"
-        aria-label="Remove from the list"
-        data-tip="Remove from the list. It goes by itself a day after Done"
-        size="xs"
-        @click.stop="desk.hide(one.meta)"
-      />
-    </template>
   </OrgRow>
-  <template v-for="line in lines" :key="line.key">
-    <OrgFold v-if="'fold' in line" :depth="line.depth" :fold="line.key" :label="`${line.fold} done`" />
-    <template v-else>
-      <OrgRow
-        :conversation="line.item.key"
-        :depth="line.depth"
-        :is-front="front(line.item)"
-        :mark="line.item.mark"
-        :name="line.item.name"
-        :role="line.item.role"
-        :tip="line.item.title"
-        @contextmenu.prevent="
-          conversationMenu.openFor($event, {
-            key: line.item.key,
-            title: line.item.title,
-            open: () => emit('open', line.item),
-          })
-        "
-        @open="emit('open', line.item)"
-      />
-      <div
-        v-if="line.item.agents?.length"
-        class="hired"
-        role="group"
-        :aria-label="`Specialists ${line.item.name} hired`"
-        :data-depth="line.depth"
+  <template v-for="row in rows" :key="row.key">
+    <OrgRow
+      :conversation="row.key"
+      :depth="depth + 1"
+      :is-front="front(row)"
+      :mark="row.mark"
+      :name="row.name"
+      :role="row.role"
+      :tip="row.title"
+      @contextmenu.prevent="
+        conversationMenu.openFor($event, {
+          key: row.key,
+          title: row.title,
+          open: () => emit('open', row),
+        })
+      "
+      @open="emit('open', row)"
+    />
+    <div
+      v-if="row.agents?.length"
+      class="hired"
+      role="group"
+      :aria-label="`Specialists ${row.name} hired`"
+      :data-depth="depth + 1"
+    >
+      <OrgGuides :depth="depth + 1" />
+      <span
+        v-for="agent in row.agents"
+        :key="agent.name"
+        class="hire mono-meta"
+        :data-tip="`A specialist ${row.name} hired`"
+        ><span class="square" :data-tint="agentTint(agent.color, agent.name)" />{{ agent.name }}</span
       >
-        <OrgGuides :depth="line.depth" />
-        <span
-          v-for="agent in line.item.agents"
-          :key="agent.name"
-          class="hire mono-meta"
-          :data-tip="`A specialist ${line.item.name} hired`"
-          ><span class="square" :data-tint="agentTint(agent.color, agent.name)" />{{ agent.name }}</span
-        >
-      </div>
-    </template>
+    </div>
   </template>
 </template>
 

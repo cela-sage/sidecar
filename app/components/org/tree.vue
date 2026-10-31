@@ -24,14 +24,10 @@ const FOR_YOU: Mark[] = ["needs", "waits"];
 const holdsInView = (group: OrgProject): boolean =>
   group.leads.some(front) ||
   group.conversations.some(front) ||
-  [...group.tasks, ...group.done].some(
-    (one) => one.meta.slug === task.slug || one.leads.some(front) || one.done.some(front),
-  );
+  [...group.tasks, ...group.archived].some((one) => one.meta.slug === task.slug || one.leads.some(front));
 
 const isOpen = (group: OrgProject): boolean =>
   folds.isOpen(group.project.key, (!!group.mark && FOR_YOU.includes(group.mark)) || holdsInView(group));
-
-const slugOf = (one: OrgTask): string => one.meta.slug;
 
 const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.sessionKey.value;
 
@@ -93,7 +89,7 @@ const letGo = (): void => {
 };
 
 const overTask = (event: DragEvent, one: OrgTask): void => {
-  if (!carried.value || one.meta.task.state === "done") return;
+  if (!carried.value || Tasks.isArchived(one.meta.task.state)) return;
   event.preventDefault();
   event.stopPropagation();
   if (event.dataTransfer) event.dataTransfer.dropEffect = "move";
@@ -103,7 +99,7 @@ const overTask = (event: DragEvent, one: OrgTask): void => {
 
 const dropOnTask = (event: DragEvent, one: OrgTask): void => {
   const row = carried.value;
-  if (!row || one.meta.task.state === "done") return;
+  if (!row || Tasks.isArchived(one.meta.task.state)) return;
   event.preventDefault();
   event.stopPropagation();
   letGo();
@@ -185,29 +181,18 @@ watch(
           @open="openConversation(row)"
         />
 
-        <template
-          v-for="line in folds.linesOf({
-            open: group.tasks,
-            done: group.done,
-            fold: `tasks:${group.project.key}`,
-            depth: 1,
-            keyOf: slugOf,
-          })"
-          :key="line.key"
-        >
-          <OrgFold v-if="'fold' in line" :depth="line.depth" :fold="line.key" :label="plural(line.fold, 'done task')" />
-          <OrgTaskRow
-            v-else
-            :depth="line.depth"
-            :is-hot="hotTask === line.item.meta.slug"
-            :one="line.item"
-            @drop="dropOnTask($event, line.item)"
-            @leave="hotTask = undefined"
-            @menu="(event) => menu?.openFor(event, line.item.meta)"
-            @open="openConversation"
-            @over="overTask($event, line.item)"
-          />
-        </template>
+        <OrgTaskRow
+          v-for="one in group.tasks"
+          :key="one.meta.slug"
+          :depth="1"
+          :is-hot="hotTask === one.meta.slug"
+          :one="one"
+          @drop="dropOnTask($event, one)"
+          @leave="hotTask = undefined"
+          @menu="(event) => menu?.openFor(event, one.meta)"
+          @open="openConversation"
+          @over="overTask($event, one)"
+        />
 
         <OrgRow
           v-for="row in group.conversations"
@@ -226,6 +211,20 @@ watch(
           @dragstart="carry($event, row)"
           @open="openConversation(row)"
         />
+
+        <template v-if="group.archived.length">
+          <OrgFold :depth="1" :fold="`archived:${group.project.key}`" :label="`${group.archived.length} archived`" />
+          <template v-if="folds.isOpen(`archived:${group.project.key}`)">
+            <OrgTaskRow
+              v-for="one in group.archived"
+              :key="one.meta.slug"
+              :depth="2"
+              :one="one"
+              @menu="(event) => menu?.openFor(event, one.meta)"
+              @open="openConversation"
+            />
+          </template>
+        </template>
       </template>
     </div>
 

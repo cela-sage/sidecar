@@ -135,18 +135,6 @@ export const $desk = defineStore(() => {
       failed: `Could not move ${row.name} to ${project.name}`,
     });
 
-  const hide = async (meta: TaskMeta): Promise<void> => {
-    const at = `/api/tasks/${encodeURIComponent(meta.slug)}/hide`;
-    const done = await $fetch(at, { method: "POST" }).catch(() => undefined);
-    await task.readTasks();
-    chrome.toast(
-      done
-        ? `${titleOf(meta)} left the list, and sidecar task ${meta.slug} still reads it`
-        : `Could not remove ${titleOf(meta)}`,
-      done ? undefined : "destructive",
-    );
-  };
-
   const markDone = async (meta: TaskMeta): Promise<void> => {
     await task.move(meta.slug, "done").then(
       () => chrome.toast(`${titleOf(meta)} is Done`),
@@ -208,7 +196,6 @@ export const $desk = defineStore(() => {
     carrying,
     create,
     dragging,
-    hide,
     isNaming,
     lead,
     load,

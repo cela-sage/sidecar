@@ -5,7 +5,12 @@ import { Titles, type RoleTitle } from "../../shared/utils/titles.ts";
 import { Tasks, type AgentState, type TaskMeta } from "./tasks.ts";
 
 // Amber is a conversation outside a task waiting on you, red a task or its Individual Contributor waiting on you.
-export type Mark = "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "killed" | "done";
+export type Mark = "working" | "needs" | "waits" | "third" | "queued" | "unseen" | "completed" | "killed" | "archived";
+
+export interface AgentFace {
+  name: string;
+  icon: number;
+}
 
 export interface OrgConversation {
   key: string;
@@ -14,6 +19,7 @@ export interface OrgConversation {
   role?: Role;
   mark: Mark;
   slug?: string;
+  agent?: AgentFace;
   agents?: SessionAgent[];
 }
 
@@ -22,7 +28,6 @@ export interface OrgTask {
   status: TaskState;
   mark: Mark;
   leads: OrgConversation[];
-  done: OrgConversation[];
 }
 
 export interface OrgProject {
@@ -31,7 +36,7 @@ export interface OrgProject {
   mark?: Mark;
   leads: OrgConversation[];
   tasks: OrgTask[];
-  done: OrgTask[];
+  archived: OrgTask[];
   conversations: OrgConversation[];
 }
 
@@ -51,7 +56,6 @@ export interface OrgInput {
   asking?: string[];
   busy?: Record<string, Busy>;
   unseen?: string[];
-  now?: number;
 }
 
 interface Placed {
@@ -84,7 +88,7 @@ const RANK: Record<Mark, number> = {
   queued: 2,
   completed: 1,
   killed: 0,
-  done: 0,
+  archived: 0,
 };
 const TASK_MARK: Record<TaskState, Mark> = {
   unassigned: "queued",
@@ -94,13 +98,9 @@ const TASK_MARK: Record<TaskState, Mark> = {
   blocked: "needs",
   waiting: "third",
   finished: "needs",
-  done: "done",
+  done: "archived",
 };
 const LEAD_ORDER: Role[] = ["DL", "SL", "IC"];
-const DONE_KEPT_MS = 24 * 60 * 60_000;
-
-const isShown = ({ task }: TaskMeta, now: number): boolean =>
-  task.state !== "done" || (!task.hidden && !(task.doneAt && now - Date.parse(task.doneAt) > DONE_KEPT_MS));
 
 const worst = (marks: Mark[]): Mark | undefined =>
   marks.reduce<Mark | undefined>((was, one) => (!was || RANK[one] > RANK[was] ? one : was), undefined);
@@ -173,18 +173,24 @@ const conversationOf = (placed: Placed, { slug, waiting = false, ...heard }: Pla
 const byLead = (a: Placed, b: Placed): number =>
   LEAD_ORDER.indexOf(a.title.role) - LEAD_ORDER.indexOf(b.title.role) || Tasks.agentOrder(a.session, b.session);
 
+const isKilled = ({ mark }: OrgConversation): boolean => mark === "killed";
+
+const aliveOf = (rows: OrgConversation[]): OrgConversation[] => rows.filter((row) => !isKilled(row));
+
+const byName = (a: OrgConversation, b: OrgConversation): number =>
+  Number(isKilled(a)) - Number(isKilled(b)) || (a.agent?.name ?? a.name).localeCompare(b.agent?.name ?? b.name);
+
 const taskOf = (meta: TaskMeta, placed: Placed[], heard: Heard): OrgTask => {
-  const mine = placed.filter((one) => one.title.role === "IC" && Titles.belongsTo(one.title, meta.slug)).sort(byLead);
   const placing = { ...heard, slug: meta.slug, waiting: meta.task.state === "waiting" };
-  const leads = mine
-    .filter((one) => one.session.life === "alive")
+  const leads = placed
+    .filter((one) => one.title.role === "IC" && Titles.belongsTo(one.title, meta.slug))
     .map((one) => conversationOf(one, placing))
-    .sort((a, b) => RANK[b.mark] - RANK[a.mark]);
-  const done = mine.filter((one) => one.session.life === "killed").map((one) => conversationOf(one, placing));
+    .sort(byName);
+  const alive = aliveOf(leads);
   // A lead with a turn open shows the task In progress whatever its state, and the state returns when the turn ends.
-  const status = leads.some((one) => one.mark === "working") ? "running" : meta.task.state;
-  const mark = worst([TASK_MARK[status], ...leads.map((one) => one.mark)]) ?? "queued";
-  return { meta, status, mark, leads, done };
+  const status = alive.some((one) => one.mark === "working") ? "running" : meta.task.state;
+  const mark = worst([TASK_MARK[status], ...alive.map((one) => one.mark)]) ?? "queued";
+  return { meta, status, mark, leads };
 };
 
 const projectsOf = (tasks: TaskMeta[], projects: Project[]): Project[] => {
@@ -193,15 +199,7 @@ const projectsOf = (tasks: TaskMeta[], projects: Project[]): Project[] => {
   return [...projects, ...[...strays].map((key) => ({ key, name: key, token: key, folder: "" }))];
 };
 
-const treeOf = ({
-  sessions,
-  tasks,
-  projects,
-  asking = [],
-  busy = {},
-  unseen = [],
-  now = Date.now(),
-}: OrgInput): OrgTree => {
+const treeOf = ({ sessions, tasks, projects, asking = [], busy = {}, unseen = [] }: OrgInput): OrgTree => {
   const heard: Heard = { asking: new Set(asking), busy, unseen: new Set(unseen) };
   const inView = sessions.some((session) => typeof session.inView === "boolean");
   const listed = sessions.filter((session) =>
@@ -209,19 +207,19 @@ const treeOf = ({
   );
   const placed = placedOf(listed);
   const owned = ownedOf(listed);
-  const ordered = tasks.filter((one) => isShown(one, now)).sort(Tasks.order);
+  const ordered = [...tasks].sort(Tasks.order);
   const all = projectsOf(ordered, projects);
   const keys = all.map((one) => one.key);
 
   const groups = all.map((project): OrgProject => {
     const theirs = placed.filter((one) => one.title.role !== "EA" && sameWord(one.title.token, project.token));
     const built = ordered.filter((one) => one.task.project === project.key).map((one) => taskOf(one, theirs, heard));
-    const claimed = new Set(built.flatMap((one) => [...one.leads, ...one.done].map((row) => row.key)));
+    const claimed = new Set(built.flatMap((one) => one.leads.map((row) => row.key)));
     const leads = theirs
       .filter((one) => one.title.role !== "IC" || !claimed.has(one.session.key))
       .sort(byLead)
       .map((one) => conversationOf(one, heard));
-    const open = built.filter((one) => one.status !== "done");
+    const open = built.filter((one) => !Tasks.isArchived(one.status));
     const conversations = owned
       .filter((one) => sameWord(one.title.token, project.token))
       .sort((a, b) => Tasks.agentOrder(a.session, b.session))
@@ -232,7 +230,7 @@ const treeOf = ({
       mark: worst([...leads, ...open, ...conversations].map((one) => one.mark)),
       leads,
       tasks: open,
-      done: built.filter((one) => one.status === "done"),
+      archived: built.filter((one) => Tasks.isArchived(one.status)),
       conversations,
     };
   });
@@ -243,7 +241,7 @@ const treeOf = ({
     .map((one) => conversationOf(one, heard));
   const placedRows = groups.flatMap((group) => [
     ...group.leads,
-    ...[...group.tasks, ...group.done].flatMap((one) => [...one.leads, ...one.done]),
+    ...[...group.tasks, ...group.archived].flatMap((one) => one.leads),
     ...group.conversations,
   ]);
   const seen = new Set([...assistants, ...placedRows].map((row) => row.key));
@@ -259,7 +257,7 @@ const treeOf = ({
     inbox: ordered.filter((one) => one.task.state === "unassigned"),
     projects: groups,
     unplaced,
-    open: tasks.filter((one) => one.task.state !== "done").length,
+    open: tasks.filter((one) => !Tasks.isArchived(one.task.state)).length,
     conversations: seen.size + unplaced.length,
   };
 };
@@ -274,7 +272,7 @@ const placeOf = (tree: OrgTree, key: string): OrgPlace | undefined => {
   for (const group of tree.projects) {
     const rows = [
       ...group.leads,
-      ...[...group.tasks, ...group.done].flatMap((one) => [...one.leads, ...one.done]),
+      ...[...group.tasks, ...group.archived].flatMap((one) => one.leads),
       ...group.conversations,
     ];
     const row = rows.find(is);
@@ -286,27 +284,27 @@ const placeOf = (tree: OrgTree, key: string): OrgPlace | undefined => {
 
 const everyone = (tree: OrgTree): OrgConversation[] => [
   ...tree.assistants,
-  ...tree.projects.flatMap((group) => [...group.leads, ...group.tasks.flatMap((one) => one.leads)]),
+  ...tree.projects.flatMap((group) => [...group.leads, ...group.tasks.flatMap((one) => aliveOf(one.leads))]),
   ...tree.unplaced,
 ];
 
 const mentionable = (tree: OrgTree, key: string): OrgConversation[] => {
   const group = placeOf(tree, key)?.group;
   const rows = group
-    ? [...group.leads, ...group.tasks.flatMap((one) => one.leads), ...group.conversations]
+    ? [...group.leads, ...group.tasks.flatMap((one) => aliveOf(one.leads)), ...group.conversations]
     : everyone(tree);
   return rows.filter((row) => row.key !== key);
 };
 
 const statusOf = (tree: OrgTree, slug: string): TaskState | undefined =>
-  tree.projects.flatMap((group) => [...group.tasks, ...group.done]).find((one) => one.meta.slug === slug)?.status;
+  tree.projects.flatMap((group) => [...group.tasks, ...group.archived]).find((one) => one.meta.slug === slug)?.status;
 
 const conversationsOf = (tree: OrgTree): OrgConversation[] => [
   ...tree.assistants,
   ...tree.unplaced,
   ...tree.projects.flatMap((group) => [
     ...group.leads,
-    ...[...group.tasks, ...group.done].flatMap((one) => [...one.leads, ...one.done]),
+    ...[...group.tasks, ...group.archived].flatMap((one) => one.leads),
     ...group.conversations,
   ]),
 ];
@@ -320,4 +318,4 @@ const titles = (tree: OrgTree): Map<string, string> => {
   return new Map([...keys].flatMap(([title, key]) => (title && key ? [[title, key] as const] : [])));
 };
 
-export const Org = { everyone, mentionable, placeOf, statusOf, titles, treeOf };
+export const Org = { aliveOf, everyone, mentionable, placeOf, statusOf, titles, treeOf };

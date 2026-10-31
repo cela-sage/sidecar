@@ -38,8 +38,8 @@ const isLit = computed(() => !!conversation && conversationMenu.lit === conversa
     :aria-selected="isSelected"
     :data-conversation="conversation"
     :data-depth="depth"
-    :data-done="mark === 'done'"
     :data-front="isFront"
+    :data-mark="mark"
     :data-lit="isLit"
     :data-selected="isSelected"
     :data-task="isTask"
@@ -152,7 +152,8 @@ const isLit = computed(() => !!conversation && conversationMenu.lit === conversa
   @apply font-bold;
 }
 
-.row[data-done="true"] .name {
+.row[data-mark="killed"] .name,
+.row[data-mark="archived"] .name {
   @apply text-muted;
 }
 
