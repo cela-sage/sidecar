@@ -27,7 +27,7 @@ const standsEyebrow = computed(() => {
 const readLine = computed(() =>
   readAt.value
     ? `The Domain Lead last read it at ${clock(readAt.value)}`
-    : "The Domain Lead reads it the next time the task needs it",
+    : "The Domain Lead reads it the next time the workstream needs it",
 );
 
 function pick(index: number): void {
@@ -68,7 +68,7 @@ useShortcuts(
 </script>
 
 <template>
-  <section class="history" aria-label="Task history" data-region="task-history">
+  <section class="history" aria-label="Workstream history" data-region="task-history">
     <header class="bar">
       <span class="title">{{ task.onlyDecisions ? "Your decisions" : "Every entry" }}</span>
       <span class="meta mono-meta">newest first</span>
@@ -102,8 +102,8 @@ useShortcuts(
       <UiStateMessage v-if="!rows.length" class="empty">
         {{
           task.onlyDecisions
-            ? "You haven't decided anything on this task yet."
-            : `Nothing has happened on ${meta.title || "this task"} yet. Its lane, its Individual Contributor's turns and your messages land here.`
+            ? "You haven't decided anything on this workstream yet."
+            : `Nothing has happened on ${meta.title || "this workstream"} yet. Its lane, its Individual Contributor's turns and your messages land here.`
         }}
       </UiStateMessage>
 

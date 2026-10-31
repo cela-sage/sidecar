@@ -238,7 +238,7 @@ export const $desk = defineStore(() => {
       () => undefined,
     );
     if (!made) {
-      chrome.toast("Could not create the task", "destructive");
+      chrome.toast("Could not create the workstream", "destructive");
       return undefined;
     }
     await task.readTasks();

@@ -30,7 +30,7 @@ const isInstant = ref(false);
 const box = ref<{ width: number; height: number }>();
 
 const CHIPS: Record<"conversation" | "task", string[]> = {
-  conversation: ["What needs me?", "Route the backlog", "Open a task from this conversation"],
+  conversation: ["What needs me?", "Route the backlog", "Open a workstream from this conversation"],
   task: ["Where does it stand?", "What is it waiting on?", "What did I decide on it?"],
 };
 

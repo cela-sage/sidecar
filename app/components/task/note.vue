@@ -29,7 +29,7 @@ const note = computed<Note | undefined>(() => {
     return {
       look: "running",
       title: `${resumed.on ?? "They"} came back at ${day(resumed.at)}`,
-      text: `The Individual Contributor picked the task back up on its own after ${resumed.waited}.`,
+      text: `The Individual Contributor picked the workstream back up on its own after ${resumed.waited}.`,
     };
   if (finished)
     return {

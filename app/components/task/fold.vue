@@ -6,8 +6,8 @@ const emit = defineEmits<{ open: [] }>();
 </script>
 
 <template>
-  <section class="fold" aria-label="The task" data-region="task-fold">
-    <span class="label mono-meta">The task</span>
+  <section class="fold" aria-label="The workstream" data-region="task-fold">
+    <span class="label mono-meta">The workstream</span>
     <button
       v-for="(part, i) in parts"
       :key="part.name"

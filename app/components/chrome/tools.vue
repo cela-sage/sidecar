@@ -7,9 +7,9 @@ const desk = $desk();
 <template>
   <div class="tools" role="group" aria-label="Sidecar tools">
     <UiIconButton
-      aria-label="New task"
+      aria-label="New workstream"
       data-region="org-new-task"
-      data-tip="New task · {N}"
+      data-tip="New workstream · {N}"
       :icon="Plus"
       size="sm"
       @click="desk.isNaming = true"

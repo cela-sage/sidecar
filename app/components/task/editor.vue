@@ -338,7 +338,7 @@ onMounted(async () => {
   host.value.addEventListener("paste", (event) => void paste(event), { capture: true });
   const got = await read();
   if (!("text" in got)) {
-    unread.value = "The task's markdown could not be read.";
+    unread.value = "The workstream's markdown could not be read.";
     return;
   }
   disk.value = { hash: got.hash, text: got.text };

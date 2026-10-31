@@ -35,7 +35,7 @@ const rows = computed(() =>
       state: isHeld ? `${state} · in your terminal` : state,
       look: LOOK[state],
       agents: session.agents ?? [],
-      detail: asked ? `${asked.body} It's on the task, waiting on you.` : session.detail,
+      detail: asked ? `${asked.body} It's on the workstream, waiting on you.` : session.detail,
       when: `${asked ? "asked" : "last turn"}${at ? ` · ${at}` : ""}`,
     };
   }),
@@ -61,7 +61,7 @@ const turnAt = (ms?: number): string => {
 </script>
 
 <template>
-  <aside class="rail" aria-label="Conversations on this task" data-region="task-rail">
+  <aside class="rail" aria-label="Conversations on this workstream" data-region="task-rail">
     <header class="head">
       <span class="title">Conversations</span>
       <span class="meta mono-meta">{{ rows.length }}</span>
@@ -77,7 +77,7 @@ const turnAt = (ms?: number): string => {
     </header>
     <div class="rows">
       <p v-if="!rows.length" class="empty">
-        No conversation runs this task yet. One started with this task's slug in its title lists here.
+        No conversation runs this workstream yet. One started with its slug in its title lists here.
       </p>
       <div
         v-for="row in rows"
@@ -85,7 +85,7 @@ const turnAt = (ms?: number): string => {
         class="row"
         data-cmt="conversation"
         :data-cmt-label="row.rest"
-        :data-cmt-tell="`the ${row.rest} conversation on this task`"
+        :data-cmt-tell="`the ${row.rest} conversation on this workstream`"
         :data-held="row.isHeld"
         :data-lead="row.isLead"
         :data-look="row.look"

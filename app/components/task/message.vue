@@ -35,7 +35,7 @@ const send = async (): Promise<void> => {
   if (!reply) return;
   if (!reply.delivered) return chrome.toast(`${name} ${FAILED[reply.reason]}`, "warning");
   words.value = "";
-  chrome.toast(`Sent to ${name}, and it's in the task history`, "success");
+  chrome.toast(`Sent to ${name}, and it's in the workstream's history`, "success");
 };
 
 onMounted(() => void prompt.load(conversation));
@@ -54,7 +54,7 @@ onMounted(() => void prompt.load(conversation));
       @send="send"
     />
     <UiButton
-      data-tip="Send · {↵}. It lands in the task history"
+      data-tip="Send · {↵}. It lands in the workstream's history"
       :disabled="!words.trim() || notes.isSending"
       size="xs"
       type="submit"

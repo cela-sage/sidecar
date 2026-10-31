@@ -82,7 +82,7 @@ useResizeObserver(boardEl, ([entry]) => {
     <div class="workspace" :style="{ '--side-w': `${side}px` }">
       <aside
         class="side"
-        aria-label="Every task and conversation"
+        aria-label="Every workstream and conversation"
         data-region="workspace-tree"
         :data-listed="artifact.isFull && artifact.isListed"
         :inert="isDown"

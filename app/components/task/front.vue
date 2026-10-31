@@ -24,7 +24,7 @@ const conversation = computed(() => {
   <section class="front" data-region="task-front">
     <TaskSheet v-if="meta" class="sheet" :conversation="conversation" :meta="meta" :project="project" :rail="rail" />
     <UiSurface v-else class="missing" pad="none" variant="raised">
-      <UiStateMessage align="center">This task is not in the catalogue.</UiStateMessage>
+      <UiStateMessage align="center">This workstream is not in the catalogue.</UiStateMessage>
     </UiSurface>
   </section>
 </template>

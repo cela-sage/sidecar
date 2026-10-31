@@ -32,8 +32,8 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
     <span class="section mono-meta">Backlog</span>
     <OrgDraft
       v-if="desk.isNaming"
-      label="Name the new task"
-      placeholder="Name the task, then write it in Edit"
+      label="Name the new workstream"
+      placeholder="Name the workstream, then write it in Edit"
       tip="Add to the backlog · {enter}"
       @cancel="desk.isNaming = false"
       @name="create"
@@ -43,8 +43,8 @@ const start = (event: DragEvent, meta: TaskMeta): void => {
         v-if="desk.renaming === meta.slug"
         action="Rename"
         :initial="meta.title || deslug(meta.slug)"
-        label="Rename the task"
-        placeholder="The task's new title"
+        label="Rename the workstream"
+        placeholder="The workstream's new title"
         tip="Rename, keeping its slug · {enter}"
         @cancel="desk.renaming = undefined"
         @name="desk.renameTask(meta, $event)"

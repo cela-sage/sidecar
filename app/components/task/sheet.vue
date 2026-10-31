@@ -53,7 +53,7 @@ const updated = computed(() =>
   meta.updated ? new Date(meta.updated).toLocaleDateString([], { day: "numeric", month: "short" }) : "",
 );
 const eyebrow = computed(() =>
-  ["Task", project ? `on ${project.name}` : "in the backlog", updated.value && `updated ${updated.value}`]
+  ["Workstream", project ? `on ${project.name}` : "in the backlog", updated.value && `updated ${updated.value}`]
     .filter(Boolean)
     .join(" · "),
 );
@@ -99,7 +99,7 @@ onBeforeUnmount(() => (task.isEditing = false));
 </script>
 
 <template>
-  <ArtifactSheet list-name="Tasks" :slug="meta.slug">
+  <ArtifactSheet list-name="Workstreams" :slug="meta.slug">
     <div class="task" data-region="task-sheet" :data-editing="task.isEditing">
       <header class="bar">
         <UiSegmented
@@ -148,7 +148,7 @@ onBeforeUnmount(() => (task.isEditing = false));
           :is-pressed="task.hasRail"
           :label="String(rail.length)"
           shape="pill"
-          :tip="`${task.hasRail ? 'Hide' : 'Show'} the conversations on this task`"
+          :tip="`${task.hasRail ? 'Hide' : 'Show'} the conversations on this workstream`"
           @click="task.hasRail = !task.hasRail"
         />
       </header>

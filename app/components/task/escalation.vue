@@ -156,7 +156,7 @@ function sendWords(): void {
           {{
             byYou
               ? "Sent to the conversation that asked and kept in your decisions, so nobody asks it again."
-              : "Sent to the conversation that asked and kept in the task's history."
+              : "Sent to the conversation that asked and kept in the workstream's history."
           }}
         </p>
       </template>

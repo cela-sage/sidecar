@@ -30,7 +30,7 @@ defineExpose({ openFor });
 </script>
 
 <template>
-  <UiContextMenu ref="menu" data-region="org-task-menu" label="Task" width="w-48">
+  <UiContextMenu ref="menu" data-region="org-task-menu" label="Workstream" width="w-48">
     <template #default="{ close }">
       <UiMenuItem :icon="Pencil" @click="act(close, (meta) => (desk.renaming = meta.slug))">Rename</UiMenuItem>
       <template v-if="one">
