@@ -15,7 +15,6 @@ const dock = $dock();
 const sc = useSidecar();
 const tree = useOrgTree();
 const input = useTemplateRef<{ focus: () => void }>("input");
-const picker = useTemplateRef<HTMLInputElement>("picker");
 
 const canStop = computed(() => isBusy && prompt.isEmpty);
 
@@ -38,11 +37,6 @@ const uploadAll = (files: File[]): void => {
 
 const onEscape = (): void => {
   if (isBusy) void prompt.stop();
-};
-
-const onPicked = (): void => {
-  uploadAll([...(picker.value?.files ?? [])]);
-  if (picker.value) picker.value.value = "";
 };
 
 watch(
@@ -69,14 +63,7 @@ watch(
         @send="prompt.send()"
       />
       <div class="bar">
-        <UiIconButton
-          :icon="Paperclip"
-          aria-label="Attach a file"
-          data-tip="Attach a file"
-          size="xs"
-          @click="picker?.click()"
-        />
-        <input ref="picker" class="picker" multiple type="file" @change="onPicked" />
+        <ComposerAttach @files="uploadAll" />
         <ConversationModel :current="model" :has-history="hasHistory" />
         <ConversationMode :current="mode" />
         <span class="spacer" />
@@ -132,10 +119,6 @@ watch(
 
 .bar > :first-child {
   @apply -ml-1.5;
-}
-
-.picker {
-  @apply hidden;
 }
 
 .spacer {
