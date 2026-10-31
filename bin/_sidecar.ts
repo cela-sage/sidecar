@@ -184,13 +184,17 @@ function build(): boolean {
   return spawnSync(process.execPath, [NUXT, "build"], { cwd: ROOT, stdio: ["ignore", log, log] }).status === 0;
 }
 
+// A server restarted from inside a conversation would otherwise publish every event as that conversation's.
+const serverEnv = (): NodeJS.ProcessEnv =>
+  Object.fromEntries(Object.entries(process.env).filter(([key]) => key !== "CLAUDE_CODE_SESSION_ID"));
+
 function spawnServer(): () => boolean {
   const log = openSync(LOG, "a");
   // Detached into its own session, so it outlives this command and the terminal that ran it.
   const child = spawn(process.execPath, [SERVER], {
     cwd: ROOT,
     detached: true,
-    env: { ...process.env, ...SERVER_ENV },
+    env: { ...serverEnv(), ...SERVER_ENV },
     stdio: ["ignore", log, log],
   });
   child.unref();
