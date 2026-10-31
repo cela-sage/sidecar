@@ -84,14 +84,14 @@ test("the history folds runs, puts the divider under what the Domain Lead read, 
   assert.equal(steps("running", Timeline.story(waited, "running")), "Waited 1 day:past In progress:running Done:future");
 });
 
-test("the tree keeps every archived workstream however old or removed, and lists only what agent view lists", () => {
-  const done = (slug: string, task: Partial<TaskMeta["task"]>): TaskMeta => ({
+test("the tree keeps every archived workstream, and lists only what agent view lists", () => {
+  const done = (slug: string): TaskMeta => ({
     slug,
     title: slug,
     kind: "page",
     format: "md",
     path: `/tmp/${slug}.md`,
-    task: { state: "done", project: "cela", ...task },
+    task: { state: "done", project: "cela" },
   });
   const tree = Org.treeOf({
     projects: [{ key: "cela", name: "Cela", token: "Cela", folder: "/tmp/cela" }],
@@ -99,17 +99,12 @@ test("the tree keeps every archived workstream however old or removed, and lists
       session({ key: "seen", name: "[Cela] sidecar zoom", inView: true }),
       session({ key: "gone", name: "[Cela] sage storybook", inView: false }),
     ],
-    tasks: [
-      done("today", { doneAt: "2026-10-28T09:00:00Z" }),
-      done("yesterday", { doneAt: "2026-10-27T09:00:00Z" }),
-      done("removed", { doneAt: "2026-10-28T11:00:00Z", hidden: true }),
-      done("untimed", {}),
-    ],
+    tasks: [done("today"), done("yesterday"), done("removed")],
   });
   const [cela] = tree.projects;
   assert.deepEqual(
     cela?.archived.map((one) => one.meta.slug),
-    ["removed", "today", "untimed", "yesterday"],
+    ["removed", "today", "yesterday"],
   );
   assert.deepEqual(
     cela?.conversations.map((one) => one.key),

@@ -12,7 +12,6 @@ import { Ask } from "./ask.ts";
 import { TaskCaller, type Caller } from "./caller.ts";
 import { TaskFiles, type TaskFile } from "./file.ts";
 import { TaskHistory } from "./history.ts";
-import { TaskShelf } from "./shelf.ts";
 import { TaskTrash } from "./trash.ts";
 import { liveSessions } from "../sessions/index.ts";
 import { removeSession } from "../sessions/removal.ts";
@@ -121,7 +120,6 @@ const state = ({ given, caller, state: asked, reason, on }: StateInput): TaskFil
   if (was === now && !reason) return file;
   const task = { ...file.task, state: now, ...(now === "unassigned" ? { project: undefined } : {}) };
   const next = TaskFiles.restamp(file, task);
-  if (now !== "done") TaskShelf.show(file.slug);
   record(next, {
     ...saidBy(caller),
     kind: "state",

@@ -44,8 +44,6 @@ export interface ArtifactTask {
   project?: string;
   state: TaskState;
   lead?: string;
-  doneAt?: string;
-  hidden?: true;
 }
 
 export interface Project {

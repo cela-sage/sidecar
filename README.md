@@ -255,8 +255,7 @@ no Remove. A backlog row's trash goes through
 the way a conversation's own delete does, writes one history entry naming them, and moves the `.md` and its
 history into `~/.claude/sidecar/trash/`. Undo, or ⌘Z, moves those two back through
 `POST /api/tasks/:slug/restore`, and the toast says the stopped Individual Contributors stay stopped, since their transcripts
-remain but their processes are gone. `POST /api/tasks/:slug/hide` and `tasks-hidden.json` stay for the CLI, with no
-button and no effect on the tree.
+remain but their processes are gone.
 
 Right-click on a conversation row, or on a conversation chip, opens the same conversation menu under its title
 and key. Open brings it in front, Mention in
