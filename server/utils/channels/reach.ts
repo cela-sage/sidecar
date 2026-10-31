@@ -43,6 +43,7 @@ export interface Mentioned {
   all: boolean;
   boss: boolean;
   ambiguous: string[];
+  unknown: string[];
 }
 
 export type NoteKind = "member" | "outside" | "answer";
@@ -51,12 +52,14 @@ export interface NoteInput {
   kind: NoteKind;
   slug: string;
   speaker: string;
+  handle?: string;
   text: string;
   post: string;
   thread: string;
 }
 
 const MENTION = /(?<![\p{L}\p{N}_@./-])@([\p{L}\p{N}_-]+)/gu;
+const CODE = /```[\s\S]*?```|`[^`\n]*`/g;
 
 // The one place a mention becomes conversations: a key, else a member's name, else a name outside the channel.
 const resolve = (word: string, { members, everyone }: Roster): string[] => {
@@ -68,8 +71,9 @@ const resolve = (word: string, { members, everyone }: Roster): string[] => {
   return inside.length ? inside : [...new Set(named(everyone))];
 };
 
+// Backticks keep a mention as the word itself, the way Slack leaves code alone.
 const mentioned = (text: string, roster: Roster): Mentioned => {
-  const words = [...text.matchAll(MENTION)].map((hit) => hit[1] ?? "");
+  const words = [...text.replace(CODE, " ").matchAll(MENTION)].map((hit) => (hit[1] ?? "").toLowerCase());
   const named = words
     .filter((word) => word !== "all" && word !== "boss")
     .map((word) => ({
@@ -81,6 +85,7 @@ const mentioned = (text: string, roster: Roster): Mentioned => {
     all: words.includes("all"),
     boss: words.includes("boss"),
     ambiguous: named.filter(({ keys }) => keys.length > 1).map(({ word }) => word),
+    unknown: [...new Set(named.filter(({ keys }) => !keys.length).map(({ word }) => word))],
   };
 };
 
@@ -97,15 +102,22 @@ const aim = (input: AimInput): PostMentions => {
   if (!isPrivileged(author) && !inside.has(author.by) && !isAsked)
     throw new Refusal(`you are not in #${slug}, so you cannot post there`, 2);
   const roster = { members: members.map(({ key, agent }) => ({ key, name: agent?.name })), everyone };
-  const { keys, all, boss, ambiguous } = mentioned(text, roster);
+  const { keys, all, boss, ambiguous, unknown } = mentioned(text, roster);
+  if (unknown.length) {
+    const crew = members.map(({ key, agent }) => agent?.name ?? key).join(", ");
+    throw new Refusal(
+      `@${unknown.join(", @")} matches no one in #${slug} (${crew}), and a mention you mean as a word goes in backticks`,
+      2,
+    );
+  }
   if (ambiguous.length)
     throw new Refusal(`@${ambiguous.join(", @")} names more than one conversation outside #${slug}, so @ its key`, 2);
   const others = keys.filter((key) => key !== author.by);
   const outside = others.filter((key) => !inside.has(key));
   if (outside.length && !isPrivileged(author))
     throw new Refusal(`${listed(outside)} not in #${slug}, and an agent can @ only the channel's members`, 2);
-  const unknown = outside.filter((key) => !isConversation(key));
-  if (unknown.length) throw new Refusal(`no conversation ${listed(unknown)}`, 2);
+  const strangers = outside.filter((key) => !isConversation(key));
+  if (strangers.length) throw new Refusal(`no conversation ${listed(strangers)}`, 2);
   const alive = all ? members.filter((one) => one.life === "alive" && one.key !== author.by).map((one) => one.key) : [];
   return {
     keys: [...new Set([...others.filter((key) => inside.has(key)), ...alive])],
@@ -130,9 +142,11 @@ const OPENERS: Record<NoteKind, (input: NoteInput) => string> = {
   answer: ({ slug }) => `Marco answered your @boss in #${slug}:`,
 };
 
+// A reply with no @ notifies no one, so the hint names the agent that asked.
 const note = (input: NoteInput): string => {
-  const { kind, slug, text, post, thread } = input;
-  const reply = `Answer in its thread: \`${cli()} task ${slug} post "<reply>" --thread ${thread}\``;
+  const { kind, slug, handle, text, post, thread } = input;
+  const said = handle ? `@${handle} <reply>` : "<reply>";
+  const reply = `Answer in its thread: \`${cli()} task ${slug} post "${said}" --thread ${thread}\``;
   const read =
     kind === "outside"
       ? `You get one read of the channel up to this message: \`${cli()} task ${slug} channel --upto ${post}\``

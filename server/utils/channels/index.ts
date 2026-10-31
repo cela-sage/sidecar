@@ -92,7 +92,9 @@ const post = async ({ given, author, text, thread }: PostInput): Promise<Channel
     ...mentions.outside.map((key): [string, NoteKind] => [key, "outside"]),
     ...answered.map((key): [string, NoteKind] => [key, "answer"]),
   ]);
-  const speaker = Reach.speakerOf(speakerOf(author.by, members, sessions));
+  const asker = speakerOf(author.by, members, sessions);
+  const speaker = Reach.speakerOf(asker);
+  const handle = author.who === "YOU" || author.who === "EA" ? undefined : (asker.name ?? author.by);
   const from = author.by === "YOU" ? undefined : author.by;
   const lives = new Map(sessions.map((one) => [one.key, one.life]));
   const results = await Promise.all(
@@ -101,6 +103,7 @@ const post = async ({ given, author, text, thread }: PostInput): Promise<Channel
         kind,
         slug: file.slug,
         speaker,
+        ...(handle ? { handle } : {}),
         text: said,
         post: saved.id,
         thread: root?.id ?? saved.id,

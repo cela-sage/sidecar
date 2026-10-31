@@ -142,7 +142,7 @@ test("@name interrupts that member alone, @all wakes every member alive but the 
     note ?? "",
     new RegExp(`^\\[\\[sidecar slug=board from=${LANE}\\]\\]\\n${juno} \`${LANE}\` \\(IC\\) in #board: @${ivo}`, "i"),
   );
-  assert.match(note ?? "", new RegExp(`task board post "<reply>" --thread ${one.id}`));
+  assert.match(note ?? "", new RegExp(`task board post "@${juno} <reply>" --thread ${one.id}`));
   assert.deepEqual(await got(DL), []);
 
   const all = await Channels.post({ given: "board", author: asIc, text: "@all scope freeze" });
@@ -207,6 +207,19 @@ test("an agent can @ only members, and Marco's @ of an outsider gives it one rea
 
   const assistant = await Channels.post({ given: "board", author: { by: EA, who: "EA" }, text: `@${NELL} thanks` });
   assert.deepEqual(assistant.reach.outside, [{ key: NELL }]);
+});
+
+test("a mention in backticks is only the word, @ALL reaches in any case, and an @ that matches no one is refused", async () => {
+  const quoted = await Channels.post({ given: "board", author: asIc, text: "write `@boss` or\n```\n@all\n```\nto raise it" });
+  assert.deepEqual([quoted.reach.boss, quoted.reach.all, quoted.reach.notified], [undefined, undefined, []]);
+  assert.deepEqual(Channels.read("board").raised, []);
+  const loud = await Channels.post({ given: "board", author: asIc, text: "@ALL standup at ten" });
+  assert.equal(loud.reach.all, true);
+  await assert.rejects(
+    Channels.post({ given: "board", author: asIc, text: "@nobody take the menu" }),
+    /@nobody matches no one in #board .*a mention you mean as a word goes in backticks/,
+  );
+  await Promise.all([DL, SL, REVIEW].map(got));
 });
 
 test("two agents in one project never share a name, and a drawn pair reads back the same after a reload", () => {
