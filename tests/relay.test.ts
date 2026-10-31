@@ -16,6 +16,8 @@ const framed = (body: string) =>
 test('a sidecar delivery comes out as only what Marco wrote, and anything else is left alone', () => {
   expect(Relay.unwrap(`[[sidecar]]\n${said}`)).toBe(said)
   expect(Relay.unwrap(`[[sidecar slug=readme]]\n${said}`)).toBe(said)
+  expect(Relay.unwrap(`[[sidecar slug=readme from=70ef962c]]\n${said}`)).toBe(said)
+  expect(Relay.unwrap(`[[sidecar from=70ef962c]]\n${said}`)).toBe(said)
   expect(Relay.unwrap(`[[cc-sidecar]]\n${said}`)).toBe(said)
   expect(Relay.unwrap(`[[mode-relay v1]]\n${said}`)).toBe(said)
   expect(Relay.unwrap(teammate)).toBeUndefined()

@@ -115,6 +115,10 @@ const PARSE: { [T in Topic]: (data: Fields) => Topics[T] | undefined } = {
     const key = text(data.key);
     return key ? { key } : undefined;
   },
+  "relay.sent": (data) => {
+    const [from, to, said, slug] = [text(data.from), text(data.to), text(data.text), text(data.slug)];
+    return from && to && said ? { from, to, text: said, ...(slug ? { slug } : {}) } : undefined;
+  },
 };
 
 export const TOPICS = Object.keys(PARSE) as Topic[];

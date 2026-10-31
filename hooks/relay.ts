@@ -1,5 +1,5 @@
 // cc-sidecar and mode-relay v1 are what the sidecar sent before, and a queued delivery can still carry them.
-const MARKER = /^\[\[(?:sidecar|cc-sidecar|mode-relay v1)(?: slug=[A-Za-z0-9._-]+)?\]\]\n?/
+const MARKER = /^\[\[(?:sidecar|cc-sidecar|mode-relay v1)(?: slug=[A-Za-z0-9._-]+)?(?: from=[0-9a-f]{8})?\]\]\n?/
 // Claude Code puts these around a peer delivery when it stores the row, after session.receive has run.
 const FRAME_HEAD = /^Another Claude session sent a message:\s*/
 const FRAME_NOTE = '\n\nThis came from another Claude session'
