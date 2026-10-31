@@ -163,14 +163,15 @@ Comment, and holding C comments in either.
 
 ### The workspace
 
-Every screen is one window, laid out like an IDE: a 44px bar across the top, the tree flat on the left under it and
-the main panel on the right, with the assistant's door at the bottom right. The bar holds the traffic lights at its
-left in the desktop app and, for the conversation in front, the run widget at its right. While the terminal dock is
-hidden, a 32px strip at the foot of the main panel names each tool and what it holds, Terminal with the project's
-shells and Run with its status, and a failed run shows its mark and the line that names the failure. Each tool is a
-button that opens the dock on it, the chevron or ⌥F12 opens it where you left it, and the door rides above the
-strip. The bar's right end, after the run widget, holds New workstream, the Simple and Detailed chat switch and the
-theme toggle, so the tree starts right under the window's bar, and it resizes from its edge, remembered as `sc:tree`. There is no conversation header, since the tree's row
+Every screen is one window: the tree runs its full height on the left and the main panel sits on the right, with the
+assistant's door at the bottom right. The tree's 44px top row holds the traffic lights in the desktop app, Back and
+Forward after them, and at its right end New workstream, the Simple and Detailed chat switch and the theme toggle. A
+44px bar sits over the main panel only, starting at the tree's edge, because what it holds, the run widget of the
+conversation in front, belongs to what you picked in the tree. The bar has no terminal toggle: while
+the terminal dock is hidden, a 32px strip at the foot of the main panel names each tool and what it holds, Terminal
+with the project's shells and Run with its status, and a failed run shows its mark and the line that names the
+failure. Each tool is a button that opens the dock on it, the chevron or ⌥F12 opens it where you left it, and the door
+rides above the strip. The tree resizes from its edge between 256 and 480px, remembered as `sc:tree`. There is no conversation header, since the tree's row
 already names it: the faces sit as tabs atop the main panel, Conversation first, then Artifacts, Review, Files and
 History, switched in place so Back never leaves the conversation, with a count beside Artifacts and, once Review
 has read it, Review. A face's list, the artifacts, the files to review, the turns or the file tree, docks on the
@@ -660,6 +661,15 @@ what each is doing, `@all` with how many it notifies, and up to six agents outsi
 name that another conversation shares goes in as its key, since a member's name wins on the server, and under the box
 the composer says who the message will notify. An archived channel is read only, with Restore where the composer was.
 
+The composer and the reply box both attach files the way the prompt does, from the paperclip, a paste or a drop, each a
+removable chip with a thumbnail for an image. A file uploads through `POST /api/uploads` and the post goes out with one
+`Attached: <path>` line per file at the end of its text, so `POST /api/tasks/:slug/channel` stays text-only and an agent
+that reads the channel with `sidecar task <slug> channel` sees the absolute path it can open. Send waits for an upload
+in flight, and a refused post keeps its text and its files. In the stream and the thread an image saved in the
+sidecar's uploads leaves the post's text for the picture card the conversation draws, served by `/uploads/<slug>/<name>`
+with its path opening in Files. Any other file keeps its line, as does an image from somewhere else, since only a
+conversation can vouch for a path outside the uploads.
+
 DMs lists the relays between two of the channel's agents, newest first, and opens one beside the list. You can read
 every one, and neither agent is told.
 
@@ -672,7 +682,7 @@ the channel you are reading shows only in place. With the app in the background 
 its click does what Open does. It has no Reply, because a reply inside a macOS notification needs the desktop shell's own
 notification.
 
-Back and Forward sit right after the traffic lights, with ⌘[ and ⌘] and where they go in their tips. They walk the
+Back and Forward sit in the tree's top row, right after the traffic lights, with ⌘[ and ⌘] and where they go in their tips. They walk the
 conversations and channels you opened, a channel with the thread it had open, skip one that is gone, and keep the last 50.
 A web page in front keeps ⌘[ for its own history, and the editor keeps it for outdent.
 
@@ -716,9 +726,10 @@ own, ⌘F there turns the title island into one for any artifact, searching the 
 ⌘G for the next match and ⇧↵ or ⇧⌘G for the previous; a site with its own ⌘F, such as Docs, keeps it, and the
 web surface leaves ⌘F to Chrome. ⌘+, ⌘− and ⌘0, or a trackpad pinch, zoom the whole app the way a Chrome tab
 zooms, the page inside it included, and the zoom is kept across launches, while a file preview keeps its own
-pinch and zoom pill. The bar across the top of the app is its title bar, so it drags the window and a double click
-there zooms or minimises it as System Settings says, and the window keeps at least 760 by 560. The traffic lights
-sit at the bar's left, on the room the page reserves for them and reports to the shell, which moves them with the
+pinch and zoom pill. The tree's top row and the bar over the main panel are the app's title bar, so either drags the
+window and a double click there zooms or minimises it as System Settings says, except while an artifact is
+fullscreen, since its islands sit over them. The window keeps at least 760 by 560. The traffic lights sit at the left
+of the tree's top row, on the room the page reserves for them and reports to the shell, which moves them with the
 zoom, and that room goes while the window is fullscreen, where macOS hides the lights. On first launch the shell copies
 your Chrome cookies into its own session, decrypting them with a key it reads from the login Keychain once
 (the one macOS prompt you will see), so you arrive signed in to the same accounts as in Chrome.

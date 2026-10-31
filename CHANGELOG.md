@@ -7,6 +7,31 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.72.0
+
+### Added
+
+- **Attach a file in the channel's composer and its reply box,** as screen 64 draws it. The paperclip, a paste or a drop
+  uploads through `POST /api/uploads`, and the post carries one `Attached: <path>` line per file in its text, so the
+  channel's post route is unchanged and an agent reading `sidecar task <slug> channel` sees the path.
+- **A post's saved images draw as picture cards** in the stream and the thread, the way a conversation draws a sent
+  attachment, served by `/uploads/<slug>/<name>`. Other files and images from outside the uploads keep their line.
+
+### Changed
+
+- **The tree runs the window's full height.** Its 44px top row holds the traffic lights, Back and Forward, and at its
+  right end New workstream, the chat switch and the theme toggle, while the bar sits over the main panel only, from
+  the tree's edge, with the run widget of the conversation in front. Either row drags the window and zooms it on a
+  double click. The desktop app needs no update, since it places the lights wherever the page reports their room.
+- **The tree is at least 256px wide,** so its top row always fits, and a narrower width kept in `sc:tree` opens at 256.
+- **One upload and one paperclip.** The prompt, the door and the channel upload through `Attachments.upload`, and the
+  prompt and the channel's composer share `ComposerAttach`. A picture card from the uploads shows its type without a size.
+
+### Fixed
+
+- **The main panel keeps its column while the tree floats over a fullscreen artifact,** where it used to slide into
+  the tree's track under the sheet.
+
 ## 0.71.0
 
 ### Changed
