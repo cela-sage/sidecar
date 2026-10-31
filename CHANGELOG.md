@@ -7,6 +7,44 @@ somewhere new rather than on top of the old copy.
 This project is pre-1.0, so a minor bump carries new contracts and behaviour, and a patch bump
 carries fixes. Nothing here is stable enough to promise otherwise yet.
 
+## 0.71.0
+
+### Changed
+
+- **Done is Archived, your mark alone.** The stored state `done` is `archived`, the strip's last step reads Archived,
+  and the history says "You archived it." A lead's `done`, or its `state archived`, files the workstream finished and
+  never undoes your mark, and `sidecar task <slug> state done` is refused with the list of states. The CLI keeps its
+  noun and its `done` verb.
+- **The strip's Archived step obeys the row menu's rule,** off with "Kill its agents first" while any of the
+  workstream's Individual Contributors is alive.
+- **The unit of work reads workstream** in the tree, its menus, the sheet, the rail, the notices and toasts, the rule
+  and the README, which also teaches `post "<text>" --thread <id> --broadcast`. The finished notice says what you do
+  now: check it, kill its agents, then archive it.
+- **A settled conversation reads Idle,** never Completed, since no conversation is ever done.
+- **Mode 0.27.0 is needed,** since its `artifact stamp` takes `--state archived` and refuses `done`.
+
+### Removed
+
+- **The hide shelf.** `POST /api/tasks/:slug/hide`, `tasks-hidden.json` and the `doneAt` and `hidden` fields lost their
+  last reader when the tree dropped its hide button.
+
+### Migration
+
+Run once from the sidecar's checkout with the server stopped, after pulling this release and Mode 0.27.0:
+
+```sh
+node tools/migrations/done-to-archived.ts --dry   # prints what it would change
+node tools/migrations/done-to-archived.ts
+```
+
+It rewrites `state: done` to `state: archived` in the stamps of `NOTES_ARTIFACTS` or `~/.claude/sidecar/artifacts` and
+of `~/.claude/sidecar/trash`, rewrites `done` to `archived` only in the `move` of each entry in
+`~/.claude/sidecar/history/*.jsonl` and the trash's histories, leaving every other line byte for byte, and deletes
+`~/.claude/sidecar/tasks-hidden.json`. A second run changes nothing. Until it runs, a stamp that still says `done`
+is not a workstream to the app or the CLI. `events.jsonl` keeps its old `task.changed` lines, which the reader skips,
+and the snapshots in `~/.claude/sidecar/versions` keep theirs, so a page restored from before the sweep needs
+`artifact stamp <slug> --state archived`.
+
 ## 0.70.0
 
 ### Added

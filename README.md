@@ -59,12 +59,12 @@ from `CLAUDE_CODE_SESSION_ID`; from a plain terminal it just opens the app. It s
 on the port is left alone. The sidecar starts when you run `sidecar`, `/sidecar` or `open`, which
 brings it up when it is down, so nothing runs it at login.
 
-| It resolves           | In this order                                                           |
-| --------------------- | ----------------------------------------------------------------------- |
-| Where artifacts live  | `NOTES_ARTIFACTS`, then `~/.claude/sidecar/artifacts`                   |
-| Who a comment is from | The `user` key in `~/.claude/sidecar/config.json`, defaulting to "User" |
-| What runs a notebook  | `SIDECAR_PYTHON`, then `python3`                                        |
-| What a task's on      | `projects` in `~/.claude/sidecar/config.json`, then the five lanes      |
+| It resolves            | In this order                                                           |
+| ---------------------- | ----------------------------------------------------------------------- |
+| Where artifacts live   | `NOTES_ARTIFACTS`, then `~/.claude/sidecar/artifacts`                   |
+| Who a comment is from  | The `user` key in `~/.claude/sidecar/config.json`, defaulting to "User" |
+| What runs a notebook   | `SIDECAR_PYTHON`, then `python3`                                        |
+| What a workstream's on | `projects` in `~/.claude/sidecar/config.json`, then the five lanes      |
 
 ## Artifacts and their comments
 
@@ -137,19 +137,19 @@ handover another session writes reads the same as yours and its "read this first
 once per conversation, so an entry you remove stays removed, as the turn ends, whichever conversation is on
 screen, with the toast a new page gets, and one said while the sidecar was stopped lands quietly once it is back.
 
-## Tasks
+## Workstreams
 
-A task is a `.md` in the artifacts folder whose stamp holds a state, which the Mode plugin writes with
+A workstream is a `.md` in the artifacts folder whose stamp holds a state, which the Mode plugin writes with
 `artifact stamp <slug> --project cela --state running`. The state is one of unassigned, assigned, assessed,
-running, blocked, waiting, finished and done, and a task is unassigned exactly while its project is empty. Done is
-your mark alone: an Individual Contributor's work ends in finished, and only you move it to done. A task picked
-in the tree opens its channel in the main panel in place of the conversation, and the channel's Document tab holds the sheet, which shows where the task is in its
-life, its four parts, and the conversations on it: a conversation is the task's when its title has a role token and the task's slug, as
-`[Cela] IC sidecar-task-board follower` does, or the ticket a Moneyfarm task is named after, and it lists with
+running, blocked, waiting, finished and archived, and a workstream is unassigned exactly while its project is empty.
+Archived is your mark alone: an Individual Contributor's work ends in finished, and only you archive it. A workstream picked
+in the tree opens its channel in the main panel in place of the conversation, and the channel's Document tab holds the sheet, which shows where the workstream is in its
+life, its four parts, and the conversations on it: a conversation is the workstream's when its title has a role token and the workstream's slug, as
+`[Cela] IC sidecar-task-board follower` does, or the ticket a Moneyfarm workstream is named after, and it lists with
 the state `claude agents` gives it and the subagents running inside it. A comment on the document goes to the
 conversation the stamp's `lead` names, else the first Individual Contributor on it. The selected Individual Contributor row, that one
 unless you click another, has a message field that sends what you write through `/api/sessions/:key/message`,
-and anything the sidecar sends an Individual Contributor that way lands in the task's history as your message. The field is the
+and anything the sidecar sends an Individual Contributor that way lands in the workstream's history as your message. The field is the
 chat's composer, so `/` lists the Individual Contributor's commands, which run as commands and not as a message, and `@` points
 at the project's other conversations.
 
@@ -169,13 +169,13 @@ left in the desktop app and, for the conversation in front, the run widget at it
 hidden, a 32px strip at the foot of the main panel names each tool and what it holds, Terminal with the project's
 shells and Run with its status, and a failed run shows its mark and the line that names the failure. Each tool is a
 button that opens the dock on it, the chevron or ⌥F12 opens it where you left it, and the door rides above the
-strip. The bar's right end, after the run widget, holds New task, the Simple and Detailed chat switch and the
+strip. The bar's right end, after the run widget, holds New workstream, the Simple and Detailed chat switch and the
 theme toggle, so the tree starts right under the window's bar, and it resizes from its edge, remembered as `sc:tree`. There is no conversation header, since the tree's row
 already names it: the faces sit as tabs atop the main panel, Conversation first, then Artifacts, Review, Files and
 History, switched in place so Back never leaves the conversation, with a count beside Artifacts and, once Review
 has read it, Review. A face's list, the artifacts, the files to review, the turns or the file tree, docks on the
 right as a tool window, resized from its edge as `sc:pane`. `?face=review` picks a face and `?task=<slug>` opens a
-task, and there is no jump palette and no `/desk` or `/tasks/<slug>` route any more, so an old link lands on Listening.
+workstream, and there is no jump palette and no `/desk` or `/tasks/<slug>` route any more, so an old link lands on Listening.
 
 The window reads its own width, so it fits a narrow browser tab as well as a desktop window, down to 760 by 560:
 the tree is at most 296px under 1280 and 264px under 1100, the faces drop their counts under 1320, a face's list
@@ -192,66 +192,67 @@ there. A window at 100% says when Claude picks up again.
 
 The tree is built from the conversations agent view lists, which the server reads with
 `claude agents --json --all`, since without `--all` the CLI returns only the running ones, parsed by their titles, `[<project>] <role> <subject>` with
-the role EA, DL, SL or IC and a task slug after the role for SL and IC only. The backlog of tasks on no project heads
-it, then each project with its Domain Lead and Solution Lead conversations and its tasks, each task with its
-Individual Contributors and, under each one, the specialists it hired. The assistant's conversations, titled with EA, live
+the role EA, DL, SL or IC and a workstream slug after the role for SL and IC only. The backlog of workstreams on no
+project heads it, then each project with its Domain Lead and Solution Lead conversations and its workstreams, each
+workstream with its Individual Contributors and, under each one, the specialists it hired. The assistant's conversations, titled with EA, live
 in the door rather than the tree. No conversation is ever done: an Individual Contributor is alive or killed, and a
-killed one stays under its task after the live ones with its name and icon gray, each group sorted by name. A task in
-Done is archived, and lists in an N archived fold at the end of its project with its Individual Contributors out of
+killed one stays under its workstream after the live ones with its name and icon gray, each group sorted by name. An
+archived workstream lists in an N archived fold at the end of its project with its Individual Contributors out of
 sight, whatever its age, until Restore brings it back. A conversation whose agent has a name shows its icon and that
 name in place of its subject, with `Name · subject` in the tip. A project starts folded
-unless something in it waits on you, a task is raised to you, or it holds the open task or the conversation in front, and a fold you
+unless something in it waits on you, a workstream is raised to you, or it holds the open workstream or the conversation in front, and a fold you
 open or close stays that way across conversations and reloads, kept in the browser as `sc:org-folds`. Your own
-conversations, whose titles have no role token, list under the project their `[token]` names, after its tasks,
+conversations, whose titles have no role token, list under the project their `[token]` names, after its workstreams,
 and only a title with no known project lists under No project at the bottom. Each project row shows its image
 or icon, and each row carries its mark: a
-spinner while it works, red when a task or
-its Individual Contributor waits on you, amber when a conversation outside a task does, a clock while it waits on someone
-else, a small dot once its turn ended until you open it, then a check, and a stop square once its process is gone,
-which reads Killed and wins over every other mark until it resumes, and a red @ with a red name on a task whose
+spinner while it works, red when a workstream or
+its Individual Contributor waits on you, amber when a conversation outside a workstream does, a clock while it waits on someone
+else, a small dot once its turn ended until you open it, then a check that reads Idle, and a stop square once its process is gone,
+which reads Killed and wins over every other mark until it resumes, and a red @ with a red name on a workstream whose
 channel holds an `@boss` waiting on you, which wins over every mark, counts for its project's row too and goes back to
-the task's own mark once you answer. A conversation works only while the turn bus says it has a turn open, through
+the workstream's own mark once you answer. A conversation works only while the turn bus says it has a turn open, through
 `conversation.changed`, so a session `claude agents` still calls busy shows a check once its turn ended, and a
-task in progress spins only while one of its Individual Contributors works. The dot clears when the conversation comes in front, by a click on its
+workstream in progress spins only while one of its Individual Contributors works. The dot clears when the conversation comes in front, by a click on its
 row or any other road, and a turn that ends while it is in front in a visible window never draws it. The sidecar
 keeps which turns nobody opened in `~/.claude/sidecar/seen.json` with each turn's end time, so a reload, the desktop
 app and Chrome agree. A question open or a wait keeps its red, amber or clock mark over the dot, and a project or a
-task shows the dot while one of its conversations does and nothing waits on you. A task with an Individual Contributor working under it reads In progress
-whatever its state, and its own status comes back when the turn ends, so the archived fold never lists a task someone
-still works on. A finished task sits under In progress with the red mark and heads its project's tasks, since it waits on
-your mark, and the archived fold lists done alone. A row has no Attach, and the row in front has an ink bar. Clicking a conversation brings it in front, and clicking a
-task opens it in the main panel in place of the conversation, on any screen, until you pick a conversation again.
+workstream shows the dot while one of its conversations does and nothing waits on you. A workstream with an Individual Contributor working under it reads In progress
+whatever its state, and its own status comes back when the turn ends, so the archived fold never lists a workstream someone
+still works on. A finished workstream sits under In progress with the red mark and heads its project's workstreams, since it waits on
+your mark, and the archived fold lists archived ones alone. A row has no Attach, and the row in front has an ink bar. Clicking a conversation brings it in front, and clicking a
+workstream opens it in the main panel in place of the conversation, on any screen, until you pick a conversation again.
 
-The task's Document tab is its sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in
-its bar, and esc closes it back to the conversation. The document renders like any `.md` in Artifacts, under the task's title and its strip, Backlog,
-Assigned, Assessed, In progress and Done, where clicking a step moves the task there through the same lane once
-it is on a project, and an escalation that settles puts a blocked task back in progress. A finished task shows a red
-Finished step before Done, and clicking Done there is your mark, filed in the history as your decision. The conversations on
-the task sit in a rail on the right that the toggle hides, remembered as `sc:task-rail`.
+The workstream's Document tab is its sheet with Document and History, Edit, Comment, Fullscreen and the conversations toggle in
+its bar, and esc closes it back to the conversation. The document renders like any `.md` in Artifacts, under the workstream's title and its strip, Backlog,
+Assigned, Assessed, In progress and Archived, where clicking a step moves the workstream there through the same lane once
+it is on a project, and an escalation that settles puts a blocked workstream back in progress. A finished workstream shows a red
+Finished step before Archived, and clicking Archived there is your mark, filed in the history as your decision, which
+the strip holds off with "Kill its agents first" while any of its Individual Contributors is alive, as the row's menu does. The conversations on
+the workstream sit in a rail on the right that the toggle hides, remembered as `sc:task-rail`.
 Agents move the same states through the lane's verbs. Dropping a backlog row on a project, or pressing its Route to, Haiku's suggestion through
 `Agent.haiku`, a `claude -p` in safe mode at low effort with no tools on your Claude Code login, given the
-assistant's home `CLAUDE.md` as the map of what goes where, cached until the task changes and left out when the
-task says too little to tell, assigns it through the lane
+assistant's home `CLAUDE.md` as the map of what goes where, cached until the workstream changes and left out when
+it says too little to tell, assigns it through the lane
 with `PATCH /api/tasks/:slug`, so it lands in the history and on the bus, and the toast's Undo, or ⌘Z, puts it
 back. Eight seconds after the drop, unless undone, the project's Domain Lead, its newest live conversation
-titled with DL and the project's token, gets the task to assess, told it is that project's Domain Lead. With no
+titled with DL and the project's token, gets the workstream to assess, told it is that project's Domain Lead. With no
 Domain Lead running, the sidecar starts one, `claude --bg --agent domain-lead --name "[<token>] DL <project>"` in
 the project's folder, with the same message, and `agents` in `~/.claude/sidecar/config.json` renames the agent
-for any role. New task, or N, drafts a row in the backlog,
+for any role. New workstream, or N, drafts a row in the backlog,
 writes an unassigned `.md` with the four parts as headings through `POST /api/tasks`, and opens it in Edit.
 
-Right-click on a task row, in the backlog or under a project, opens its menu. Rename turns the row into the New task
-field with the title in it, and Enter writes it through `PATCH /api/tasks/:slug {title}`, which rewrites the stamp
-title and the heading and keeps the file name, so every link by slug holds. Under a project, closing a task takes two
+Right-click on a workstream row, in the backlog or under a project, opens its menu. Rename turns the row into the New
+workstream field with the title in it, and Enter writes it through `PATCH /api/tasks/:slug {title}`, which rewrites the stamp
+title and the heading and keeps the file name, so every link by slug holds. Under a project, closing a workstream takes two
 steps. Kill its N agents, in red and there only while some are alive, runs `POST /api/tasks/:slug/kill`, which stops
-the task's Individual Contributors alone and names them in its tip, and the toast's Undo, or ⌘Z, runs
+the workstream's Individual Contributors alone and names them in its tip, and the toast's Undo, or ⌘Z, runs
 `POST /api/tasks/:slug/resume` with exactly the keys it killed, while a conversation that would not stop or start is
-named in a toast with its reason. Archive is off, with "Kill its agents first", while any is alive, and moves the
-task to Done through the lane, and the toast's Undo moves it back to the state it left. On an archived row Restore, in
+named in a toast with its reason. Archive is off, with "Kill its agents first", while any is alive, and archives the
+workstream through the lane, and the toast's Undo moves it back to the state it left. On an archived row Restore, in
 its menu and as a button on the row, moves it back to the state its history says it left, finished when the history
-never recorded it, with an Undo that archives it again, and its agents stay killed. A task's menu has no Mark done and
+never recorded it, with an Undo that archives it again, and its agents stay killed. A workstream's menu has no Mark done and
 no Remove. A backlog row's trash goes through
-`DELETE /api/tasks/:slug`: it stops every live conversation titled as one of the task's Individual Contributors,
+`DELETE /api/tasks/:slug`: it stops every live conversation titled as one of the workstream's Individual Contributors,
 the way a conversation's own delete does, writes one history entry naming them, and moves the `.md` and its
 history into `~/.claude/sidecar/trash/`. Undo, or ⌘Z, moves those two back through
 `POST /api/tasks/:slug/restore`, and the toast says the stopped Individual Contributors stay stopped, since their transcripts
@@ -282,19 +283,19 @@ A conversation named by its key alone in backticks, as the sidecar's rule asks, 
 `@<title> (<key>)`, in the chat, an answer in the door, a comment thread or a side question, draws as its tree
 row inline: the project's avatar, the row's mark, role, icon and name, and a terminal mark while your terminal holds
 it. Clicking the name brings it
-in front, and hovering it shows a card with the full title, its current step and its key, project and task,
+in front, and hovering it shows a card with the full title, its current step and its key, project and workstream,
 while its row in the tree lights up. Every form resolves by key against every conversation the tree lists, so an
 ended one shows its check, while a key the tree does not list stays code or plain text, and a key inside a link
 or other code stays as it is.
 
 Your own conversations drag. Dropped on another project it is renamed `[<project token>] <subject>`, and on an
-open task it becomes one of the task's Individual Contributors, renamed `[<project token>] IC <slug> <subject>`, while a
+open workstream it becomes one of its Individual Contributors, renamed `[<project token>] IC <slug> <subject>`, while a
 folded project opens as the row passes over it. Either keeps a leading deadline, and its tickets while the
 project stays the same, through `PATCH /api/sessions/<key>`. That appends a title record to the transcript and writes the name, marked as yours,
-into the job's state file, which is where the job list and the running process read it. A drop on a task goes
-through `POST /api/tasks/:slug/lead`, and eight seconds later the conversation is told it now leads that task,
+into the job's state file, which is where the job list and the running process read it. A drop on a workstream goes
+through `POST /api/tasks/:slug/lead`, and eight seconds later the conversation is told it now leads that workstream,
 with the path of the individual-contributor agent's file to read as its role, since it was never started as that agent, and
-the message lands in the task's history. Undo, or ⌘Z, cancels that message with `DELETE` on the same route and
+the message lands in the workstream's history. Undo, or ⌘Z, cancels that message with `DELETE` on the same route and
 puts the old title back when it had one.
 
 Moving to another conversation keeps the page, so the tree, its folds and every face already opened stay put
@@ -355,7 +356,7 @@ it touched, sits under, or names in a message of its own, and writes through non
 at its left, a lighter background and a text a size smaller. A conversation's title in backticks draws as that
 conversation's chip like its key does, when exactly one conversation in the tree has it. In a sentence the chip is the
 status mark, the role token, the agent's icon and the name, capped in width and no taller than the line, so it stays one token of its
-paragraph. Hovering it shows a card with the title, what it is doing, and its project and task.
+paragraph. Hovering it shows a card with the title, what it is doing, and its project and workstream.
 
 An image you paste into Claude Code's own prompt draws in the chat where you sent it. Claude Code writes it as two
 user messages, your words with an `[Image #2]` marker and a second one that holds only
@@ -446,19 +447,19 @@ folder and with every inherited `CLAUDE*` variable dropped, waits up to 15 secon
 resumed session keeps its key, its title and its role, since Claude Code restores the saved name, agent, model and
 effort, and messages sent while it wakes share one resume. The chat and the door say Waking in place of the
 refusal, the notes' button reads Waking…, and a conversation that was never on disk or does not come up in time
-still answers `no-live-session`. A task's message box, an escalation's answer, a handoff and a review action wake the
+still answers `no-live-session`. A workstream's message box, an escalation's answer, a handoff and a review action wake the
 same way, while Stop and the command list never start a process. `relay <key> "<text>"` in Notes wakes a known key
 through the same function and prints `woke  <key>` before `delivered`.
 
 ### Following the terminal
 
 `sidecar terminal`, started once in the terminal you use for Claude Code, owns a pty there that opens on agent
-view, `claude agents`, and listens on `/api/attach/stream`. Attach on the task's rail posts
+view, `claude agents`, and listens on `/api/attach/stream`. Attach on the workstream's rail posts
 `POST /api/attach {key}`; the follower closes agent view, or writes Ctrl+Z to the conversation it
 holds, which detaches it with the session still running, and runs `claude attach <key>` for the next. When an
 attached conversation ends or you detach it, agent view comes back, and quitting agent view stops the follower.
 The rail's Attach on the one the terminal holds shows pressed, and a chip for it shows a terminal mark, while a
-switch you make inside Claude Code with the left arrow is not seen. With no follower running, the dot in the task rail's header says so and Attach copies the
+switch you make inside Claude Code with the left arrow is not seen. With no follower running, the dot in the workstream rail's header says so and Attach copies the
 `claude attach` line instead. The stream opens with a `ready`
 event carrying what the sidecar thinks the terminal holds, so the follower corrects the sidecar when the two
 differ. A session draws at one size, so it has one holder: while the terminal dock is open Attach goes to the
@@ -541,10 +542,10 @@ POST /api/dock/<id>/stop                                            ->  {"stoppe
 Both POSTs refuse an origin that is not the sidecar's own. A configuration's command comes from what the server
 reads, and only the `command` shape carries its own, the way the websocket types into a shell.
 
-### The task lane
+### The workstream lane
 
-A task's life goes through `sidecar task`, which the Individual Contributors and the Domain Lead call so the logic that
-comments the board and notifies you lives in one place:
+A workstream's life goes through `sidecar task`, which keeps its noun on the command line and which the Individual
+Contributors and the Domain Lead call so the logic that comments the board and notifies you lives in one place:
 
 ```sh
 sidecar task new "Hook that blocks committing settings.local.json"  # an unassigned task with the four parts; prints its slug
@@ -557,37 +558,38 @@ sidecar task <slug> hire "a tester, to drive the CLI, Sonnet xhigh"
 sidecar task <slug> judge "Yours, it sets the budget of every task" --pick 1
 sidecar task <slug> judge "The transcripts settle it" --pick 1 --settle  # within the Domain Lead's reach
 sidecar task <slug> decide 1                          # or decide "your own words"; --thread <n> names one
-sidecar task <slug> done                              # a lead's: finished, waiting on your mark; at your own terminal: Done
+sidecar task <slug> done                              # a lead's: finished, waiting on your mark; at your own terminal: archived
 ```
 
-Each verb rewrites the stamp in the layout Mode writes, appends to the task's history and publishes on the
-event bus, so an open task updates as it happens. An escalation is a thread on the document with an `ask`
-holding its options, the Domain Lead's verdict and pick, and in the end the decision; it blocks the task, and
-deciding it puts the task back to running and tells the conversation that asked, under the `[[sidecar]]`
+Each verb rewrites the stamp in the layout Mode writes, appends to the workstream's history and publishes on the
+event bus, so an open workstream updates as it happens. An escalation is a thread on the document with an `ask`
+holding its options, the Domain Lead's verdict and pick, and in the end the decision; it blocks the workstream, and
+deciding it puts the workstream back to running and tells the conversation that asked, under the `[[sidecar]]`
 marker. A hire is the same thread with Approve and Refuse, and blocks nothing. Who called is read off the
 conversation's title: a role token makes it that role, and no token makes it you, except that a decide is always
-yours, whichever conversation runs it. A done from a role conversation moves the task to finished, which waits on
-your mark, and a done typed at your own terminal, from the task's status control or from the tree row's menu is your
-mark: the task goes to Done and the history files it as your decision, the way a decide does. A lead's done on a task
-you already marked leaves it Done, and nothing migrates, so tasks that were Done stay Done. A judge alone is the Domain Lead's read and waits on you, while
+yours, whichever conversation runs it. A done, or a `state archived`, from a role conversation moves the workstream
+to finished, which waits on your mark, and a done typed at your own terminal, from the strip's Archived step or from
+the tree row's menu is your mark: the workstream is archived and the history files it as your decision, the way a
+decide does. A lead's done on a workstream you already archived leaves it archived, and `state done` is refused with
+the list of states. A judge alone is the Domain Lead's read and waits on you, while
 `judge --settle` settles one within its reach the way a decide does, filed as the Domain Lead's decision under
 its title, so it stays out of your decisions and a later decide on that thread is refused as settled. `--settle`
 with no verdict settles the verdict already standing, which lets an Individual Contributor close one the Domain Lead judged.
 Waiting needs `--reason`.
 
 Escalate and hire notify you. When a sidecar page is open, the one holding the `sidecar:task-notices` lock
-raises a notification whose click opens the task's document in the main panel; with no page open, or without notification permission,
+raises a notification whose click opens the workstream's document in the main panel; with no page open, or without notification permission,
 it is `osascript display notification`, whose click can only open Script Editor, since macOS ties it to that app.
 
 ### The channel
 
-Each task, the workstream, has a channel its conversations share, kept in `~/.claude/sidecar/channels/<slug>.jsonl`
+Each workstream has a channel its conversations share, kept in `~/.claude/sidecar/channels/<slug>.jsonl`
 beside the history, one line per post or system line. Nobody types its members in: they are the conversations whose
 title puts them under the slug, the Solution Lead and the Individual Contributors, plus the project's Domain Lead, and
 whoever joined stays a member once killed or retitled, sorted after the ones alive. The channel catches up each time
 it is read or posted to, so a member it has not seen before gets a join line, a member whose process ended gets a kill
-line, one that comes back gets a line saying so, and the task moving to Done, which is what archived means for now, or
-back out of it gets an archive or a restore line naming who moved it. A join line names who spawned the agent, read
+line, one that comes back gets a line saying so, and the workstream moving to archived or back out of it gets an
+archive or a restore line naming who moved it. A join line names who spawned the agent, read
 from `session.spawned`, which the sidecar records when it starts a conversation for you and anything else records by
 importing `Spawns` from `server/utils/sessions/spawns.ts` and calling `Spawns.record({ key, by })`.
 
@@ -639,8 +641,8 @@ and `channel.changed` carries the new count with every change.
 ### The channel panel
 
 A workstream's row opens its channel over the main panel, with three tabs: Messages, DMs and Document, the last being
-the task's document and history as they were. A workstream lands on Messages and a backlog task, which no project has
-taken yet, on Document. The header names the channel, says whether it is temporary or archived, and stacks its
+the workstream's document and history as they were. A workstream lands on Messages and a backlog one, which no project
+has taken yet, on Document. The header names the channel, says whether it is temporary or archived, and stacks its
 members' icons, the live ones first by name, with who was killed in the tip.
 
 Messages reads like Slack. Each post has the agent's icon, its name, its role and the time, and hovering the name says
@@ -676,24 +678,24 @@ A web page in front keeps ⌘[ for its own history, and the editor keeps it for 
 
 ### The history
 
-Each task keeps `~/.claude/sidecar/history/<slug>.jsonl`, one entry a line, from four feeds: every turn an Individual
+Each workstream keeps `~/.claude/sidecar/history/<slug>.jsonl`, one entry a line, from four feeds: every turn an Individual
 Contributor ends with an answer, which the mod hands over off `turn.complete` for a conversation whose title holds IC
-and the task's slug or ticket; status and content changes, from the lane and from Edit mode's saves and Keep;
+and the workstream's slug or ticket; status and content changes, from the lane and from Edit mode's saves and Keep;
 escalations, verdicts and your decisions; and what you type at an Individual Contributor's own prompt or send it from the
 sidecar, while a relayed message stays out, since one from another lead reads the same. A message the sidecar
-sends with a task's slug, from the assistant's door while that task is open, joins that task's history whoever it went to. `sidecar task <slug>` run from a Domain Lead also marks
+sends with a workstream's slug, from the assistant's door while that workstream is open, joins its history whoever it went to. `sidecar task <slug>` run from a Domain Lead also marks
 the history read.
 
-History, beside Document in the task sheet's bar, opens on where it stands: the fast model's two or three
+History, beside Document in the workstream sheet's bar, opens on where it stands: the fast model's two or three
 sentences over the history, cached in `<slug>.stands.json` until the file changes. Below it each entry has its
 time, an IC, DL or YOU badge and chips for what it moved, consecutive turns and nearby edits fold into one, a
 line marks what is new since the Domain Lead read it, and your decisions filters to those. The entry you pick
 opens to its full text in place.
 
-On the document, an open escalation sits above the task with its options as one-click choices, the Domain
+On the document, an open escalation sits above the workstream with its options as one-click choices, the Domain
 Lead's pick marked, or your own words, the four parts fold to one line each, and the Individual Contributor's rail row turns
 red. Once settled it folds to a row that links to the history, and the strip says it was settled by you. A
-waiting task says what it waits on, nothing for you to do, and a resumed or done one says when.
+waiting workstream says what it waits on, nothing for you to do, and a resumed or archived one says when.
 
 The projects are the `projects` list in `~/.claude/sidecar/config.json`, each
 `{ key, name, token, folder, image?, icon? }`, where `token` is the bracketed prefix its conversations' titles
@@ -742,9 +744,9 @@ published while the sidecar is down still arrives once it starts. The topics and
 | Topic              | Payload                 | Published by                                                                    | What the sidecar does                       |
 | ------------------ | ----------------------- | ------------------------------------------------------------------------------- | ------------------------------------------- |
 | `artifact.created` | `slug`, `title`, `path` | the sidecar, when a conversation's list first records a page it was not showing | Lists the page, and a notification opens it |
-| `task.changed`     | `slug`, `state`         | the task lane, for every stamp change and every history entry                    | The open task reads itself again            |
+| `task.changed`     | `slug`, `state`         | the workstream lane, for every stamp change and every history entry              | The open workstream reads itself again      |
 | `task.escalated`   | `slug`, `title`, `thread`, `kind`, `question` | `sidecar task <slug> escalate` and `hire`                      | Shows the escalation and notifies you       |
-| `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the open task             | Settles the escalation on the task          |
+| `task.decided`     | `slug`, `thread`, `text`, `who` | `sidecar task <slug> decide`, and a choice on the open workstream       | Settles the escalation on the workstream    |
 | `terminal.changed` | `following`, `held`     | the server, when `sidecar terminal` connects, leaves or attaches a conversation | The rail's Attach and a chip's terminal mark |
 | `dock.changed`     | `tabs`                  | the server, when a dock tab opens, ends or its running program changes          | The dock's tabs and the shells still running, and each run's status and failing lines |
 | `runs.changed`     | `project`               | `sidecar run <project> add` and `remove`                                        | The run widget's menu reads the project again |
@@ -784,20 +786,20 @@ conversations whose last turn nobody opened, each with its end time. `POST /api/
 ## Asking Claude
 
 The assistant's door sits at the bottom right of every screen, the mascot with what the assistant is doing and
-how many tasks wait in the inbox. The pill and the panel are one surface: a click on Ask grows the pill's box into
+how many workstreams wait in the inbox. The pill and the panel are one surface: a click on Ask grows the pill's box into
 the panel's with the drawer curve over `--duration-base`, the collapse shrinks it back over `--duration-snappy`,
 the panel's height eases the same way as its content grows, and reduced motion leaves only the crossfade. ⌥↵ and
 esc open and close it at once, since the motion contract never animates a keyboard toggle. Ask, or ⌥↵, opens it on the assistant, the newest live conversation titled
 with EA, and what you write goes to it through `/api/sessions/:key/message`. What you are looking at, the
-conversation in front or the task in front, is offered above the field as a dashed suggestion and never goes with
+conversation in front or the workstream in front, is offered above the field as a dashed suggestion and never goes with
 a message by itself: a click on it, or taking one of the prompt's suggestions, makes it the chip that goes with
-your message, × takes it off, and it starts again as a suggestion whenever what is in front changes. A task's
-slug goes with the message so it lands in that task's history. The door follows the assistant's turn off the conversation bus from a snapshot of its
+your message, × takes it off, and it starts again as a suggestion whenever what is in front changes. A workstream's
+slug goes with the message so it lands in that workstream's history. The door follows the assistant's turn off the conversation bus from a snapshot of its
 transcript, so the mascot and the step line under it say what it is doing now, reading a file, running a
 command or thinking, with a spinner on your message until it answers. Whether it works is read from
 `conversation.changed` for its key, and only the last open message carries that line. A message sent while it is
 mid-turn shows as queued until the queue hands it over, and once handed over it joins the turn already running, so
-the earlier message loses its line and the one answer lands under the last. Beside that it shows a receipt for each task it moves, with Undo when it took one out of the inbox. A receipt keeps only the slug and the state change, and reads the task's project and title from the catalogue each time it is drawn, so an assign or a rename after the move shows at once, and a task that leaves the catalogue keeps the last title it had. Then comes its answer, and the question it asks
+the earlier message loses its line and the one answer lands under the last. Beside that it shows a receipt for each workstream it moves, with Undo when it took one out of the inbox. A receipt keeps only the slug and the state change, and reads the workstream's project and title from the catalogue each time it is drawn, so an assign or a rename after the move shows at once, and a workstream that leaves the catalogue keeps the last title it had. Then comes its answer, and the question it asks
 back in amber, with an AskUserQuestion drawn whole: its header, the question, each option with its description,
 and whether it takes one pick or several. Clicking an option answers it, a multi-select collects its picks and
 sends them on Send, and several questions go back together once each has a pick, posted to
@@ -815,7 +817,7 @@ says so, and your message starts one through `POST /api/assistant`, which runs
 `claude --bg --agent executive-assistant` in the meta project's folder, both set by `assistant: { agent, project }`
 in `~/.claude/sidecar/config.json`. An @ in the field lists everyone in the tree, and picking one writes their
 title and key into the prompt, so the assistant knows whom you mean while the message still goes to it. When the
-inbox has tasks and nothing was asked yet, the door opens on it with each task's Route to.
+inbox has workstreams and nothing was asked yet, the door opens on it with each one's Route to.
 
 A file pasted or dropped into the field, of any type, uploads to `POST /api/uploads?name=<file name>`, which saves
 it under `~/.claude/sidecar/uploads/door/` with its own name made safe and a `-2` when that name is taken, keeps the
@@ -844,7 +846,7 @@ chose. Typing in a session's prompt still points the sidecar there, at most once
 holds up a keystroke, and the page ignores that point, as the follow section below says. Each turn also leaves an empty `~/.claude/sidecar/conversations/<session key>`, which
 is how the sidecar still lists a conversation after it has ended. A turn that ends on the main loop with an
 answer, and a prompt you type, go to `sidecar task --heard turn` and `--heard message` on stdin, which keeps them
-only for an Individual Contributor's conversation, in its task's history.
+only for an Individual Contributor's conversation, in its workstream's history.
 
 An AskUserQuestion call races its own dialog against the door. The mod's `tool.call` hook opens the question
 with `POST /api/questions/<tool id>` and the session's key, which the server publishes as `question.changed`
@@ -912,7 +914,7 @@ terminal moved card, is gone, and `sc:follow-mode` in the browser is no longer r
 
 What the sidecar sends a session, notes and Review's buttons alike, opens on a `[[sidecar]]` line
 (`[[cc-sidecar]]` and `[[mode-relay v1]]` before it, still read) and reaches Claude Code as a peer message.
-The line carries `slug=<slug>` when the message is about a task and `from=<key>` when another conversation sent it.
+The line carries `slug=<slug>` when the message is about a workstream and `from=<key>` when another conversation sent it.
 The sender is an explicit `from` on `sendToInbox` and `deliver`: the CLI passes its own conversation, read from
 `CLAUDE_CODE_SESSION_ID` at its edge, the server passes an agent's key for an agent's post, and what you send from the
 page carries none.
