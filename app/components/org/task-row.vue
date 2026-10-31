@@ -62,6 +62,7 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
   </OrgRow>
   <template v-for="row in rows" :key="row.key">
     <OrgRow
+      :agent="row.agent"
       :conversation="row.key"
       :depth="depth + 1"
       :is-front="front(row)"

@@ -1,8 +1,9 @@
 <script lang="ts" setup>
 import type { Role } from "~~/shared/types/task";
-import type { Mark } from "~/utils/org";
+import type { AgentFace, Mark } from "~/utils/org";
 
 const {
+  agent,
   conversation,
   depth = 0,
   id,
@@ -14,6 +15,7 @@ const {
   role,
   tip,
 } = defineProps<{
+  agent?: AgentFace;
   conversation?: string;
   depth?: number;
   id?: string;
@@ -49,7 +51,8 @@ const isLit = computed(() => !!conversation && conversationMenu.lit === conversa
     <button class="open plain-button focusable" type="button" :data-tip="tip ?? name" @click="emit('open')">
       <OrgMark :mark="mark" />
       <span v-if="role" class="role">{{ role }}</span>
-      <span class="name">{{ name }}</span>
+      <OrgAgentIcon v-if="agent" :icon="agent.icon" :is-killed="mark === 'killed'" :size="16" />
+      <span class="name">{{ agent?.name ?? name }}</span>
       <slot />
       <span v-if="id" class="id">{{ id }}</span>
     </button>

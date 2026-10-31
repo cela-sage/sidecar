@@ -72,6 +72,7 @@
   --color-tint-cyan: var(--tint-cyan);
   --color-tint-orange: var(--tint-orange);
   --color-tint-slate: var(--tint-slate);
+  --color-agent-ink: var(--agent-ink);
   --color-mascot: var(--mascot);
   --color-mascot-eye: var(--mascot-eye);
   --color-file-html: var(--file-html);
@@ -130,6 +131,32 @@
 }
 [data-tint="slate"] {
   --tint: var(--tint-slate);
+}
+
+/* The design fixes the agent pack's eight inks, muted so none reads as a status colour. */
+[data-ink="0"] {
+  --agent-ink: #2f8f86;
+}
+[data-ink="1"] {
+  --agent-ink: #4a72c4;
+}
+[data-ink="2"] {
+  --agent-ink: #4f8a4b;
+}
+[data-ink="3"] {
+  --agent-ink: #8a7f2e;
+}
+[data-ink="4"] {
+  --agent-ink: #9a4f8e;
+}
+[data-ink="5"] {
+  --agent-ink: #5c6b8a;
+}
+[data-ink="6"] {
+  --agent-ink: #3a86a8;
+}
+[data-ink="7"] {
+  --agent-ink: #6b8f3a;
 }
 
 html,

@@ -170,6 +170,7 @@ watch(
         <OrgRow
           v-for="row in group.leads"
           :key="row.key"
+          :agent="row.agent"
           :conversation="row.key"
           :depth="1"
           :is-front="front(row)"
@@ -198,6 +199,7 @@ watch(
           v-for="row in group.conversations"
           :key="row.key"
           class="carry"
+          :agent="row.agent"
           :conversation="row.key"
           :data-ghost="desk.carrying === row.key"
           :depth="1"
@@ -234,6 +236,7 @@ watch(
         v-for="row in tree.unplaced"
         :key="row.key"
         class="carry"
+        :agent="row.agent"
         :conversation="row.key"
         :data-ghost="desk.carrying === row.key"
         draggable="true"
