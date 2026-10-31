@@ -99,7 +99,7 @@ useResizeObserver(boardEl, ([entry]) => {
           <div v-show="!task.slug" class="page" :inert="isDown">
             <slot />
           </div>
-          <TaskFront v-if="task.slug" :inert="isDown" />
+          <ChannelFront v-if="task.slug" :inert="isDown" />
 
           <!-- One row, so the notes take whatever width the board leaves rather than
                the two hugging opposite corners and colliding in the middle. -->

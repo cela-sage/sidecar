@@ -10,6 +10,7 @@ const READ_MS = 5000;
 const sc = useSidecar();
 const task = $task();
 const desk = $desk();
+const nav = $nav();
 const events = useEvents();
 const conversationMenu = $conversationMenu();
 const folds = useOrgFolds();
@@ -31,12 +32,7 @@ const isOpen = (group: OrgProject): boolean =>
 
 const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.sessionKey.value;
 
-const openConversation = (row: OrgConversation): void => {
-  task.close();
-  if (row.key === sc.sessionKey.value) return;
-  sc.sessionKey.value = row.key;
-  void navigateTo(`/c/${row.key}`, { replace: true });
-};
+const openConversation = (row: OrgConversation): void => nav.go({ kind: "conversation", key: row.key });
 
 const menuFor = (event: MouseEvent, row: OrgConversation): void =>
   conversationMenu.openFor(event, { key: row.key, title: row.title, open: () => openConversation(row) });

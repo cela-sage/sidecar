@@ -13,6 +13,7 @@ useResizeObserver(lights, ([entry]) => {
 <template>
   <header class="bar" aria-label="Window" data-region="window-bar" role="toolbar">
     <span ref="lights" class="lights" aria-hidden="true" />
+    <ChromeNav />
     <span class="spacer" />
     <slot />
   </header>
