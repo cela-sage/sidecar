@@ -31,6 +31,7 @@ export interface ChannelPost {
   by: string;
   text: string;
   thread?: string;
+  broadcast?: true;
   reach: PostReach;
   answered?: string;
 }

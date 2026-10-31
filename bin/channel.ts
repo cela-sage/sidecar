@@ -10,7 +10,7 @@ import { clock } from "./clock.ts";
 export interface ChannelRun {
   slug: string;
   words: string[];
-  values: { thread?: string; upto?: string; new?: boolean; json?: boolean };
+  values: { thread?: string; upto?: string; new?: boolean; json?: boolean; broadcast?: boolean };
   address: string;
 }
 
@@ -41,6 +41,7 @@ const post = async ({ slug, words, values, address }: ChannelRun): Promise<numbe
     author: authorOf(),
     text: words.join(" "),
     ...(values.thread ? { thread: values.thread } : {}),
+    ...(values.broadcast ? { broadcast: true } : {}),
   });
   if (posted.reach.boss)
     await TaskNotice.raise({
@@ -52,9 +53,10 @@ const post = async ({ slug, words, values, address }: ChannelRun): Promise<numbe
 };
 
 const LINES: { [K in ChannelLine["kind"]]: (line: Line<K>, who: (key: string) => string) => string } = {
-  post: ({ id, by, text, thread, reach, answered }, who) => {
+  post: ({ id, by, text, thread, broadcast, reach, answered }, who) => {
     const raised = reach.boss ? (answered ? "  (@boss, answered)" : "  (@boss, waits on Marco)") : "";
-    return `${thread ? "  ↳ " : ""}${id}  ${who(by)}: ${text}${raised}`;
+    const loud = broadcast ? "  (also sent to the channel)" : "";
+    return `${thread ? "  ↳ " : ""}${id}  ${who(by)}: ${text}${raised}${loud}`;
   },
   join: ({ key, by }, who) => `·  ${who(key)} joined${by ? `, spawned by ${who(by)}` : ""}`,
   kill: ({ keys: killed, by }, who) => `·  ${killed.map(who).join(", ")} killed${by ? ` by ${who(by)}` : ""}`,

@@ -18,6 +18,7 @@ export interface PostInput {
   author: Author;
   text: string;
   thread?: string;
+  broadcast?: boolean;
 }
 
 export interface TakeInput {
@@ -63,8 +64,9 @@ const speakerOf = (by: string, members: ChannelMember[], sessions: LiveSession[]
 };
 
 // A mention wakes an alive agent whose process is down but never a killed one; Marco's @boss answer wakes either.
-const post = async ({ given, author, text, thread }: PostInput): Promise<ChannelPost> => {
+const post = async ({ given, author, text, thread, broadcast = false }: PostInput): Promise<ChannelPost> => {
   const { file, folded, sessions } = ChannelSync.sync(given);
+  if (broadcast && !thread) throw new Refusal("a reply goes to the channel too only from its thread: add --thread <id>", 2);
   const root = thread ? rootOf(folded, thread) : undefined;
   const members = Members.of(folded, sessions);
   const known = new Set(sessions.map((one) => one.key));
@@ -84,6 +86,7 @@ const post = async ({ given, author, text, thread }: PostInput): Promise<Channel
     by: author.by,
     text: said,
     ...(root ? { thread: root.id } : {}),
+    ...(root && broadcast ? { broadcast: true as const } : {}),
     mentions,
   });
   const answered = author.who === "YOU" && root ? raisedIn(folded, root.id) : [];

@@ -46,7 +46,7 @@ const answer = (folded: Folded, thread: string, at: string): void => {
 
 // Two writers can race a system line in, so a join, kill or resume that changes nothing is dropped here.
 const STEPS: { [K in Kind]: (folded: Folded, entry: EntryOf<K>) => void } = {
-  post: (folded, { id, at, by: author, text, thread, mentions }) => {
+  post: (folded, { id, at, by: author, text, thread, broadcast, mentions }) => {
     const post: ChannelPost = {
       kind: "post",
       id,
@@ -54,6 +54,7 @@ const STEPS: { [K in Kind]: (folded: Folded, entry: EntryOf<K>) => void } = {
       by: author,
       text,
       ...(thread ? { thread } : {}),
+      ...(thread && broadcast ? { broadcast } : {}),
       reach: {
         ...(mentions.all ? { all: true } : {}),
         ...(mentions.boss ? { boss: true } : {}),
@@ -148,7 +149,7 @@ const view = ({ slug, title, folded, members }: ViewInput): Channel => {
     archived: folded.archived,
     raised: raisedOf(folded),
     members,
-    lines: folded.lines.filter((one) => one.kind !== "post" || !one.thread),
+    lines: folded.lines.filter((one) => one.kind !== "post" || !one.thread || one.broadcast),
     threads,
     dms: dmsOf(folded),
   };

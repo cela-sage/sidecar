@@ -184,6 +184,37 @@ test("@boss raises it to Marco until he answers in its thread, and his answer re
   assert.deepEqual([channel.raised, channel.threads[ask.id]?.length], [[], 2]);
 });
 
+test("a reply sent to the channel too reaches whom the same reply in its thread alone reaches, once, and reads in both", async () => {
+  const ivo = nameOf(SL);
+  const root = await Channels.post({ given: "board", author: asIc, text: "row menu order is in" });
+  await got(SL);
+  const quiet = await Channels.post({ given: "board", author: asIc, text: `@${ivo} check it`, thread: root.id });
+  const quietHeard = await got(SL);
+  const loud = await Channels.post({
+    given: "board",
+    author: asIc,
+    text: `@${ivo} check it again`,
+    thread: root.id,
+    broadcast: true,
+  });
+  const loudHeard = await got(SL);
+  assert.deepEqual([loud.reach, loudHeard.length, loud.broadcast], [quiet.reach, quietHeard.length, true]);
+  assert.deepEqual([loud.reach.notified, loudHeard.length], [[SL], 1]);
+  const channel = Channels.read("board");
+  assert.deepEqual(
+    channel.lines.flatMap((one) => (one.kind === "post" && one.thread === root.id ? [one.id] : [])),
+    [loud.id],
+  );
+  assert.deepEqual(
+    channel.threads[root.id]?.map((one) => one.id),
+    [quiet.id, loud.id],
+  );
+  await assert.rejects(
+    Channels.post({ given: "board", author: asIc, text: "everyone look", broadcast: true }),
+    /only from its thread/,
+  );
+});
+
 test("an agent can @ only members, and Marco's @ of an outsider gives it one read and its thread alone", async () => {
   await assert.rejects(
     Channels.post({ given: "board", author: asIc, text: `@${NELL} same menu order?` }),

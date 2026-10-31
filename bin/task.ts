@@ -29,8 +29,9 @@ export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slu
                              settle it, and the conversation that asked hears the decision
   done                       an Individual Contributor's work is finished and waits on Marco's mark; only Marco's own
                              terminal, the status control or the tree row's menu puts it in Done
-  post "<text>" [--thread <id>]
-                             say it in the task's channel, or in a thread with --thread; no @ notifies no one,
+  post "<text>" [--thread <id> [--broadcast]]
+                             say it in the task's channel, or in a thread with --thread, and with --broadcast also in
+                             the channel itself; no @ notifies no one,
                              @<key> interrupts that member, @all every member alive, @boss raises it to Marco
   channel [--new] [--upto <id>] [--json]
                              read the channel, only what is new since your last read with --new; outside the
@@ -49,6 +50,7 @@ type Values = Partial<Record<"reason" | "on" | "quote" | "pick" | "thread" | "he
   json?: boolean;
   settle?: boolean;
   new?: boolean;
+  broadcast?: boolean;
 };
 
 const OPTIONS = {
@@ -63,6 +65,7 @@ const OPTIONS = {
   json: { type: "boolean" },
   settle: { type: "boolean" },
   new: { type: "boolean" },
+  broadcast: { type: "boolean" },
 } as const;
 
 const caller = (): Caller => TaskCaller.of(process.env.CLAUDE_CODE_SESSION_ID);

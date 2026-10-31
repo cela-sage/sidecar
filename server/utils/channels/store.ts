@@ -16,6 +16,7 @@ const Entry = z.discriminatedUnion("kind", [
     by: z.string(),
     text: z.string(),
     thread: z.string().optional(),
+    broadcast: z.literal(true).optional(),
     mentions: z.object({
       keys: Keys,
       outside: Keys,
