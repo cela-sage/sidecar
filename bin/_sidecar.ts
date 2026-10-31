@@ -70,9 +70,10 @@ const USAGE = `usage: sidecar [command]     /sidecar [command] in a Claude Code 
               --artifact <slug|url> opens that page there, in Artifacts, an address as a new Web artifact
   comments <slug> [--reply <n> "text"] [--resolve <n> ["what changed"]] [--json]
               read the comment threads on an artifact, and answer or close one
-  task new "<title>" | task <slug> [state|assign|escalate|hire|judge|decide|done ...]
+  task new "<title>" | task <slug> [state|assign|escalate|hire|judge|decide|done|post|channel ...]
               a task's lane: a new unassigned task, where it stands, its state and project, an escalation
-              or a hire that notifies you, a verdict or a decision, every one kept in its history. sidecar task alone lists the verbs
+              or a hire that notifies you, a verdict or a decision, every one kept in its history, and
+              its channel, read and posted to by its crew. sidecar task alone lists the verbs
   run <project> [add "<name>" "<command>" [--folder <dir>] | remove "<name>"]
               a project's run configurations: its repos' package.json scripts and Makefile targets,
               plus its own, which add and remove change and every open sidecar picks up

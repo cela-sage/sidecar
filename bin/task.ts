@@ -7,6 +7,7 @@ import { HistoryLines } from "../shared/utils/history.ts";
 import { TaskCaller } from "../server/utils/tasks/caller.ts";
 import { TaskLane, type AskThread, type Decided } from "../server/utils/tasks/lane.ts";
 import { TaskNotice } from "../server/utils/tasks/notice.ts";
+import { ChannelVerbs } from "./channel.ts";
 import { clock } from "./clock.ts";
 
 export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slug> [verb]
@@ -28,7 +29,13 @@ export const TASK_USAGE = `usage: sidecar task new "<title>" | sidecar task <slu
                              settle it, and the conversation that asked hears the decision
   done                       an Individual Contributor's work is finished and waits on Marco's mark; only Marco's own
                              terminal, the status control or the tree row's menu puts it in Done
-Every verb lands in the task's history, which Individual Contributor turns join on their own.`;
+  post "<text>" [--thread <id>]
+                             say it in the task's channel, or in a thread with --thread; no @ notifies no one,
+                             @<key> interrupts that member, @all every member alive, @boss raises it to Marco
+  channel [--new] [--upto <id>] [--json]
+                             read the channel, only what is new since your last read with --new; outside the
+                             channel, --upto the message that mentioned you is your one read
+Every verb but post and channel lands in the task's history, which Individual Contributor turns join on their own.`;
 
 interface Run {
   slug: string;
@@ -37,10 +44,11 @@ interface Run {
   address: string;
 }
 
-type Values = Partial<Record<"reason" | "on" | "quote" | "pick" | "thread" | "heard", string>> & {
+type Values = Partial<Record<"reason" | "on" | "quote" | "pick" | "thread" | "heard" | "upto", string>> & {
   options?: string[];
   json?: boolean;
   settle?: boolean;
+  new?: boolean;
 };
 
 const OPTIONS = {
@@ -51,8 +59,10 @@ const OPTIONS = {
   pick: { type: "string" },
   thread: { type: "string" },
   heard: { type: "string" },
+  upto: { type: "string" },
   json: { type: "boolean" },
   settle: { type: "boolean" },
+  new: { type: "boolean" },
 } as const;
 
 const caller = TaskCaller.of;
@@ -207,6 +217,8 @@ const VERBS: Record<string, (run: Run) => Promise<number>> = {
     );
     return 0;
   },
+  post: ChannelVerbs.post,
+  channel: ChannelVerbs.channel,
 };
 
 // The mod pipes an Individual Contributor's turn, or what Marco typed to it, on stdin, so no text ever passes through argv.
