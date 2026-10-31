@@ -49,6 +49,16 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
     @open="task.show({ slug: one.meta.slug })"
   >
     <span v-if="isHot" class="drop mono-meta">as its Individual Contributor</span>
+    <template v-if="Tasks.isArchived(one.status)" #after>
+      <UiButton
+        class="restore"
+        data-tip="Brings it back with its channel. Its agents stay killed"
+        size="xs"
+        variant="outline"
+        @click.stop="desk.restore(one.meta)"
+        >Restore</UiButton
+      >
+    </template>
   </OrgRow>
   <template v-for="row in rows" :key="row.key">
     <OrgRow
@@ -94,6 +104,10 @@ const front = (row: OrgConversation): boolean => !task.slug && row.key === sc.se
 
 .drop {
   @apply flex-none text-primary-deep normal-case;
+}
+
+.restore {
+  @apply mr-0.5 flex-none;
 }
 
 .hired {

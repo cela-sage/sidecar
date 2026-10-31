@@ -1,4 +1,5 @@
 import type { ArtifactMeta } from "~~/shared/types/artifact";
+import type { HistoryEntry } from "~~/shared/types/history";
 import type { LiveSession } from "~~/shared/types/session";
 import type { ArtifactTask, TaskState } from "~~/shared/types/task";
 import { Titles } from "../../shared/utils/titles.ts";
@@ -60,6 +61,13 @@ const PRESSING: TaskState[] = [
 const AGENT_ORDER: AgentState[] = ["needs input", "working", "completed"];
 
 const isArchived = (state: TaskState): boolean => state === "done";
+
+const stateBeforeArchive = (entries: HistoryEntry[]): TaskState => {
+  for (const entry of entries.toReversed()) {
+    if ("move" in entry && entry.move && isArchived(entry.move.now)) return entry.move.was;
+  }
+  return "finished";
+};
 
 const isTask = (meta: ArtifactMeta): meta is TaskMeta => !!meta.task;
 const capital = (text: string): string => text.charAt(0).toUpperCase() + text.slice(1);
@@ -135,6 +143,7 @@ export const Tasks = {
   of,
   order,
   railOf,
+  stateBeforeArchive,
   stepsOf,
   tintOf,
 };

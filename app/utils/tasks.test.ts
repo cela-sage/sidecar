@@ -240,6 +240,27 @@ test("a finished task heads the list with the needs-you mark, and a lead with a 
   assert.deepEqual(Timeline.story([marked], "done"), { done: { at, who: "YOU" } });
 });
 
+test("a restored workstream returns to the state it was archived from, and to finished when the history never says", () => {
+  const at = "2026-10-29T09:00:00Z";
+  const move = (was: TaskMeta["task"]["state"], now: TaskMeta["task"]["state"]): HistoryEntry => ({
+    at,
+    who: "YOU",
+    kind: "state",
+    move: { was, now },
+  });
+  const entries = [
+    move("running", "finished"),
+    move("finished", "done"),
+    move("done", "running"),
+    move("running", "done"),
+  ];
+  assert.equal(Tasks.stateBeforeArchive(entries), "running");
+  assert.equal(Tasks.stateBeforeArchive(entries.slice(0, 2)), "finished");
+  assert.equal(Tasks.stateBeforeArchive([]), "finished");
+  assert.equal(Tasks.isArchived("done"), true);
+  assert.equal(Tasks.isArchived("finished"), false);
+});
+
 test("the org tree puts each role where it works, sorts killed agents after the alive by name, archives what is done and files your own conversations by their prefix", () => {
   const meta = (slug: string, state: TaskMeta["task"]["state"], project?: string, lead?: string): TaskMeta => ({
     slug,

@@ -1,6 +1,7 @@
 import type { DeskAsk, DeskTriage, LeadJoined, TaskAssigned, TaskRemoved } from "~~/shared/types/desk";
 import type { Retitled } from "~~/shared/types/session";
-import type { Project } from "~~/shared/types/task";
+import type { HistoryEntry } from "~~/shared/types/history";
+import type { Project, TaskState } from "~~/shared/types/task";
 import { Titles } from "~~/shared/utils/titles";
 import type { OrgConversation } from "~/utils/org";
 import type { TaskMeta } from "~/utils/tasks";
@@ -23,7 +24,7 @@ export const $desk = defineStore(() => {
   const carrying = ref<string>();
   const isNaming = ref(false);
   const renaming = ref<string>();
-  let last: { undo: () => Promise<void>; until: number } | undefined;
+  let last: { undo: () => Promise<unknown>; until: number } | undefined;
 
   const load = async (): Promise<void> => {
     const triage = await $fetch<DeskTriage>("/api/desk").catch(() => undefined);
@@ -46,7 +47,7 @@ export const $desk = defineStore(() => {
     await taken?.undo();
   };
 
-  const offer = (text: string, undoing: () => Promise<void>): void => {
+  const offer = (text: string, undoing: () => Promise<unknown>): void => {
     last = { undo: undoing, until: Date.now() + UNDO_MS };
     chrome.notify({ text, action: "Undo", tip: "Undo · ⌘Z", open: () => void undo() });
   };
@@ -135,10 +136,49 @@ export const $desk = defineStore(() => {
       failed: `Could not move ${row.name} to ${project.name}`,
     });
 
-  const markDone = async (meta: TaskMeta): Promise<void> => {
-    await task.move(meta.slug, "done").then(
-      () => chrome.toast(`${titleOf(meta)} is Done`),
-      (error: unknown) => chrome.toast(failReason(error) ?? `Could not mark ${titleOf(meta)} Done`, "destructive"),
+  const attempt = (run: Promise<unknown>, failed: string): Promise<boolean> =>
+    run.then(
+      () => true,
+      (error: unknown) => {
+        chrome.toast(failReason(error) ?? failed, "destructive");
+        return false;
+      },
+    );
+
+  const shelve = (meta: TaskMeta, state: TaskState, failed: string): Promise<boolean> =>
+    attempt(task.move(meta.slug, state), failed);
+
+  const archive = async (meta: TaskMeta): Promise<void> => {
+    const was = meta.task.state;
+    if (!(await shelve(meta, "done", `Could not archive ${titleOf(meta)}`))) return;
+    offer(`${titleOf(meta)} is archived. Restore it from Archived.`, () =>
+      shelve(meta, was, `Could not bring ${titleOf(meta)} back`),
+    );
+  };
+
+  const restore = async (meta: TaskMeta): Promise<void> => {
+    const at = `/api/tasks/${encodeURIComponent(meta.slug)}/history`;
+    const { entries } = await $fetch<{ entries: HistoryEntry[] }>(at).catch(() => ({ entries: [] }));
+    const back = Tasks.stateBeforeArchive(entries);
+    if (!(await shelve(meta, back, `Could not restore ${titleOf(meta)}`))) return;
+    offer(`${titleOf(meta)} is back, with its channel. Its agents stay killed.`, () =>
+      shelve(meta, "done", `Could not archive ${titleOf(meta)} again`),
+    );
+  };
+
+  const killWorkstream = async (slug: string): Promise<void> => {
+    throw new Error(`needs part 1: ${slug}`);
+  };
+
+  const unkillWorkstream = async (slug: string): Promise<void> => {
+    throw new Error(`needs part 1: ${slug}`);
+  };
+
+  const kill = async (meta: TaskMeta, agents: number): Promise<void> => {
+    if (!(await attempt(killWorkstream(meta.slug), `Could not kill ${titleOf(meta)}'s agents`))) return;
+    offer(
+      `${plural(agents, "agent")} on ${titleOf(meta)} killed. The Domain Lead, the Solution Lead and your Assistant stay.`,
+      () => attempt(unkillWorkstream(meta.slug), `Could not bring ${titleOf(meta)}'s agents back`),
     );
   };
 
@@ -192,14 +232,15 @@ export const $desk = defineStore(() => {
 
   return {
     asks,
+    archive,
     bring,
     carrying,
     create,
     dragging,
     isNaming,
+    kill,
     lead,
     load,
-    markDone,
     move,
     place,
     remove,
@@ -207,6 +248,7 @@ export const $desk = defineStore(() => {
     renameConversation,
     renameTask,
     renaming,
+    restore,
     routes,
     undoLast,
   };
